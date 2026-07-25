@@ -1,0 +1,4 @@
+interface:
+  display_name: "Vibe Domain Engineer"
+  short_description: "Model KMP domain rules and pure contracts"
+  default_prompt: "Use $vibe-domain-engineer to model these business rules and invariants."

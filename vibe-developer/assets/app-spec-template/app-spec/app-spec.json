@@ -1,0 +1,38 @@
+{
+  "schemaVersion": "1.0",
+  "app": {
+    "name": "Example App",
+    "summary": "A validated hand-off example.",
+    "targets": ["android", "ios"],
+    "locales": ["en", "ru"]
+  },
+  "requirements": [
+    {
+      "id": "REQ-001",
+      "title": "Persist the selected preference",
+      "priority": "must",
+      "status": "approved",
+      "acceptanceScenarioIds": ["AC-001"]
+    }
+  ],
+  "flows": ["FLOW-001"],
+  "screens": ["SCREEN-001"],
+  "capabilities": {
+    "network": false,
+    "database": false,
+    "settings": true,
+    "sync": false,
+    "authentication": false,
+    "notifications": false,
+    "exactAlarms": false,
+    "ads": false
+  },
+  "constraints": {
+    "offlineMode": "The preference remains available offline.",
+    "privacy": ["Do not collect personal data."],
+    "accessibility": ["Support screen readers and font scaling."],
+    "performance": ["Persist the preference without visible delay."]
+  },
+  "openQuestions": []
+}
+

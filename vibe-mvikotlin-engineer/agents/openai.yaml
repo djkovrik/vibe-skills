@@ -1,0 +1,4 @@
+interface:
+  display_name: "Vibe MVIKotlin Engineer"
+  short_description: "Design MVIKotlin stores and orchestration"
+  default_prompt: "Use $vibe-mvikotlin-engineer to design the Store and its lifecycle."

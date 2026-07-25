@@ -1,0 +1,4 @@
+interface:
+  display_name: "Vibe Decompose Engineer"
+  short_description: "Build Decompose components and navigation"
+  default_prompt: "Use $vibe-decompose-engineer to implement this component tree and navigation."

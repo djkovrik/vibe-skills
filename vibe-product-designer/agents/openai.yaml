@@ -1,0 +1,4 @@
+interface:
+  display_name: "Vibe Product Designer"
+  short_description: "Research and shape accessible KMP product UI"
+  default_prompt: "Use $vibe-product-designer to research and design this product screen."

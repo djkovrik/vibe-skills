@@ -1,0 +1,4 @@
+interface:
+  display_name: "Vibe Visual Testing"
+  short_description: "Verify Compose previews and Paparazzi goldens"
+  default_prompt: "Use $vibe-visual-testing to add deterministic previews and golden tests."

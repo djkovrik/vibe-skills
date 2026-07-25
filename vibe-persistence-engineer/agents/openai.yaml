@@ -1,0 +1,4 @@
+interface:
+  display_name: "Vibe Persistence Engineer"
+  short_description: "Build SQLDelight and settings persistence"
+  default_prompt: "Use $vibe-persistence-engineer to implement local persistence and migrations."

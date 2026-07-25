@@ -1,0 +1,81 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://vibe.local/schemas/app-spec-v1.json",
+  "title": "Vibe AppSpec v1",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "app",
+    "requirements",
+    "flows",
+    "screens",
+    "capabilities",
+    "constraints",
+    "openQuestions"
+  ],
+  "properties": {
+    "schemaVersion": { "type": "string", "pattern": "^1\\.[0-9]+(?:\\.[0-9]+)?$" },
+    "app": {
+      "type": "object",
+      "required": ["name", "summary", "targets", "locales"],
+      "properties": {
+        "name": { "type": "string" },
+        "summary": { "type": "string" },
+        "targets": { "type": "array", "items": { "type": "string" }, "minItems": 1, "uniqueItems": true },
+        "locales": { "type": "array", "items": { "type": "string" }, "minItems": 1, "uniqueItems": true }
+      },
+      "additionalProperties": true
+    },
+    "requirements": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "title", "priority", "status", "acceptanceScenarioIds"],
+        "properties": {
+          "id": { "type": "string", "pattern": "^REQ-[0-9]{3,}$" },
+          "title": { "type": "string" },
+          "priority": { "type": "string", "enum": ["must", "should", "could", "wont"] },
+          "status": { "type": "string" },
+          "acceptanceScenarioIds": {
+            "type": "array",
+            "items": { "type": "string", "pattern": "^AC-[0-9]{3,}$" },
+            "minItems": 1,
+            "uniqueItems": true
+          }
+        },
+        "additionalProperties": true
+      }
+    },
+    "flows": { "type": "array", "items": { "type": "string", "pattern": "^FLOW-[0-9]{3,}$" }, "uniqueItems": true },
+    "screens": { "type": "array", "items": { "type": "string", "pattern": "^SCREEN-[0-9]{3,}$" }, "uniqueItems": true },
+    "capabilities": {
+      "type": "object",
+      "required": ["network", "database", "settings", "sync", "authentication", "notifications", "exactAlarms", "ads"],
+      "properties": {
+        "network": { "type": "boolean" },
+        "database": { "type": "boolean" },
+        "settings": { "type": "boolean" },
+        "sync": { "type": "boolean" },
+        "authentication": { "type": "boolean" },
+        "notifications": { "type": "boolean" },
+        "exactAlarms": { "type": "boolean" },
+        "ads": { "type": "boolean" }
+      },
+      "additionalProperties": true
+    },
+    "constraints": {
+      "type": "object",
+      "required": ["offlineMode", "privacy", "accessibility", "performance"],
+      "properties": {
+        "offlineMode": { "type": "string" },
+        "privacy": { "type": "array" },
+        "accessibility": { "type": "array" },
+        "performance": { "type": "array" }
+      },
+      "additionalProperties": true
+    },
+    "openQuestions": { "type": "array" }
+  },
+  "additionalProperties": true
+}
+

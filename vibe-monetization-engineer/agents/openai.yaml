@@ -1,0 +1,4 @@
+interface:
+  display_name: "Vibe Monetization Engineer"
+  short_description: "Integrate product-safe mobile monetization"
+  default_prompt: "Use $vibe-monetization-engineer to plan and implement this ad placement safely."

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Vibe Sync Engineer"
+  short_description: "Coordinate snapshots, conflicts, and sync"
+  default_prompt: "Use $vibe-sync-engineer to implement deterministic offline synchronization."

@@ -1,0 +1,22 @@
+{
+  "schemaVersion": "1.0",
+  "app": { "name": "Invalid", "summary": "Broken links.", "targets": ["android"], "locales": ["en"] },
+  "requirements": [
+    { "id": "REQ-001", "title": "Broken acceptance", "priority": "must", "status": "approved", "acceptanceScenarioIds": ["AC-999"] }
+  ],
+  "flows": ["FLOW-001"],
+  "screens": ["SCREEN-001"],
+  "capabilities": {
+    "network": false,
+    "database": false,
+    "settings": true,
+    "sync": false,
+    "authentication": false,
+    "notifications": false,
+    "exactAlarms": false,
+    "ads": false
+  },
+  "constraints": { "offlineMode": "settings", "privacy": [], "accessibility": [], "performance": [] },
+  "openQuestions": []
+}
+

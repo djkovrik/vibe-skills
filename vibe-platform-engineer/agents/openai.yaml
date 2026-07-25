@@ -1,0 +1,4 @@
+interface:
+  display_name: "Vibe Platform Engineer"
+  short_description: "Implement Android and iOS platform services"
+  default_prompt: "Use $vibe-platform-engineer to implement these platform capabilities."

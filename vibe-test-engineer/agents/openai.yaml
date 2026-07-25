@@ -1,0 +1,4 @@
+interface:
+  display_name: "Vibe Test Engineer"
+  short_description: "Build the non-visual KMP test pyramid"
+  default_prompt: "Use $vibe-test-engineer to cover this behavior with deterministic tests."

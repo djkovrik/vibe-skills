@@ -1,0 +1,26 @@
+{
+  "packageName": "vibe-kmp-skills",
+  "packageVersion": "1.0.0",
+  "schemaVersion": "1.0",
+  "skillDirectories": [
+    "vibe-developer",
+    "vibe-project-architect",
+    "vibe-domain-engineer",
+    "vibe-decompose-engineer",
+    "vibe-mvikotlin-engineer",
+    "vibe-platform-engineer",
+    "vibe-network-engineer",
+    "vibe-persistence-engineer",
+    "vibe-sync-engineer",
+    "vibe-product-designer",
+    "vibe-visual-testing",
+    "vibe-monetization-engineer",
+    "vibe-test-engineer"
+  ],
+  "sharedRegistryRelativePath": "../vibe-developer/references/source-registry.md",
+  "installDefaults": {
+    "mode": "Junction",
+    "destination": "CODEX_HOME/skills or user .codex/skills"
+  }
+}
+

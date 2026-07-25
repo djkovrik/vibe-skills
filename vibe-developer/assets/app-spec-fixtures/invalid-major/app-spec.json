@@ -1,0 +1,22 @@
+{
+  "schemaVersion": "2.0",
+  "app": { "name": "Invalid", "summary": "Unknown major.", "targets": ["android"], "locales": ["en"] },
+  "requirements": [
+    { "id": "REQ-001", "title": "Invalid major", "priority": "must", "status": "approved", "acceptanceScenarioIds": ["AC-001"] }
+  ],
+  "flows": ["FLOW-001"],
+  "screens": ["SCREEN-001"],
+  "capabilities": {
+    "network": false,
+    "database": false,
+    "settings": true,
+    "sync": false,
+    "authentication": false,
+    "notifications": false,
+    "exactAlarms": false,
+    "ads": false
+  },
+  "constraints": { "offlineMode": "settings", "privacy": [], "accessibility": [], "performance": [] },
+  "openQuestions": []
+}
+

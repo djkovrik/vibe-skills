@@ -1,0 +1,4 @@
+interface:
+  display_name: "Vibe Network Engineer"
+  short_description: "Build Ktor APIs, auth, and network tests"
+  default_prompt: "Use $vibe-network-engineer to implement this Ktor API integration."

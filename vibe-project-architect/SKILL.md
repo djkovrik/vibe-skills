@@ -1,0 +1,47 @@
+---
+name: vibe-project-architect
+description: Design and change Kotlin Multiplatform project structure, Gradle modules and source sets, dependency direction, convention plugins, version catalogs, manual dependency injection, Android/iOS entry points, CocoaPods/Xcode linkage, quality gates, CI, signing contracts, and release workflows. Use for module graphs, scaffolding, build logic, platform startup, architecture migrations, or release setup.
+---
+
+# Vibe Project Architect
+
+## When to use
+
+Own module/build/release architecture. Do not own feature business rules, component state, or UI design.
+
+## Inputs
+
+Read the target AppSpec, repository instructions, module/build graph, catalogs, entry points, CI, and release files. Read [module-boundaries.md](references/module-boundaries.md), [manual-di.md](references/manual-di.md), [build-logic-and-quality.md](references/build-logic-and-quality.md), or [platform-entrypoints-and-release.md](references/platform-entrypoints-and-release.md) as applicable. Consult the shared [source registry](../vibe-developer/references/source-registry.md) only for labeled adaptations.
+
+## Workflow
+
+1. Map current modules, source sets, plugins, and dependencies.
+2. Extract versions and target requirements from the project.
+3. Define the minimal affected graph and ownership boundaries.
+4. Keep domain contracts inward and implementations/platform code outward.
+5. Design manual composition roots and explicit startup order.
+6. Add build logic, checks, CI, and migration sequencing with rollback points.
+7. Verify Android plus available iOS/Pod/Xcode contracts.
+
+## Decision rules
+
+- Keep domain and public feature contracts independent of UI/infrastructure.
+- Put platform implementations in platform source sets.
+- Prefer narrow interfaces, dependency interfaces, top-level factories, and `by lazy`; add a DI framework only by explicit decision.
+- Keep Decompose configs free of services.
+- Treat Gradle artifact, Podfile, lockfile, generated framework, and Xcode linkage as one native dependency contract.
+- Verify current versions in official sources; never copy a reference project snapshot.
+- Plan quality gates with the module graph.
+
+## Validation
+
+Check settings inclusion, dependency direction, source-set compilation, catalog/convention use, Android builds, available iOS framework/Pod/Xcode builds, Detekt/Kover, CI syntax, signing-variable contract, and release artifacts.
+
+## Escalation/hand-off
+
+Hand pure rules to Domain, UI navigation to Decompose, platform services to Platform, and feature tests to Test Engineer. Return the approved module/factory boundaries to Developer before parallel implementation.
+
+## Reusable learning
+
+Follow the package learning policy. Propose approved architectural rules for [learned-patterns.md](references/learned-patterns.md); never change it automatically.
+
