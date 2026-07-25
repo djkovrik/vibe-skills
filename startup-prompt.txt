@@ -1,0 +1,530 @@
+Хочу разработать скилл или набор скиллов для написания приложений под Kotlin Muiltiplatform.
+
+Сейчас у меня есть два приложения с исходными кодами, на основе которых должны быть созданы наши скиллы.
+- d:\Sources\Android\Blinkly
+- d:\Sources\Android\Tackle
+
+Краткий бриф про приложения-ориентиры
+
+Blinkly - готовая MVP версия приложения:
+- считать ее основным источникам правды по принятым архитектурным подходам и принципам разработки
+- используем как пример организации модулей в проекте
+- используем как пример интеграции detekt
+- используем как пример интеграции рекламного sdk
+- используем как пример организации показа уведомлений о каких-либо операциях и обо ошибках
+- используем как пример организации DI в проекте
+- используем как пример организации Decompose components и написания MVI сторов, а также выноса логики которую используют сторы во вспомогательный manager класс
+- модуль database используем как основу для работы с базой данных
+- модуль settings используем как основу для работы с настройками приложения (multiplatform settings)
+- модуль domain используем как основу для организации бизнес-логики
+- модуль component:root используем как пример организации DI графа, дерева компонентов и навигации, связи между компонентами через ComponentOptput, написания тестов для компонентов, а также интеграции в ios/android таргеты и инициализации всех зависимостей
+
+Ниже более подробный анализ от агента:
+
+Blinkly — функционально готовая MVP-версия Kotlin Multiplatform приложения для Android и iOS.
+
+  Использовать Blinkly:
+
+  - как основной источник правды по принятым в проекте архитектурным подходам;
+  - как пример организации многомодульного Kotlin Multiplatform проекта;
+  - как набор канонических реализаций для разных типов feature;
+  - как источник decision rules: когда достаточно простого компонента, когда нужен Store, manager, platform abstraction или отдельный модуль;
+  - как ориентир, но не как шаблон для буквального копирования каждой существующей реализации.
+
+  При расхождении Blinkly с общими рекомендациями библиотек следовать локальным паттернам Blinkly, если только конкретная реализация не помечена как исключение или технический долг.
+
+  ## Базовая архитектура и зависимости
+
+  Основное направление зависимостей:
+
+  Android/iOS host
+      ↓
+  RootComponentFactory
+      ↓
+  Decompose components
+      ↓
+  domain abstractions and business logic
+      ↓
+  database / settings / alarm / notifier / sync / beeper / utils
+
+  Compose зависит только от публичных контрактов компонентов. UI не должен напрямую обращаться к базе данных, настройкам, manager-классам или platform API.
+
+  Ключевые принципы:
+
+  - platform API и сторонние SDK закрываются узкими domain-интерфейсами;
+  - зависимости передаются через конструкторы и ручной DI;
+  - навигационные Config содержат только сериализуемые persistent arguments, но не зависимости;
+  - бизнес-логика не переносится в composable-функции;
+  - время, timezone и coroutine dispatchers предоставляются через абстракции;
+  - lifecycle-владение ресурсами должно быть явным;
+  - state, navigation, side effects и rendering разделяются.
+
+  ## Организация модулей
+
+  Blinkly использовать как пример feature-oriented модульной структуры:
+
+  - один модуль на самостоятельный экран, вкладку или вложенный flow;
+  - вложенные feature физически располагаются под родительской продуктовой областью;
+  - общие implementation-модули отделены от components и domain;
+  - platform-specific реализации находятся в соответствующих source sets;
+  - зависимости и версии централизованы через version catalog;
+  - повторяющаяся Gradle-конфигурация вынесена в convention plugins в gradle/build-logic.
+
+  Особенно полезные референсы:
+
+  - main — основной Store-backed feature;
+  - step1–step3 — тонкие компоненты без Store;
+  - step4 — минимальный Store-backed компонент;
+  - step5 и newreminder — validation, async operations и permission state machines;
+  - reminders — список, delete/undo, permissions и time-driven projection;
+  - workout — сложная state machine, domain events и lifecycle;
+  - root, home, onboarding — три разных уровня навигации;
+  - sync — reusable Store-backed child и сложная интеграция с внешней системой.
+
+  ## Ручной DI
+
+  Blinkly использовать как пример ручного DI без DI-фреймворка.
+
+  Паттерн implementation-модуля:
+
+  - публичный интерфейс модуля;
+  - вложенный Dependencies с требуемыми входами;
+  - top-level factory;
+  - анонимная реализация интерфейса;
+  - зависимости и сервисы преимущественно создаются через by lazy.
+
+  RootComponentFactory является composition root приложения:
+
+  - создаёт platform implementations;
+  - собирает raw и decorated persistence dependencies;
+  - создаёт domain services и managers;
+  - связывает sync с reminder rescheduling;
+  - создаёт RootComponentDefault.
+
+  Важно учить не только одному composition root, но и composition roots разного времени жизни. Например, Android broadcast receiver собирает отдельный минимальный one-shot graph для восстановления alarms и не создаёт весь RootComponent.
+
+  ## Decompose components и навигация
+
+  Стандартная структура feature:
+
+  - публичный FeatureComponent;
+  - integration/FeatureComponentDefault;
+  - опциональный FeatureComponentPreview;
+  - опциональные store/, domain/ и integration/Mappers.kt.
+
+  Публичный контракт компонента содержит:
+
+  - Value<Model> для отображаемого состояния;
+  - методы, соответствующие действиям пользователя;
+  - ChildStack, если компонент владеет дочерней навигацией.
+
+  Правила:
+
+  - parent component единолично владеет своей навигацией;
+  - leaf components передают события наверх через типизированный ComponentOutput;
+  - child components не манипулируют навигацией родителя;
+  - стандартный возврат передаётся через ComponentOutput.Common.BackPressed;
+  - app-level navigation принадлежит root;
+  - tab navigation принадлежит home;
+  - вложенный onboarding flow принадлежит onboarding component;
+  - системный Back и UI Back должны использовать одну и ту же stack-navigation модель.
+
+  ComponentOutput использовать как типизированный протокол между компонентами, группируя outputs по feature.
+
+  ## MVIKotlin Store
+
+  Store добавляется только если feature действительно нуждается хотя бы в одном из следующего:
+
+  - reducer-owned state;
+  - асинхронная работа;
+  - startup subscription;
+  - lifecycle-driven state transitions;
+  - one-off labels.
+
+  Если компонент только преобразует callback в ComponentOutput, Store не нужен.
+
+  Стандартный Store:
+
+  - отдельный контракт с Intent, State, Label;
+  - отдельный StoreProvider;
+  - bootstrapper для первоначальных подписок;
+  - executor для IO, subscriptions и side effects;
+  - чистый reducer;
+  - labels для одноразовых ошибок и событий.
+
+  Дополнительные правила:
+
+  - Store сохраняется через instanceKeeper.getStore;
+  - Store.State не содержит Component.Model;
+  - Store хранит сырые feature/domain fields;
+  - отображаемая модель строится в integration/Mappers.kt;
+  - labels подписываются до store.init(), когда важно не потерять startup events;
+  - lifecycle components преобразуется в Store intents, например AppResumed или AppPaused;
+  - reducer не вызывает managers, platform API или suspend-функции.
+
+  ## Manager-классы
+
+  Feature-specific manager нужен, когда executor иначе начинает одновременно:
+
+  - читать несколько внешних источников;
+  - выполнять вычисления;
+  - учитывать время и timezone;
+  - обрабатывать persistence;
+  - координировать permissions или platform operations.
+
+  Manager:
+
+  - принимает domain abstractions;
+  - предоставляет Flow для наблюдаемого состояния;
+  - оборачивает suspend-операции в Result;
+  - возвращает domain/feature data, а не UI-модели;
+  - выполняет IO на внедрённом dispatcher;
+  - оставляет Store orchestration, но забирает из него расчёты.
+
+  MainTabManager, reminders managers и progress/trainings managers использовать как основные примеры.
+
+  ## Domain
+
+  Модуль domain использовать как основу для:
+
+  - внешних интерфейсов;
+  - бизнес-моделей;
+  - manager/service contracts;
+  - реализаций бизнес-правил;
+  - time-driven calculations;
+  - типизированных ошибок, уведомлений и событий.
+
+  Дополнительные полезные подходы:
+
+  - отдельные strategy-объекты для независимых бизнес-правил, как в achievements;
+  - реестр стратегий вместо большого условного блока;
+  - event-driven domain services;
+  - небольшие value types для величин с отдельной семантикой;
+  - DSL для сложных последовательных сценариев, как exercise scripts;
+  - единый источник cadence/timing в domain-сценарии;
+  - инъекция времени и timezone для детерминированных тестов;
+  - тестирование граничных значений time-driven state machines.
+
+  ## Database
+
+  Модуль database использовать как основу SQLDelight persistence layer.
+
+  Зафиксировать следующие правила:
+
+  - domain-интерфейс базы отделён от SQLDelight implementation;
+  - SQLDelight entities преобразуются через отдельные mappers;
+  - сложные значения сохраняются через явные column adapters;
+  - связанные операции выполняются транзакционно;
+  - read APIs предоставляют reactive Flow;
+  - batch replacement и snapshot APIs проектируются с учётом sync;
+  - атомарная запись может использоваться как gate перед генерацией domain-события;
+  - тесты базы выполняются на Android/JVM и iOS с platform-specific test driver.
+
+  Для внешних enum в common code нельзя полагаться на reified serializer lookup. Значения следует сохранять как строки или использовать явный serializer и обязательно покрывать iOS-тестом.
+
+  ## Settings
+
+  Модуль settings использовать как основу работы с Multiplatform Settings.
+
+  Паттерн:
+
+  - типизированный domain-контракт;
+  - platform factory для Android и iOS;
+  - defaults определены в одном месте;
+  - сериализация коллекций скрыта внутри implementation;
+  - malformed data безопасно откатывается к default;
+  - изменения формата получают backward-compatible fallback или migration;
+  - внутренние sync metadata не должны ошибочно считаться пользовательскими изменениями.
+
+  ## Синхронизация
+
+  Sync — отдельный важный референс, отсутствовавший в исходном брифе.
+
+  Использовать его как пример:
+
+  - отделения auth, remote data source, DTO mapping и sync orchestration;
+  - versioned remote schema;
+  - строгой проверки версии DTO;
+  - преобразования domain-моделей в platform-neutral primitive values;
+  - decorator-based отслеживания локальных изменений;
+  - разделения timestamps для независимых conflict-доменов;
+  - merge-стратегий для database snapshots;
+  - last-write-wins для settings;
+  - дедупликации сущностей по стабильному identity;
+  - исключения orphan child records;
+  - запуска platform side effects после восстановления данных, например повторной регистрации alarms;
+  - типизированных ошибок на каждой стадии sync.
+
+  ## Ошибки, уведомления и одноразовые события
+
+  Blinkly использовать как пример сквозного типизированного error/event pipeline:
+
+  implementation/domain failure
+      → BlinklyError
+      → Store Label
+      → ComponentOutput.Common.ErrorCaught
+      → Root SharedFlow
+      → localized snackbar
+
+  Отдельные успешные операции и achievement events проходят через BlinklyNotification.
+
+  Root:
+
+  - владеет общими потоками ошибок и уведомлений;
+  - объединяет их в единую FIFO-очередь;
+  - централизованно отображает snackbar;
+  - локализует сообщения;
+  - логирует typed errors.
+
+  UI не должен самостоятельно придумывать тексты для domain-ошибок и не должен показывать конкурирующие snackbar независимо в каждом feature.
+
+  ## Permissions, alarms и фоновые операции
+
+  Blinkly использовать как пример явных permission state machines:
+
+  - notification permission и exact-alarm permission — разные разрешения;
+  - Store сохраняет pending operation;
+  - после возврата приложения проверка permission выполняется повторно;
+  - операция продолжается только после подтверждённого доступа;
+  - одновременные permission requests сериализуются.
+
+  Reminder architecture разделяет:
+
+  - логический ReminderSchedule;
+  - физические platform alarms.
+
+  Один логический schedule может владеть несколькими физическими alarms. Удаление и sync идентифицируют schedule, но platform cancellation выполняется для каждого UUID.
+
+  Повторяющиеся alarms должны пересчитываться относительно текущего времени и timezone. Сохранённая исходная дата не должна отображаться или передаваться scheduler как гарантированно будущая.
+
+  Восстановление после reboot/app replacement выполняется отдельным background entry point с goAsync(), минимальным DI graph и явным закрытием database driver.
+
+  ## Lifecycle и владение ресурсами
+
+  Компонент, который активирует внешний ресурс, обязан владеть его lifecycle:
+
+  - включать ресурс на resume;
+  - выключать на pause и destroy;
+  - отменять собственный coroutine scope на destroy;
+  - останавливать manager, если он относится к lifetime экрана;
+  - не освобождать dependency, которой владеет parent/root.
+
+  Workout — канонический пример:
+
+  - screen-awake включается только при активном экране;
+  - running workout автоматически переходит в paused при background;
+  - возврат в приложение не возобновляет упражнение без явного действия пользователя;
+  - beeper освобождается root, а не workout component.
+
+  ## Compose UI
+
+  shared:compose использовать как пример shared UI для Android и iOS.
+
+  Правила:
+
+  - composable наблюдает только component.model;
+  - действия пользователя передаются методам компонента;
+  - бизнес-логика, persistence и навигационные решения не хранятся в Compose;
+  - remember используется только для локального UI-состояния: dialog, picker, animation или SDK runtime object;
+  - runtime и preview реализации компонентов разделены;
+  - дизайн-система централизует typography, colors, shapes и reusable widgets;
+  - строки и accessibility descriptions локализованы;
+  - интерактивные элементы получают semantics, role и достаточный touch target.
+
+  System insets должны иметь одного владельца. Нельзя одновременно применять root safe-area padding и повторный descendant padding. У home content и bottom navigation разные зоны ответственности.
+
+  ## Рекламный SDK
+
+  Blinkly использовать как privacy-first пример интеграции рекламного SDK:
+
+  - SDK конфигурируется в Android/iOS entry points;
+  - Compose получает только безопасную конфигурацию;
+  - disabled configuration является значением по умолчанию;
+  - SDK initialization выполняется централизованно и один раз;
+  - баннер создаёт запрос только с adUnitId;
+  - здоровье, workouts, reminders, account, achievements, sync и другая пользовательская информация не попадают в ad request или analytics;
+  - Android удаляет AD_ID;
+  - iOS не запрашивает ATT/IDFA;
+  - consent, location и age-related flags задаются явно;
+  - ad logging содержит только технические поля placement/platform/build/version;
+  - preview использует placeholder и не запускает настоящий SDK.
+
+  ## Platform entry points
+
+  Android и iOS hosts должны:
+
+  - инициализировать platform SDK в правильном порядке;
+  - создать platform implementations;
+  - создать root component вне Compose rendering;
+  - передать Compose только root component и безопасную platform configuration;
+  - корректно пробросить application lifecycle.
+
+  Для iOS особенно важен порядок: FirebaseApp.configure() должен выполняться до создания Compose controller и sync graph.
+
+  Platform-specific ограничения SDK и toolchain следует документировать рядом с integration layer.
+
+  ## Тестовая стратегия
+
+  Blinkly использовать как пример многоуровневого тестирования:
+
+  - unit tests domain-правил;
+  - отдельный тест на каждую achievement strategy;
+  - boundary tests time-driven state machines;
+  - database tests с reactive updates и transaction semantics;
+  - settings round-trip, defaults, malformed и legacy tests;
+  - sync conflict/merge/DTO tests;
+  - Decompose component tests через публичный компонентный контракт;
+  - lifecycle tests;
+  - navigation и ChildStack assertions;
+  - output propagation и Store-backed model assertions;
+  - platform-specific persistence tests;
+  - screenshot tests Compose UI.
+
+  База component-тестов:
+
+  - DefaultComponentContext(lifecycle);
+  - общий ComponentTest<T>;
+  - TestCoroutineScheduler;
+  - внедрённые main/io test dispatchers;
+  - lifecycle create/resume/pause/destroy;
+  - advanceUntilIdle;
+  - fake или Mokkery collaborators.
+
+  Compose previews используются как источник Paparazzi-тестов. Генерация тестов автоматизирована, а snapshots проверяются в CI.
+
+  ## Build logic, анализ и CI
+
+  Blinkly использовать как пример:
+
+  - version catalog;
+  - convention plugins для KMP и Android;
+  - общей compiler/test/coverage конфигурации;
+  - строгого Detekt с project config и нулевой допустимостью issues;
+  - проверки dispatcher injection и запрета временных TODO/FIXME;
+  - Kover с порогом покрытия 90%;
+  - changed-files coverage в pull requests;
+  - Paparazzi verification в CI;
+  - синхронизации версий native SDK между Gradle и CocoaPods;
+  - release builds с minification, resource shrinking, signing и публикацией mapping/native symbols;
+  - SemVer release automation и owner-only release workflows.
+
+	Skill не должен превращаться в полный пересказ Blinkly.
+
+  Skill должен выбирать минимально необходимый паттерн:
+
+  Только callback/output?
+      → thin Decompose component
+
+  Есть state или async work?
+      → retained MVIKotlin Store
+
+  Store смешивает orchestration и расчёты?
+      → feature manager
+
+  Нужен platform API или SDK?
+      → domain interface + platform implementation
+
+  Есть долгоживущий ресурс?
+      → явный lifecycle owner
+
+  Есть persistence или remote boundary?
+      → mapper + typed model + migration/versioning tests
+
+  ## Что не следует обучать как каноническое правило
+
+  В текущей кодовой базе есть отдельные реализации, которые нельзя механически превращать в рекомендации skill:
+
+  - silent catch в achievements watcher — ошибки не должны молча теряться;
+  - жёстко заданный 24-hour time picker отмечен как технический долг;
+  - часть похожих business calculations повторяется между dashboard/progress/trainings — новый код должен выносить действительно общие правила;
+  - временные coroutine scopes без реальной работы не являются паттерном;
+  - длинные списки DI-параметров допустимы в composition root, но не должны распространяться на все классы;
+  - расположение тестов компонентов в component:root является сознательным решением Blinkly, а не универсальным требованием KMP;
+  - конфигурация release workflow называется internal, но фактически публикует в alpha; перед использованием этого контура как шаблона несоответствие следует устранить.
+
+
+Tackle - еще одно Kotlin Multiplatform приложение, частично Work In Progress:
+- отсюда я хочу чтобы мы вынесли принципы и подходы использования ktor, если нашему приложению понадобится работа с сетью
+- используем модуль shared\network как пример реализации Api для работы с сетью (если будет нужно, можешь изучить и сопутствующие модули тоже)
+
+Скиллы и mcp, которые у нас уже установлены и будут нужны:
+compose-expert skill - эксперт по Jetpack Compose:
+- если у нас будет отдельный скилл для организации Compose кода, то он должен также использовать этот скилл
+
+lazyweb - MCP для поиска, исследования и обновления дизайна, содержит режимы: 
+- lazyweb-design — основной режим для дизайна, редизайна, критики и оптимизации экранов. Внутри: optimize, improve, create.
+- lazyweb-quick-search — быстрый поиск реальных UI-референсов без полного отчёта.
+- lazyweb-apply-design-best-practices — применение экспертных практик по типографике, цвету, accessibility, mobile, dashboard и другим направлениям.
+- lazyweb-explain-flow — интерактивная диаграмма, объясняющая процесс или причину сбоя.
+- lazyweb-propose-ui-changes — предложения изменений на диаграмме с возможностью принять или отклонить каждое.
+- lazyweb-update — обновление и переустановка локального набора Lazyweb.
+- lazyweb-design-create — внутренний backend для создания нового экрана с нуля; напрямую его не вызывают, вход идёт через lazyweb-design.
+
+Документация MVIKotlin:
+https://arkivanov.github.io/MVIKotlin/
+https://arkivanov.github.io/MVIKotlin/store/
+https://arkivanov.github.io/MVIKotlin/view/
+https://arkivanov.github.io/MVIKotlin/binding_and_lifecycle/
+https://arkivanov.github.io/MVIKotlin/state_preservation/
+https://arkivanov.github.io/MVIKotlin/logging/
+
+Документация Decompose:
+https://arkivanov.github.io/Decompose/
+https://arkivanov.github.io/Decompose/component/overview/
+https://arkivanov.github.io/Decompose/navigation/overview/
+https://arkivanov.github.io/Decompose/extensions/overview/
+https://arkivanov.github.io/Decompose/tips-tricks/overview/
+https://arkivanov.github.io/Decompose/faq/
+
+Документация Paparazzi и ComposablePreviewScanner:
+https://github.com/cashapp/paparazzi
+https://github.com/sergio-sastre/ComposablePreviewScanner#paparazzi
+https://github.com/sergio-sastre/ComposablePreviewScanner/blob/master/paparazzi-plugin/README.md
+
+Документация Yandex Mobile SDK для рекламы:
+https://ads.yandex.com/helpcenter/ru/dev/compose-multiplatform
+https://ads.yandex.com/helpcenter/ru/dev/compose-multiplatform/quick-start
+d:\Sources\Android\Blinkly\docs\yandex-inline-ads-macos-guide.md
+
+Документация sqldelight:
+https://kotlinlang.org/docs/multiplatform/multiplatform-ktor-sqldelight.html	
+
+ОБЯЗАТЕЛЬНО изучи ВСЮ документацию. План такой, что каждый скилл у нас имеет под собой базу, основанную на документации, плюс затем к этой базе уже применены подходы, используемые в Blinkly (например, store реализованы практически как в документации, но для работы с Kotlin Result используется служебная обертка unwrap, которая является кастомной из модуля utils в Blinkly).
+
+ОБЯЗАТЕЛЬНО изучи текущии AGENTS.md и skills в Blinkly:
+d:\Sources\Android\Blinkly\AGENTS.md
+d:\Sources\Android\Blinkly\.ai\skills\
+
+Скиллы точно должны быть основой некоторых наших основных скиллов, AGENTS.md вероятно тоже потому что в нем зафиксирована большая часть соглашений и архитектурных подходов.
+
+Скиллы будут использоваться только на данном ПК (пока), так что можешь использовать абсолютные пути там где понадобятся ссылки на файлы для референсов, но для удобства думаю можно вынести пути к исходникам Blinkly (и Tackle если нужно) куда-то в переменные в скилле, чтобы если что их легко можно было заменить не проходясь по всем md файлам.
+
+Скиллы и агенты должны быть самообучаемыми, то есть когда мы с агентом в дальнейшем реализуем какой-нибудь новый подход или паттерн, который не является каким-то узким фиксом, то агент может предложить зафиксировать архитектурный принцип в md файле.
+
+Назовем нашу группу скиллов vibe-*
+Примерная иерархия, которую я вижу:
+- developer скилл, который оркестрирует остальные скиллы а также управляет валидацией, запусками gradle, сборкой и запуском проверок
+Вспомогательных помощников сделай в виде скиллов или агентов, как посчитаешь нужным:
+-- architector: организация gradle модулей в проекте, контроль зависимостей и связей между модулями, интеграция служебных библиотек типа detekt, paparazzi, работа с архитектурй проекта в целом (android/ios точки входа, source sets и прочее)
+-- platform-engineer: работа с platform-related апи и библиотеками для Android и ios, типа permissions, доступа к lifecycle и прочему.
+-- mvikotlin-engineer: создание mvi сторов + вспомогательных manager классов
+-- decompose-engineer: работа с decompose компонентами, иерархия компонентов, подключение и создание дерева компонентов через root
+-- designer: создает базовый дизайн всех экранов, привлекая lazyweb, организация jetpack compose кода, организация темы приложения (шрифты, цвета, типографика, формы), подключение и переключение смены светлой/темной темы, вопросы именно по Compose коду переадресует в compose-expert skill. Также отвечает за интеграцию Paparazzi и ComposablePreviewScanner, генерацию Compose Preview и golden скриншотов paparazzi на их основе, после чего использует сгенерированные golden скриншоты как базу, на основе которой создает, дорабатывает и улучшает дизайн привлекая lazyweb
+-- networker-engineer: работа с ktor и работа с сетью и сетевыми запросами
+-- database-engineer: создание базы данных через sqldelight
+-- marketer: интеграция рекламного yandex sdk, привлекает lazyweb для нахождения лучших точек интеграции рекламы в дизайне
+-- unit-tester: написание юнит-тестов для decompose компонентов, на основе d:\Sources\Android\Blinkly\shared\component\root\src\commonTest\kotlin\com\sedsoftware\blinkly\component
+
+Скиллы должны быть созданы в текущей папке в которой работает агент + иметь зафиксированную инструкцию как установить их глобально на текущем пк (или синхронизировать, если предыдущая версия уже была установлена ранее)
+
+
+На вход скиллы будут получать описание функционала приложения, а также подробный UI/UX флоу всех экранов. Здесь важный момент - если мы можем использовать какую-либо стандартизацию, для задания входных параметров для скилла - то можем попробовать это сделать. Например, какой-нибудь spec фреймворк, основная идея чтобы codex агент был способен сгенерировать такую спецификацию, которую мы уже затем будем передавать в наш скилл. Генерация спецификации будет вне зоны ответственности наших скиллов, флоу вижу так: сначала обсуждаем с агентом приложение, создаем спеку, а работа скилла с этой спекой это уже отдельная сессия и отдельный флоу работы. Это НЕ ОБЯЗАТЕЛЬНЫЙ пункт плана, просто изучи этот вопрос и можем обсудить варианты в рамках этой сессии.
+
+Задачи: 
+- изучи всю кодовую базу Blinkly и нужные части кодовой базы Tackle
+- изучи мой краткий бриф про приложения-ориентиры и соотнеси его с кодовой базой
+- изучи краткий бриф от агента
+- изучи предлагаемый план скиллов и их разделение по зонам ответственности
+- убедись, что наша планируемая иерархия скиллов покрывает все основные аспекты написания multiplatform мобильного приложения, если я в своем примере организации скиллов пропустил какие-то части с описанием логики, подходов или фичей - то можешь сам их вычленить и распределить по соответствующим скиллам
+- предлагаемая схема скиллов примерная, если посчитаешь какой-то скилл слишком широким или наборот я что-то пропустил, то можешь расширять и дополнять схему как посчитаешь нужным. Основная цель это получить базовый orchestrating скилл + группу помощников, которые покрывают написание всего приложения целиком, а будут ли это скиллы или дополнительные агенты загружающиеся по контексту - не так важно, главное чтобы скилл оркестратора мог ими управлять.
+- как результат работы сами скиллы пока не создаем, нам нужно получить подробный промпт, через который потом будут созданы скиллы с помощью skill creator, сохрани промпт в md файл в текущую папку.
