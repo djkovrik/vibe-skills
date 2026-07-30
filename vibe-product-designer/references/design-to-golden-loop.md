@@ -2,12 +2,16 @@
 
 1. Validate screen requirement/state coverage.
 2. Gather Lazyweb evidence and approve a direction.
-3. Define hierarchy, tokens, responsive/accessibility/localization behavior.
-4. Implement through the component contract and Compose Expert.
-5. Create deterministic previews for approved states.
-6. Ask Visual Testing to record.
-7. Inspect rendered PNGs/diffs against intent.
-8. Verify goldens in CI.
+3. Define hierarchy, semantic tokens, text line/overflow rules, responsive/accessibility/localization behavior, and the interactive-element icon inventory.
+4. Resolve standard icon-set approval and required custom/brand assets before implementation.
+5. Define the preview matrix: every primary screen and applicable state in light and dark, plus risk-based font-scale, longest-locale, compact/adaptive, and direction variants.
+6. Implement through the component contract and Compose Expert, including deterministic preview entry points.
+7. Ask Visual Testing to scan previews, generate Paparazzi tests, produce the coverage inventory, and record an approved baseline.
+8. Inspect every rendered PNG before accepting it.
+9. Run the current Lazyweb improve workflow over all declared primary-screen coverage and audit the full golden set across flows.
+10. Check cross-screen consistency; fonts/glyphs; unintended line wrapping, clipping, and ellipsis; typography hierarchy; light/dark colors and contrast; Material 3 components/states; missing, incorrect, or inconsistent icons; text-only actions that need icon support; touch targets; insets; accessibility; localization; and responsive behavior.
+11. Fix objective contract defects directly. Get a user decision for material product/design changes or unresolved custom assets.
+12. Re-record only approved diffs, re-run full verification, and close or explicitly waive every blocking review finding.
+13. Verify goldens in CI and publish failure/diff artifacts.
 
 Goldens are evidence of approved rendering, not an authority that overrides AppSpec or accessibility behavior.
-

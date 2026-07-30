@@ -111,10 +111,11 @@ $appValidator = Join-Path $root 'vibe-developer\scripts\validate-app-spec.py'
 $validFixture = Join-Path $root 'vibe-developer\assets\app-spec-template\app-spec'
 $invalidMajor = Join-Path $root 'vibe-developer\assets\app-spec-fixtures\invalid-major'
 $invalidLinks = Join-Path $root 'vibe-developer\assets\app-spec-fixtures\invalid-links'
+$invalidUiContract = Join-Path $root 'vibe-developer\assets\app-spec-fixtures\invalid-ui-contract'
 if ((Test-Path -LiteralPath $localPython) -and (Test-Path -LiteralPath $appValidator)) {
     & $localPython $appValidator $validFixture
     if ($LASTEXITCODE -ne 0) { Add-Failure 'Bundled valid AppSpec was rejected' }
-    foreach ($invalid in @($invalidMajor, $invalidLinks)) {
+    foreach ($invalid in @($invalidMajor, $invalidLinks, $invalidUiContract)) {
         & $localPython $appValidator $invalid
         if ($LASTEXITCODE -eq 0) { Add-Failure "Bundled invalid AppSpec was accepted: $invalid" }
     }

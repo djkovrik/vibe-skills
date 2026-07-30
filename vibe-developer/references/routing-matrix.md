@@ -15,8 +15,8 @@ Each row contains four forward prompts and the expected route.
 | Network | “Implement a REST OAuth API with Ktor.” | “Add the AppSpec remote API transport.” | “Resolve Firestore snapshot conflicts.” -> Sync | “OAuth identity triggers snapshot sync.” -> Network owns token transport; Sync owns coordination |
 | Persistence | “Add SQLDelight tables and typed settings.” | “Implement offline cache/settings.” | “Map a REST response DTO.” -> Network | “Apply a remote snapshot atomically.” -> Persistence owns transaction; Sync owns merge policy |
 | Sync | “Resolve versioned snapshot conflicts.” | “Implement offline remote coordination.” | “Retry an idempotent HTTP PUT.” -> Network | “Remote reminders changed.” -> Sync merges; Platform reschedules after commit |
-| Product Designer | “Research and design this settings screen.” | “Define UI evidence, hierarchy, themes, and accessibility.” | “Fix a `LaunchedEffect` recomposition bug.” -> Compose Expert | “Choose an ad slot.” -> Product Designer/Lazyweb owns placement evidence; Monetization owns safety |
-| Visual Testing | “Add Paparazzi goldens for all preview states.” | “Turn approved UI into preview/golden CI.” | “Choose a better empty-state hierarchy.” -> Product Designer | “Paparazzi cannot render a native ad view.” -> Visual Testing adds seam; Platform/Monetization test native behavior |
+| Product Designer | “Research and design this settings screen.” | “Define UI evidence, hierarchy, themes, icon inventory, preview matrix, and post-golden review.” | “Fix a `LaunchedEffect` recomposition bug.” -> Compose Expert | “Finalize the UI.” -> Product Designer defines/ reviews; Compose Expert renders; Visual Testing records/verifies |
+| Visual Testing | “Add Paparazzi goldens for all preview states.” | “Turn every primary screen/state into light/dark preview/golden CI.” | “Choose a better empty-state hierarchy.” -> Product Designer | “Paparazzi cannot render a native ad view.” -> Visual Testing adds seam; Platform/Monetization test native behavior |
 | Monetization | “Integrate Yandex inline ads safely.” | “Implement the requested ads capability.” | “Redesign the feed hierarchy.” -> Product Designer | “Enable personalized ads.” -> user/product/legal decides; Monetization implements only approved policy |
 | Test Engineer | “Test Decompose component behavior.” | “Cover non-visual acceptance scenarios.” | “Update screenshot snapshots.” -> Visual Testing | “Test a Store-backed component.” -> Test Engineer owns harness; Decompose/MVIKotlin clarify contracts |
 
@@ -37,7 +37,9 @@ For a new Android+iOS KMP app with onboarding, home tabs, OAuth REST, SQLDelight
 | evidence, hierarchy, theme, accessibility, EN/RU | Product Designer -> Lazyweb -> Compose Expert |
 | placements/privacy-safe SDK setup | Monetization + Product Designer/product/legal |
 | domain/Store/component/data tests | Test Engineer |
-| previews/scanner/Paparazzi/CI diffs | Visual Testing |
+| preview matrix and icon/asset decisions | Product Designer -> user for unresolved assets -> Compose Expert |
+| previews/scanner/Paparazzi/CI diffs and coverage inventory | Visual Testing |
+| post-golden full-UI Lazyweb review and approved-fix loop | Product Designer -> Compose Expert -> Visual Testing |
 | final quality/platform/release gates | Project Architect, coordinated by Developer |
 
 No responsibility is intentionally shared without an explicit hand-off.

@@ -1,15 +1,15 @@
 {
   "schemaVersion": "1.1",
   "app": {
-    "name": "Example App",
-    "summary": "A validated hand-off example.",
+    "name": "Invalid UI Contract",
+    "summary": "Fixture with unresolved icon assets.",
     "targets": ["android", "ios"],
-    "locales": ["en", "ru"]
+    "locales": ["en"]
   },
   "requirements": [
     {
       "id": "REQ-001",
-      "title": "Persist the selected preference",
+      "title": "Show the main screen",
       "priority": "must",
       "status": "approved",
       "acceptanceScenarioIds": ["AC-001"]
@@ -20,7 +20,7 @@
   "capabilities": {
     "network": false,
     "database": false,
-    "settings": true,
+    "settings": false,
     "sync": false,
     "authentication": false,
     "notifications": false,
@@ -28,10 +28,10 @@
     "ads": false
   },
   "constraints": {
-    "offlineMode": "The preference remains available offline.",
-    "privacy": ["Do not collect personal data."],
-    "accessibility": ["Support screen readers and font scaling."],
-    "performance": ["Persist the preference without visible delay."]
+    "offlineMode": "No remote data.",
+    "privacy": [],
+    "accessibility": ["Support font scaling."],
+    "performance": []
   },
   "uiQuality": {
     "previewThemes": ["light", "dark"],
@@ -49,10 +49,18 @@
       "standards": ["material3"]
     },
     "iconography": {
-      "inventoryStatus": "approved",
+      "inventoryStatus": "open",
       "standardIconSource": "Material Symbols",
-      "customAssetsStatus": "not-required"
+      "customAssetsStatus": "open"
     }
   },
-  "openQuestions": []
+  "openQuestions": [
+    {
+      "id": "OQ-001",
+      "question": "Provide or waive the required custom action icon.",
+      "blocking": true,
+      "status": "open",
+      "relatedScreens": ["SCREEN-001"]
+    }
+  ]
 }

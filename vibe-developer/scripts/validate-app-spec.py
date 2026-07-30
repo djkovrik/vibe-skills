@@ -73,9 +73,16 @@ def main() -> int:
     expect(isinstance(data, dict), "app-spec.json root must be an object", errors)
     version = data.get("schemaVersion")
     expect(isinstance(version, str), "schemaVersion must be a string", errors)
+    version_major: int | None = None
+    version_minor = 0
     if isinstance(version, str):
-        major = version.split(".", 1)[0]
-        expect(major == "1", f"Unsupported schema major version: {version}", errors)
+        version_match = re.fullmatch(r"(\d+)\.(\d+)(?:\.\d+)?", version)
+        expect(version_match is not None, f"Invalid schemaVersion: {version}", errors)
+        major_text = version.split(".", 1)[0]
+        expect(major_text == "1", f"Unsupported schema major version: {version}", errors)
+        if version_match is not None:
+            version_major = int(version_match.group(1))
+            version_minor = int(version_match.group(2))
 
     app = data.get("app")
     requirements = data.get("requirements")
@@ -83,6 +90,7 @@ def main() -> int:
     screens = data.get("screens")
     capabilities = data.get("capabilities")
     constraints = data.get("constraints")
+    ui_quality = data.get("uiQuality")
     for key, value, kind in (
         ("app", app, dict),
         ("requirements", requirements, list),
@@ -101,6 +109,35 @@ def main() -> int:
             expect(key in constraints, f"constraints.{key} is required", errors)
     expect("openQuestions" in data and isinstance(data.get("openQuestions"), list),
            "openQuestions must be an array", errors)
+
+    requires_ui_contract = version_major == 1 and version_minor >= 1
+    if requires_ui_contract:
+        design_path = root / "design.md"
+        expect(design_path.is_file(), "Missing required file for AppSpec 1.1+: design.md", errors)
+        expect(isinstance(ui_quality, dict), "uiQuality must be an object for AppSpec 1.1+", errors)
+    elif version_major == 1 and not isinstance(ui_quality, dict):
+        warnings.append(
+            "Legacy AppSpec has no uiQuality contract; previews, goldens, icons, and post-golden review "
+            "must be derived and confirmed during implementation"
+        )
+
+    if isinstance(ui_quality, dict):
+        validate_ui_quality(ui_quality, errors, warnings)
+
+    open_questions = data.get("openQuestions")
+    if isinstance(open_questions, list):
+        for index, question in enumerate(open_questions):
+            if not isinstance(question, dict):
+                continue
+            for key in ("id", "question", "blocking", "status"):
+                expect(key in question, f"openQuestions[{index}].{key} is required", errors)
+            if question.get("blocking") is True:
+                status = question.get("status")
+                if not isinstance(status, str) or status.lower() not in {"resolved", "waived"}:
+                    errors.append(
+                        f"openQuestions[{index}] is blocking and unresolved; obtain the user decision/assets "
+                        "before implementation"
+                    )
 
     requirement_ids: list[str] = []
     requirement_acceptance: dict[str, list[str]] = {}
@@ -156,6 +193,18 @@ def main() -> int:
         linked_req = bool(set(ID_PATTERNS["requirement"].findall(text)) & set(requirement_ids))
         expect(linked_flow, f"{screen_id}.md must link to a declared flow", errors)
         expect(linked_req, f"{screen_id}.md must link to a declared requirement", errors)
+        if requires_ui_contract:
+            for heading in (
+                "## Text layout expectations",
+                "## Actions and iconography",
+                "## Preview and golden matrix",
+            ):
+                expect(heading in text, f"{screen_id}.md must contain {heading}", errors)
+            expect(
+                "light" in text.lower() and "dark" in text.lower(),
+                f"{screen_id}.md preview/golden matrix must cover light and dark",
+                errors,
+            )
 
     all_acceptance_refs: list[str] = []
     for rid, acceptance_ids in requirement_acceptance.items():
@@ -194,6 +243,23 @@ def main() -> int:
             elif enabled is False and mentioned:
                 warnings.append(f"Capability {capability}=false but related terms appear in data/flows")
 
+    if requires_ui_contract:
+        design_text = read_utf8(root / "design.md", errors)
+        quality_text = read_utf8(root / "quality.md", errors)
+        for heading in (
+            "## Lazyweb evidence and direction",
+            "## Typography and text layout",
+            "## Iconography and assets",
+            "## Preview and golden contract",
+            "## Post-golden design review",
+        ):
+            expect(heading in design_text, f"design.md must contain {heading}", errors)
+        for heading in (
+            "## Preview and golden matrix",
+            "## Visual quality and design review",
+        ):
+            expect(heading in quality_text, f"quality.md must contain {heading}", errors)
+
     if data.get("openQuestions"):
         warnings.append("openQuestions is not empty; resolve material product decisions before implementation")
 
@@ -204,6 +270,91 @@ def check_unique(label: str, values: list[str], errors: list[str]) -> None:
     duplicates = sorted({value for value in values if values.count(value) > 1})
     if duplicates:
         errors.append(f"Duplicate {label} IDs: {duplicates}")
+
+
+def validate_ui_quality(
+    ui_quality: dict[str, object],
+    errors: list[str],
+    warnings: list[str],
+) -> None:
+    preview_themes = ui_quality.get("previewThemes")
+    expect(isinstance(preview_themes, list), "uiQuality.previewThemes must be an array", errors)
+    if isinstance(preview_themes, list):
+        normalized_themes = {item.lower() for item in preview_themes if isinstance(item, str)}
+        expect(
+            {"light", "dark"}.issubset(normalized_themes),
+            "uiQuality.previewThemes must include light and dark",
+            errors,
+        )
+
+    font_scales = ui_quality.get("fontScales")
+    expect(isinstance(font_scales, list) and bool(font_scales),
+           "uiQuality.fontScales must be a non-empty array", errors)
+    if isinstance(font_scales, list):
+        numeric_scales = [
+            float(item)
+            for item in font_scales
+            if isinstance(item, (int, float)) and not isinstance(item, bool)
+        ]
+        expect(len(numeric_scales) == len(font_scales),
+               "uiQuality.fontScales must contain numbers only", errors)
+        expect(any(abs(item - 1.0) < 0.001 for item in numeric_scales),
+               "uiQuality.fontScales must include 1.0", errors)
+        if not any(item > 1.0 for item in numeric_scales):
+            warnings.append(
+                "uiQuality.fontScales has no enlarged stress scale; confirm that increased font scaling "
+                "is not required"
+            )
+
+    expect(
+        ui_quality.get("localeCoverage") in {"all", "representative"},
+        "uiQuality.localeCoverage must be all or representative",
+        errors,
+    )
+
+    golden = ui_quality.get("goldenTesting")
+    expect(isinstance(golden, dict), "uiQuality.goldenTesting must be an object", errors)
+    if isinstance(golden, dict):
+        expect(golden.get("required") is True, "uiQuality.goldenTesting.required must be true", errors)
+        expect(golden.get("engine") == "paparazzi",
+               "uiQuality.goldenTesting.engine must be paparazzi", errors)
+        expect(
+            golden.get("previewDiscovery") == "ComposablePreviewScanner",
+            "uiQuality.goldenTesting.previewDiscovery must be ComposablePreviewScanner",
+            errors,
+        )
+
+    review = ui_quality.get("designReview")
+    expect(isinstance(review, dict), "uiQuality.designReview must be an object", errors)
+    if isinstance(review, dict):
+        expect(review.get("required") is True, "uiQuality.designReview.required must be true", errors)
+        expect(review.get("provider") == "lazyweb",
+               "uiQuality.designReview.provider must be lazyweb", errors)
+        expect(review.get("trigger") == "after-goldens",
+               "uiQuality.designReview.trigger must be after-goldens", errors)
+        standards = review.get("standards")
+        expect(isinstance(standards, list), "uiQuality.designReview.standards must be an array", errors)
+        if isinstance(standards, list):
+            normalized_standards = {item.lower() for item in standards if isinstance(item, str)}
+            expect("material3" in normalized_standards,
+                   "uiQuality.designReview.standards must include material3", errors)
+
+    iconography = ui_quality.get("iconography")
+    expect(isinstance(iconography, dict), "uiQuality.iconography must be an object", errors)
+    if isinstance(iconography, dict):
+        expect(
+            iconography.get("inventoryStatus") in {"approved", "not-required"},
+            "uiQuality.iconography.inventoryStatus must be approved or not-required",
+            errors,
+        )
+        source = iconography.get("standardIconSource")
+        expect(isinstance(source, str) and bool(source.strip()),
+               "uiQuality.iconography.standardIconSource must be a non-empty string", errors)
+        expect(
+            iconography.get("customAssetsStatus") in {"provided", "not-required"},
+            "uiQuality.iconography.customAssetsStatus must be provided or not-required",
+            errors,
+        )
 
 
 def report(errors: list[str], warnings: list[str]) -> int:

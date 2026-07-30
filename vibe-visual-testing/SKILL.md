@@ -1,13 +1,13 @@
 ---
 name: vibe-visual-testing
-description: Build and maintain deterministic Compose preview and screenshot-test infrastructure using @Preview coverage, ComposablePreviewScanner, generated parameterized Paparazzi tests, stable screenshot IDs, record/verify/report/failure workflows, golden review, Git LFS, and CI artifacts. Use for previews, Paparazzi, screenshot goldens, visual regression failures, preview scanning, or golden CI.
+description: Build and maintain deterministic Compose preview and screenshot-test infrastructure using mandatory primary-screen/state light/dark @Preview coverage, font-scale and locale stress variants, ComposablePreviewScanner, generated parameterized Paparazzi tests, stable screenshot IDs, record/verify/report/failure workflows, golden review, Git LFS, and CI artifacts. Use for every product UI delivery as well as previews, Paparazzi, screenshot goldens, visual regression failures, preview scanning, or golden CI.
 ---
 
 # Vibe Visual Testing
 
 ## When to use
 
-Own deterministic visual test mechanics after design approval. Do not make product design decisions or bless unrelated diffs.
+Own deterministic visual test mechanics for every product UI delivery after the preview matrix is approved. Do not make product design decisions or bless unrelated diffs.
 
 ## Inputs
 
@@ -15,13 +15,17 @@ Read approved screens/theme, current previews, Paparazzi/scanner configuration, 
 
 ## Workflow
 
-1. Define deterministic preview components/data and required state/theme/locale/device coverage.
-2. Scope preview scanning to project packages and required source sets.
-3. Cache the discovered preview list and generate test source before compilation.
-4. Map preview parameters into Paparazzi configuration.
-5. Build stable encoded snapshot IDs independent of parameter order.
-6. Record only approved changes; inspect PNGs/diffs.
-7. Verify in CI and publish failure/report artifacts.
+1. Reconcile AppSpec screens/states with preview declarations. Fail the hand-off when a primary screen or applicable state lacks light and dark previews; require risk-based font-scale, longest-locale, and adaptive variants declared by Product Designer.
+2. Create deterministic preview components/data with no real services, clocks, random values, network, database, permissions, ads, or native SDK dependencies.
+3. Ensure the project has a dedicated or clearly isolated Android-host screenshot-test surface with current compatible Paparazzi and ComposablePreviewScanner dependencies.
+4. Scope preview scanning to project packages and required source sets.
+5. Cache the discovered preview list and generate stable parameterized test source before test compilation.
+6. Map preview parameters into Paparazzi theme, device, dimensions, locale, font scale, UI mode, and layout direction.
+7. Build stable encoded snapshot IDs independent of scan or parameter order.
+8. Run the generator/compile check, record only an approved baseline, inspect every PNG, then run verify from a clean-enough state.
+9. Produce a machine-readable coverage inventory mapping `SCREEN/state/theme/fontScale/locale/device -> preview -> snapshot`.
+10. Hand the approved golden paths and coverage inventory to Product Designer for the mandatory Lazyweb/full-UI review. After approved fixes, re-record only affected goldens and re-run complete verification.
+11. Verify in CI and publish failure/report artifacts.
 
 ## Decision rules
 
@@ -30,12 +34,13 @@ Read approved screens/theme, current previews, Paparazzi/scanner configuration, 
 - Prefer a custom generator for project-specific theme/fonts/locales/devices.
 - Add preview-safe seams for native views; test production native behavior elsewhere.
 - Do not assume global `LocalInspectionMode`.
+- Do not silently down-scope a missing theme/state because the matrix is large. Reduce redundant stress combinations explicitly while preserving every state in light and dark.
 - Store large snapshot sets in Git LFS.
 - Never update goldens merely to make verification pass.
 
 ## Validation
 
-Verify generator determinism, compile dependency, stable IDs, filename encoding, package scope, each approved variant, record output, verify failure behavior, CI artifacts, and Git LFS configuration.
+Verify screen/state matrix completeness, light/dark coverage, declared font-scale/locale/device variants, generator determinism, compile dependency, stable IDs, filename encoding, package scope, each approved variant, record output, verify failure behavior, coverage inventory, Product Designer hand-off, CI artifacts, and Git LFS configuration.
 
 ## Escalation/hand-off
 
@@ -44,4 +49,3 @@ Product differences -> Product Designer. Compose rendering bugs -> Compose Exper
 ## Reusable learning
 
 Propose reusable preview/golden infrastructure rules for [learned-patterns.md](references/learned-patterns.md); never auto-bless snapshots.
-

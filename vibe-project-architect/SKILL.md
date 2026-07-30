@@ -1,6 +1,6 @@
 ---
 name: vibe-project-architect
-description: Design and change Kotlin Multiplatform project structure, Gradle modules and source sets, dependency direction, convention plugins, version catalogs, manual dependency injection, Android/iOS entry points, CocoaPods/Xcode linkage, quality gates, CI, signing contracts, and release workflows. Use for module graphs, scaffolding, build logic, platform startup, architecture migrations, or release setup.
+description: Design and change Kotlin Multiplatform project structure, Gradle modules and source sets, dependency direction, convention plugins, version catalogs, manual dependency injection, Android/iOS entry points, Paparazzi and ComposablePreviewScanner screenshot-test surfaces, CocoaPods/Xcode linkage, quality gates, CI, signing contracts, and release workflows. Use for module graphs, scaffolding, visual-test build wiring, build logic, platform startup, architecture migrations, or release setup.
 ---
 
 # Vibe Project Architect
@@ -20,8 +20,9 @@ Read the target AppSpec, repository instructions, module/build graph, catalogs, 
 3. Define the minimal affected graph and ownership boundaries.
 4. Keep domain contracts inward and implementations/platform code outward.
 5. Design manual composition roots and explicit startup order.
-6. Add build logic, checks, CI, and migration sequencing with rollback points.
-7. Verify Android plus available iOS/Pod/Xcode contracts.
+6. When the product has Compose UI, provision or verify an Android-host screenshot-test surface, version-catalog entries, Paparazzi and ComposablePreviewScanner compatibility, generated-test task wiring, record/verify tasks, snapshot storage, Git LFS, and CI artifacts. Treat this as default project scaffolding, not a later optional enhancement.
+7. Add remaining build logic, checks, CI, and migration sequencing with rollback points.
+8. Verify Android plus available iOS/Pod/Xcode contracts.
 
 ## Decision rules
 
@@ -32,10 +33,11 @@ Read the target AppSpec, repository instructions, module/build graph, catalogs, 
 - Treat Gradle artifact, Podfile, lockfile, generated framework, and Xcode linkage as one native dependency contract.
 - Verify current versions in official sources; never copy a reference project snapshot.
 - Plan quality gates with the module graph.
+- Make generated preview tests an explicit input to test compilation and Paparazzi record/verify tasks; keep discovery package-scoped and configuration-cache behavior honest.
 
 ## Validation
 
-Check settings inclusion, dependency direction, source-set compilation, catalog/convention use, Android builds, available iOS framework/Pod/Xcode builds, Detekt/Kover, CI syntax, signing-variable contract, and release artifacts.
+Check settings inclusion, dependency direction, source-set compilation, catalog/convention use, screenshot-test module inclusion, generator-to-compile task dependency, Paparazzi record/verify availability, snapshot/Git-LFS paths, CI diff/report artifacts, Android builds, available iOS framework/Pod/Xcode builds, Detekt/Kover, CI syntax, signing-variable contract, and release artifacts.
 
 ## Escalation/hand-off
 
@@ -44,4 +46,3 @@ Hand pure rules to Domain, UI navigation to Decompose, platform services to Plat
 ## Reusable learning
 
 Follow the package learning policy. Propose approved architectural rules for [learned-patterns.md](references/learned-patterns.md); never change it automatically.
-
