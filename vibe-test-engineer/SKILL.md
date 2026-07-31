@@ -20,7 +20,7 @@ Read acceptance IDs, public contracts, owner-specific decision records, current 
 3. Cover pure rules, then Store/component behavior through public contracts.
 4. Reproduce lifecycle and virtual-time transitions explicitly.
 5. Cover persistence/network/sync contract and failure paths.
-6. For app-bundled localized text, compare key sets across every `app.locales` resource set, exercise ID/key mappings and locale changes, and scan production source/seed data for hardcoded user-visible copy.
+6. For app-bundled localized text, verify that English is the complete default/base resource set, compare key sets across every additional `app.locales` resource set, exercise ID/key mappings, locale changes and unsupported-locale-to-English fallback, and scan production source/seed data for hardcoded user-visible copy.
 7. Run focused tests, then aggregate coverage/CI gates.
 
 ## Decision rules
@@ -35,7 +35,7 @@ Read acceptance IDs, public contracts, owner-specific decision records, current 
 
 ## Validation
 
-Verify deterministic repeat runs, explicit create/resume/pause/destroy, virtual delays/cooldowns, active child/back dispatcher, success/failure/cancellation, locale key-set completeness, stable key mappings, hardcoded user-visible string checks, migration/schema/auth/conflict cases, teardown cleanup, and coverage gate exit codes.
+Verify deterministic repeat runs, explicit create/resume/pause/destroy, virtual delays/cooldowns, active child/back dispatcher, success/failure/cancellation, English default/fallback behavior, locale key-set completeness, stable key mappings, hardcoded user-visible string checks, migration/schema/auth/conflict cases, teardown cleanup, and coverage gate exit codes.
 
 ## Escalation/hand-off
 

@@ -21,7 +21,7 @@ Respect safe areas, font scaling, and compact/expanded widths.
 
 ## Accessibility and localization
 
-Provide RU/EN strings from Compose Multiplatform Resources using identical keys, localized labels/roles, and minimum touch targets. The screen model carries stable option IDs/resource references rather than resolved local-catalog translations.
+Provide default EN and additional RU strings from Compose Multiplatform Resources using identical keys, localized labels/roles, and minimum touch targets. The screen model carries stable option IDs/resource references rather than resolved local-catalog translations.
 
 ## Text layout expectations
 

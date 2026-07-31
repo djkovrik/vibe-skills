@@ -15,7 +15,7 @@ Read approved screens/theme/locales, current previews, Paparazzi/scanner configu
 
 ## Workflow
 
-1. Reconcile AppSpec screens/states with preview declarations. Fail the hand-off when a primary screen or applicable state lacks light and dark previews; require risk-based font-scale, longest-locale, and adaptive variants declared by Product Designer.
+1. Reconcile AppSpec screens/states with preview declarations. Fail the hand-off when a primary screen or applicable state lacks light and dark previews; require default-English, risk-based font-scale, longest-locale, and adaptive variants declared by Product Designer.
 2. Create deterministic preview components/data with no real services, clocks, random values, network, database, permissions, ads, or native SDK dependencies. Resolve bundled copy through production Compose string resources; fixture data carries stable IDs/keys, not convenient translated literals.
 3. Ensure the project has a dedicated or clearly isolated Android-host screenshot-test surface with current compatible Paparazzi and ComposablePreviewScanner dependencies.
 4. Scope preview scanning to project packages and required source sets.
@@ -40,7 +40,7 @@ Read approved screens/theme/locales, current previews, Paparazzi/scanner configu
 
 ## Validation
 
-Verify screen/state matrix completeness, light/dark coverage, production resource resolution and declared locale key completeness, font-scale/locale/device variants, generator determinism, compile dependency, stable IDs, filename encoding, package scope, each approved variant, record output, verify failure behavior, coverage inventory, Product Designer hand-off, CI artifacts, and Git LFS configuration.
+Verify screen/state matrix completeness, light/dark coverage, English default/fallback rendering, production resource resolution and declared locale key completeness, font-scale/locale/device variants, generator determinism, compile dependency, stable IDs, filename encoding, package scope, each approved variant, record output, verify failure behavior, coverage inventory, Product Designer hand-off, CI artifacts, and Git LFS configuration.
 
 ## Escalation/hand-off
 

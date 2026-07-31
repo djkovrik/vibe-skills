@@ -77,6 +77,7 @@
     "localization": {
       "type": "object",
       "required": [
+        "defaultLocale",
         "resourceSystem",
         "resourceFileFormat",
         "keyStrategy",
@@ -85,6 +86,7 @@
         "hardcodedUserFacingStrings"
       ],
       "properties": {
+        "defaultLocale": { "const": "en" },
         "resourceSystem": { "const": "compose-multiplatform-resources" },
         "resourceFileFormat": { "const": "strings.xml" },
         "keyStrategy": { "const": "shared-key-across-locales" },

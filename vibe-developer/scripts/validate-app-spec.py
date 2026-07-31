@@ -150,6 +150,12 @@ def main() -> int:
 
     if isinstance(localization, dict):
         validate_localization(localization, errors)
+        if isinstance(app, dict) and isinstance(app.get("locales"), list):
+            expect(
+                localization.get("defaultLocale") in app["locales"],
+                "localization.defaultLocale must be included in app.locales",
+                errors,
+            )
 
     open_questions = data.get("openQuestions")
     if isinstance(open_questions, list):
@@ -406,6 +412,7 @@ def validate_localization(
     errors: list[str],
 ) -> None:
     expected = {
+        "defaultLocale": "en",
         "resourceSystem": "compose-multiplatform-resources",
         "resourceFileFormat": "strings.xml",
         "keyStrategy": "shared-key-across-locales",

@@ -6,7 +6,7 @@ Store only the stable `PreferenceValue` ID through a typed settings contract wit
 
 ## Localized text storage
 
-Compose Multiplatform Resources owns every user-visible label for this local option catalog. Put the default resource set in `composeResources/values/strings.xml`, Russian translations in `composeResources/values-ru/strings.xml`, and add future locales through matching `values-<locale>/strings.xml` files with the same keys.
+Compose Multiplatform Resources owns every user-visible label for this local option catalog. English is always the default/base locale: put its complete resource set in `composeResources/values/strings.xml`. Put the additional Russian translations in `composeResources/values-ru/strings.xml`, and add future locales through matching `values-<locale>/strings.xml` files with the same keys.
 
 | Stable value ID | Shared string resource key |
 | --- | --- |

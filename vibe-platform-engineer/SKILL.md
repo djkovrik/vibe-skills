@@ -21,7 +21,7 @@ Read AppSpec capabilities/localization, domain contracts, platform entry points,
 4. Bridge lifecycle and recheck after Settings on resume.
 5. Separate logical schedules from physical alarm/notification instances.
 6. Configure manifests/plists/entitlements and platform startup.
-7. Put native-only copy in Android `res/values*/strings.xml` or iOS string catalogs/localized `.strings` tables with stable keys; never embed translated literals in `actual` code.
+7. Put native-only copy in Android `res/values*/strings.xml` or iOS string catalogs/localized `.strings` tables with stable keys. Keep English as the complete default/base localization and Russian as an additional localization; never embed translated literals in `actual` code.
 8. Test common contract plus platform builds/manual capability and locale checks.
 
 ## Decision rules
@@ -30,7 +30,7 @@ Read AppSpec capabilities/localization, domain contracts, platform entry points,
 - Recompute platform schedules after reboot, time-zone change, or app update when required.
 - Keep platform failures typed and route them to domain/component output.
 - Do not render UI from a platform service.
-- Prefer Compose Multiplatform Resources for common text. When they are unavailable to the native boundary, resolve the shared semantic key through native platform localization resources rather than hardcoded strings.
+- Prefer Compose Multiplatform Resources for common text. When they are unavailable to the native boundary, resolve the shared semantic key through native platform localization resources rather than hardcoded strings; preserve English as the default fallback.
 - Keep iOS lifecycle ownership explicit and verify current Essenty/platform helpers.
 
 ## Validation

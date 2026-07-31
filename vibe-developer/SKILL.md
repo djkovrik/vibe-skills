@@ -72,7 +72,7 @@ Prevent overlapping edits by giving each file/change one owner. Let the orchestr
 - Route objective rendering defects that violate the AppSpec (clipping, unintended wrapping, missing glyphs, insufficient contrast, missing/incorrect icons, inconsistent tokens) back to Compose/Product Designer. Request a user decision only when a fix changes approved product intent or requires unresolved custom assets.
 - Re-record and re-verify only approved visual changes, then close or explicitly waive every blocking design-review finding with rationale.
 - Require applicable domain, Store/component, persistence/network/sync, UI golden, Android, iOS, quality, and release checks. State why any check was unavailable.
-- Require every declared locale to have a complete shared key set for app-bundled text, reject persisted/resolved translations for local catalogs, and scan production source for hardcoded user-visible strings. Native-only text must be verified in Android/iOS localization resources.
+- Require `en` as the default/base locale and complete fallback key set, with `ru` as the initial additional locale. Require every declared locale to cover the shared keys, reject persisted/resolved translations for local catalogs, and scan production source for hardcoded user-visible strings. Native-only text must follow the same EN-default contract in Android/iOS localization resources.
 - Treat warnings separately from failures.
 
 ## Escalation/hand-off

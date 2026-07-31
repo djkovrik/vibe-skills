@@ -58,7 +58,8 @@ Do not start Compose implementation when an icon/asset decision can materially c
 
 For AppSpec 1.2+:
 
-- `app.locales` is the expandable source of truth for supported locales; the template starts with `ru` and `en`.
+- `app.locales` is the expandable source of truth for supported locales; the template starts with `["en", "ru"]`.
+- `localization.defaultLocale` is always `en`; English owns the complete default/base resource set and Russian is the initial additional localization.
 - `localization` requires Compose Multiplatform Resources, locale-specific `strings.xml` files, a shared-key strategy, resource-key-only storage for localized local datasets, native platform localization resources as the fallback, and no hardcoded user-facing strings.
 - `data.md` contains `Localized text storage` and inventories bundled catalogs/reference data, stable item IDs, shared resource keys, resource ownership, and native-only tables.
 - `quality.md` contains `Localization resource checks` covering locale key completeness, valid key mapping, locale changes, persistence of IDs/keys rather than translations, and hardcoded-string detection.

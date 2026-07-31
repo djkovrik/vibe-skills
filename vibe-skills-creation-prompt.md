@@ -620,7 +620,7 @@ Atomic cross-entity replacement?
 Базовые правила UI:
 
 - каждый screen имеет loading/content/empty/error/offline/permission states, где применимо;
-- все app-bundled пользовательские строки и локализуемые поля локальных catalog/database/seed/reference datasets хранятся только в Compose Multiplatform Resources locale-specific `strings.xml`; начальный набор RU/EN расширяется добавлением locale resource set с теми же ключами;
+- все app-bundled пользовательские строки и локализуемые поля локальных catalog/database/seed/reference datasets хранятся только в Compose Multiplatform Resources locale-specific `strings.xml`; английский всегда default/base locale, русский — начальная дополнительная локаль, последующие locale resource sets используют те же ключи;
 - domain, Store/component state, persistence, sync и seed data содержат только language-neutral IDs/stable localization keys, никогда resolved translations, per-locale columns/maps или hardcoded product copy;
 - когда Compose resources недоступны в native `actual`, Android/iOS implementation использует native localization resources со стабильными ключами и без translated literals в коде;
 - component model остаётся UI-oriented и не раскрывает Store state;
@@ -841,7 +841,7 @@ app-spec/
     "name": "",
     "summary": "",
     "targets": ["android", "ios"],
-    "locales": ["ru", "en"]
+    "locales": ["en", "ru"]
   },
   "requirements": [
     {
@@ -871,6 +871,7 @@ app-spec/
     "performance": []
   },
   "localization": {
+    "defaultLocale": "en",
     "resourceSystem": "compose-multiplatform-resources",
     "resourceFileFormat": "strings.xml",
     "keyStrategy": "shared-key-across-locales",

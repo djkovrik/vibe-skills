@@ -4,7 +4,7 @@
     "name": "Example App",
     "summary": "A validated hand-off example.",
     "targets": ["android", "ios"],
-    "locales": ["ru", "en"]
+    "locales": ["en", "ru"]
   },
   "requirements": [
     {
@@ -34,6 +34,7 @@
     "performance": ["Persist the preference without visible delay."]
   },
   "localization": {
+    "defaultLocale": "en",
     "resourceSystem": "compose-multiplatform-resources",
     "resourceFileFormat": "strings.xml",
     "keyStrategy": "shared-key-across-locales",
