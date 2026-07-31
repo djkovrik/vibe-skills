@@ -78,6 +78,7 @@
       "type": "object",
       "required": [
         "defaultLocale",
+        "localeSelection",
         "resourceSystem",
         "resourceFileFormat",
         "keyStrategy",
@@ -87,6 +88,7 @@
       ],
       "properties": {
         "defaultLocale": { "const": "en" },
+        "localeSelection": { "const": "system-only" },
         "resourceSystem": { "const": "compose-multiplatform-resources" },
         "resourceFileFormat": { "const": "strings.xml" },
         "keyStrategy": { "const": "shared-key-across-locales" },

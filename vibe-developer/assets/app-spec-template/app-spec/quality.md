@@ -22,7 +22,7 @@ Provide default EN and additional RU Compose Multiplatform `strings.xml` resourc
 
 ## Localization resource checks
 
-Require a complete default EN key set and equal key coverage for every additional locale in `app.locales`, valid stable-ID/key-to-`Res.string.*` mappings, EN/RU locale-switch and unsupported-locale-to-EN-fallback coverage, and a production-source scan that rejects hardcoded user-visible strings. Persistence tests must prove that restart and locale changes preserve stable IDs/keys rather than resolved translations. Native `actual` text must resolve through Android/iOS localization resources and have matching locale coverage.
+Require a complete default EN key set and equal key coverage for every additional locale in `app.locales`, valid stable-ID/key-to-`Res.string.*` mappings, system-locale-driven EN/RU changes and unsupported-locale-to-EN fallback, and a production-source scan that rejects hardcoded user-visible strings. Assert that no language picker, locale preference key, or app-specific locale override exists. Persistence tests must prove that restart and system-locale changes preserve stable IDs/keys rather than resolved translations. Native `actual` text must resolve through Android/iOS localization resources and have matching locale coverage.
 
 ## Security and privacy
 

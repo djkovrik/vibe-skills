@@ -413,6 +413,7 @@ def validate_localization(
 ) -> None:
     expected = {
         "defaultLocale": "en",
+        "localeSelection": "system-only",
         "resourceSystem": "compose-multiplatform-resources",
         "resourceFileFormat": "strings.xml",
         "keyStrategy": "shared-key-across-locales",

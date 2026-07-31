@@ -31,6 +31,7 @@ Read AppSpec screens/flows/assets, product constraints, current screenshots, the
 
 - Provide loading/content/empty/error/offline/permission states where applicable.
 - Keep all app-bundled user-visible strings in Compose Multiplatform Resources locale-specific `strings.xml` files, using one shared key across locales. English is always the default/base locale; Russian is the initial additional locale. Adding a locale must not change the default locale or domain/persistence schemas.
+- Do not design an in-app language picker or language setting. The active language follows the operating-system locale only; unsupported locales use English fallback.
 - Keep resolved catalog translations out of Store/component/domain/persistence models. Carry stable IDs/resource references to the presentation boundary; user-authored and server-owned dynamic text remains data.
 - Keep component models UI-oriented and independent of raw Store state.
 - Centralize tokens and verify light/dark/system variants.
@@ -43,7 +44,7 @@ Read AppSpec screens/flows/assets, product constraints, current screenshots, the
 
 ## Validation
 
-Trace decisions to evidence and screen IDs. Check every state, compact/expanded layout, safe-area ownership, production string-resource usage, EN default/fallback behavior and locale key completeness, font loading and glyph coverage, line-count expectations, font scaling, screen reader order, contrast, touch targets, motion preference, EN/RU expansion, dark/light theme, icon inventory, preview determinism, golden coverage, Lazyweb report URLs, and disposition of every blocking finding.
+Trace decisions to evidence and screen IDs. Check every state, compact/expanded layout, safe-area ownership, production string-resource usage, system-locale behavior, absence of language-selection UI, EN default/fallback behavior and locale key completeness, font loading and glyph coverage, line-count expectations, font scaling, screen reader order, contrast, touch targets, motion preference, EN/RU expansion, dark/light theme, icon inventory, preview determinism, golden coverage, Lazyweb report URLs, and disposition of every blocking finding.
 
 ## Escalation/hand-off
 

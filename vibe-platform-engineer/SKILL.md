@@ -21,7 +21,7 @@ Read AppSpec capabilities/localization, domain contracts, platform entry points,
 4. Bridge lifecycle and recheck after Settings on resume.
 5. Separate logical schedules from physical alarm/notification instances.
 6. Configure manifests/plists/entitlements and platform startup.
-7. Put native-only copy in Android `res/values*/strings.xml` or iOS string catalogs/localized `.strings` tables with stable keys. Keep English as the complete default/base localization and Russian as an additional localization; never embed translated literals in `actual` code.
+7. Put native-only copy in Android `res/values*/strings.xml` or iOS string catalogs/localized `.strings` tables with stable keys. Keep English as the complete default/base localization and Russian as an additional localization; follow the operating-system locale without installing an app-specific override, and never embed translated literals in `actual` code.
 8. Test common contract plus platform builds/manual capability and locale checks.
 
 ## Decision rules
@@ -31,11 +31,12 @@ Read AppSpec capabilities/localization, domain contracts, platform entry points,
 - Keep platform failures typed and route them to domain/component output.
 - Do not render UI from a platform service.
 - Prefer Compose Multiplatform Resources for common text. When they are unavailable to the native boundary, resolve the shared semantic key through native platform localization resources rather than hardcoded strings; preserve English as the default fallback.
+- Do not add Android per-app language APIs, iOS language overrides, or a locale preference unless a future explicit product decision changes this contract.
 - Keep iOS lifecycle ownership explicit and verify current Essenty/platform helpers.
 
 ## Validation
 
-Verify denied/granted/revoked flows, resume recheck, reboot/update/time-zone recovery, cancellation by stable physical ID, fake implementations, native localization key/locale coverage, manifest/plist entries, Android target builds, and available iOS builds/device behavior.
+Verify denied/granted/revoked flows, resume recheck, reboot/update/time-zone recovery, cancellation by stable physical ID, fake implementations, system-locale-driven native localization and English fallback without app overrides, manifest/plist entries, Android target builds, and available iOS builds/device behavior.
 
 ## Escalation/hand-off
 

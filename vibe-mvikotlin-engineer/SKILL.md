@@ -36,6 +36,8 @@ Honor MVIKotlin's main-thread contract for accept/init/dispose, dispatch, and la
 
 Keep Store state locale-neutral for app-bundled content: carry stable domain IDs/localization keys, not resolved strings or generated Compose resource types. Map those IDs/keys at the component/presentation boundary so locale changes do not require Store reload or persistence changes.
 
+Do not add `selectedLocale` state, language-selection intents, or locale-override effects. The resource environment follows the operating-system locale only.
+
 ## Validation
 
 Test reducer transitions, intents/actions, bootstrap subscriptions, result branches, cancellation, startup labels, restoration/retention, disposal, and release wiring without logging.

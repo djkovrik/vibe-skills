@@ -20,7 +20,7 @@ Read the target AppSpec, repository instructions, module/build graph, catalogs, 
 3. Define the minimal affected graph and ownership boundaries.
 4. Keep domain contracts inward and implementations/platform code outward.
 5. Design manual composition roots and explicit startup order.
-6. When the product has bundled localized text, assign one common resource-owning module, configure Compose Multiplatform Resources and generated accessors, keep the complete English default/base set in `values`, and keep native-only EN-default fallback resources in their platform source sets.
+6. When the product has bundled localized text, assign one common resource-owning module, configure Compose Multiplatform Resources and generated accessors, keep the complete English default/base set in `values`, and keep native-only EN-default fallback resources in their platform source sets. Do not scaffold locale-selection settings, app-specific overrides, or language-picker infrastructure.
 7. When the product has Compose UI, provision or verify an Android-host screenshot-test surface, version-catalog entries, Paparazzi and ComposablePreviewScanner compatibility, generated-test task wiring, record/verify tasks, snapshot storage, Git LFS, and CI artifacts. Treat this as default project scaffolding, not a later optional enhancement.
 8. Add remaining build logic, checks, CI, and migration sequencing with rollback points.
 9. Verify Android plus available iOS/Pod/Xcode contracts.

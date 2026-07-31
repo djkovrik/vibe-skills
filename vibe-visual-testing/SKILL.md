@@ -20,7 +20,7 @@ Read approved screens/theme/locales, current previews, Paparazzi/scanner configu
 3. Ensure the project has a dedicated or clearly isolated Android-host screenshot-test surface with current compatible Paparazzi and ComposablePreviewScanner dependencies.
 4. Scope preview scanning to project packages and required source sets.
 5. Cache the discovered preview list and generate stable parameterized test source before test compilation.
-6. Map preview parameters into Paparazzi theme, device, dimensions, locale, font scale, UI mode, and layout direction.
+6. Map preview parameters into Paparazzi theme, device, dimensions, simulated system locale, font scale, UI mode, and layout direction. Locale parameters are test-host inputs, not an in-app language control.
 7. Build stable encoded snapshot IDs independent of scan or parameter order.
 8. Run the generator/compile check, record only an approved baseline, inspect every PNG, then run verify from a clean-enough state.
 9. Produce a machine-readable coverage inventory mapping `SCREEN/state/theme/fontScale/locale/device -> preview -> snapshot`.

@@ -36,6 +36,8 @@ Do not expose generated entities. Use stable timestamp/enum/collection encodings
 
 Do not store resolved translations, per-locale text columns, or translation maps for app-bundled catalogs. Translation changes must not require a database/settings migration; only stable IDs or localization keys cross the persistence boundary.
 
+Do not create a language/locale setting or migrate one forward. Locale selection is system-only and has no persistence contract.
+
 ## Validation
 
 Run real-schema test drivers, all migrations from supported versions, adapter and localization-key round trips across locale changes, transaction rollback, reactive emissions on injected dispatchers, default/legacy settings, snapshot replacement, and Android/iOS compilation.

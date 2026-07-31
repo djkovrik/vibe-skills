@@ -33,6 +33,7 @@ Read target instructions, component graph, AppSpec flows/screens, and [component
 - Retain a Store only for state/async/subscription/resume needs.
 - Map raw Store state to a UI-oriented component model.
 - Keep app-bundled localized content locale-neutral in component contracts: expose stable IDs/localization keys, not resolved translations or Compose resource types. User-authored and server-owned text may remain data.
+- Do not expose language-selection callbacks, outputs, or navigation destinations; locale selection is owned by the operating system.
 - Subscribe to possible startup labels before manual Store initialization.
 
 ## Validation

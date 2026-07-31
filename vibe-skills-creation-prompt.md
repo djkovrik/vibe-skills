@@ -621,6 +621,7 @@ Atomic cross-entity replacement?
 
 - каждый screen имеет loading/content/empty/error/offline/permission states, где применимо;
 - все app-bundled пользовательские строки и локализуемые поля локальных catalog/database/seed/reference datasets хранятся только в Compose Multiplatform Resources locale-specific `strings.xml`; английский всегда default/base locale, русский — начальная дополнительная локаль, последующие locale resource sets используют те же ключи;
+- активная локаль определяется только языком системы; не создавай in-app language picker, persisted locale preference, `selectedLocale` state или app-specific locale override;
 - domain, Store/component state, persistence, sync и seed data содержат только language-neutral IDs/stable localization keys, никогда resolved translations, per-locale columns/maps или hardcoded product copy;
 - когда Compose resources недоступны в native `actual`, Android/iOS implementation использует native localization resources со стабильными ключами и без translated literals в коде;
 - component model остаётся UI-oriented и не раскрывает Store state;
@@ -872,6 +873,7 @@ app-spec/
   },
   "localization": {
     "defaultLocale": "en",
+    "localeSelection": "system-only",
     "resourceSystem": "compose-multiplatform-resources",
     "resourceFileFormat": "strings.xml",
     "keyStrategy": "shared-key-across-locales",
@@ -915,7 +917,7 @@ app-spec/
 - NFR;
 - test matrix;
 - accessibility/localization;
-- completeness shared localization keys для всех `app.locales`, locale-switch/key-mapping/persistence round-trip tests и scan hardcoded user-visible strings;
+- completeness shared localization keys для всех `app.locales`, system-locale change/EN fallback/key-mapping/persistence round-trip tests, отсутствие language picker/persisted locale/app override и scan hardcoded user-visible strings;
 - security/privacy;
 - release acceptance.
 

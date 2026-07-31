@@ -20,7 +20,7 @@ Read acceptance IDs, public contracts, owner-specific decision records, current 
 3. Cover pure rules, then Store/component behavior through public contracts.
 4. Reproduce lifecycle and virtual-time transitions explicitly.
 5. Cover persistence/network/sync contract and failure paths.
-6. For app-bundled localized text, verify that English is the complete default/base resource set, compare key sets across every additional `app.locales` resource set, exercise ID/key mappings, locale changes and unsupported-locale-to-English fallback, and scan production source/seed data for hardcoded user-visible copy.
+6. For app-bundled localized text, verify that English is the complete default/base resource set, compare key sets across every additional `app.locales` resource set, exercise ID/key mappings, system-locale changes and unsupported-locale-to-English fallback, assert the absence of a language picker/persisted locale/app override, and scan production source/seed data for hardcoded user-visible copy.
 7. Run focused tests, then aggregate coverage/CI gates.
 
 ## Decision rules

@@ -23,6 +23,8 @@ Respect safe areas, font scaling, and compact/expanded widths.
 
 Provide default EN and additional RU strings from Compose Multiplatform Resources using identical keys, localized labels/roles, and minimum touch targets. The screen model carries stable option IDs/resource references rather than resolved local-catalog translations.
 
+Language selection is not an action or setting on this screen; displayed resources follow the operating-system locale.
+
 ## Text layout expectations
 
 The title, current-value label, and save label remain one line at 100% font scale in EN/RU on the compact reference phone. At 200%, the choice rows and action may grow or wrap without clipping, overlap, missing glyphs, or loss of the save action. Use explicit `maxLines` and overflow only where truncation is approved.
