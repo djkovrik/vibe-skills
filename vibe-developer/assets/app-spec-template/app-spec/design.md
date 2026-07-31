@@ -11,6 +11,7 @@ Use Material 3 semantic color and typography roles with explicit light and dark 
 ## Typography and text layout
 
 - Use production fonts and verify EN/RU glyph coverage.
+- Resolve every bundled label, accessibility description, error, and local option title from Compose Multiplatform Resources `strings.xml` through the same key in each locale; do not use hardcoded production or preview text.
 - Use semantic typography roles rather than screen-local sizes.
 - The screen title and current-value label are one line at normal font scale.
 - At 200% font scale, controls may wrap without clipping, overlap, missing glyphs, or hidden actions.

@@ -6,6 +6,7 @@
 - [Required structure](#required-structure)
 - [Identifiers and links](#identifiers-and-links)
 - [UI quality contract](#ui-quality-contract)
+- [Localization contract](#localization-contract)
 - [Validation](#validation)
 
 ## Boundary
@@ -27,7 +28,7 @@ app-spec/
   assets/
 ```
 
-`app-spec.json` declares app metadata, requirements, flow/screen IDs, capabilities, constraints, UI quality gates, and open questions. Additional fields are allowed. Reject any schema major other than `1`. `design.md` and `uiQuality` are required for AppSpec 1.1+; accept older 1.x specs as legacy inputs but surface their missing visual contract.
+`app-spec.json` declares app metadata, requirements, flow/screen IDs, capabilities, constraints, localization, UI quality gates, and open questions. Additional fields are allowed. Reject any schema major other than `1`. `design.md` and `uiQuality` are required for AppSpec 1.1+; `localization` and the localized-text Markdown contract are required for AppSpec 1.2+. Accept older 1.x specs as legacy inputs but surface their missing contracts.
 
 The Markdown files define product intent, design direction, domain semantics, data contracts, quality gates, flows, acceptance scenarios, screen states, accessibility, localization, iconography/assets, preview/golden coverage, and allowed monetization slots.
 
@@ -52,6 +53,17 @@ For AppSpec 1.1+:
 - Every `screens/SCREEN-*.md` contains `Actions and iconography`, `Text layout expectations`, and `Preview and golden matrix`.
 
 Do not start Compose implementation when an icon/asset decision can materially change the screen and remains unresolved. Add a structured `openQuestions` item with `blocking: true`, related screen IDs, and the requested user decision or asset. The validator rejects unresolved blocking questions; non-blocking questions remain warnings.
+
+## Localization contract
+
+For AppSpec 1.2+:
+
+- `app.locales` is the expandable source of truth for supported locales; the template starts with `ru` and `en`.
+- `localization` requires Compose Multiplatform Resources, locale-specific `strings.xml` files, a shared-key strategy, resource-key-only storage for localized local datasets, native platform localization resources as the fallback, and no hardcoded user-facing strings.
+- `data.md` contains `Localized text storage` and inventories bundled catalogs/reference data, stable item IDs, shared resource keys, resource ownership, and native-only tables.
+- `quality.md` contains `Localization resource checks` covering locale key completeness, valid key mapping, locale changes, persistence of IDs/keys rather than translations, and hardcoded-string detection.
+
+Apply the detailed [localized local text contract](localization-contract.md). User-authored and server-owned dynamic content remains data; app-bundled translatable copy remains a resource.
 
 ## Validation
 

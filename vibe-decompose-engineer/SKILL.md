@@ -11,7 +11,7 @@ Own UI-independent lifecycle-aware component contracts and navigation. Prefer th
 
 ## Inputs
 
-Read target instructions, component graph, AppSpec flows/screens, and [component-contract.md](references/component-contract.md). For navigation/root work read [navigation-and-root.md](references/navigation-and-root.md); for retention read [lifecycle-state-retention.md](references/lifecycle-state-retention.md). Read [blinkly-adaptations.md](references/blinkly-adaptations.md) only when local evidence is useful. Paths live in the shared [source registry](../vibe-developer/references/source-registry.md).
+Read target instructions, component graph, AppSpec flows/screens, and [component-contract.md](references/component-contract.md). Apply the shared [localization contract](../vibe-developer/references/localization-contract.md) when models expose app-bundled text. For navigation/root work read [navigation-and-root.md](references/navigation-and-root.md); for retention read [lifecycle-state-retention.md](references/lifecycle-state-retention.md). Read [blinkly-adaptations.md](references/blinkly-adaptations.md) only when local evidence is useful. Paths live in the shared [source registry](../vibe-developer/references/source-registry.md).
 
 ## Workflow
 
@@ -32,6 +32,7 @@ Read target instructions, component graph, AppSpec flows/screens, and [component
 - Keep callback-only features thin.
 - Retain a Store only for state/async/subscription/resume needs.
 - Map raw Store state to a UI-oriented component model.
+- Keep app-bundled localized content locale-neutral in component contracts: expose stable IDs/localization keys, not resolved translations or Compose resource types. User-authored and server-owned text may remain data.
 - Subscribe to possible startup labels before manual Store initialization.
 
 ## Validation
@@ -45,4 +46,3 @@ Hand Store internals to MVIKotlin, pure rules to Domain, Compose APIs/design to 
 ## Reusable learning
 
 Propose reusable component/navigation rules for [learned-patterns.md](references/learned-patterns.md); never modify it without approval.
-

@@ -90,6 +90,7 @@ def main() -> int:
     screens = data.get("screens")
     capabilities = data.get("capabilities")
     constraints = data.get("constraints")
+    localization = data.get("localization")
     ui_quality = data.get("uiQuality")
     for key, value, kind in (
         ("app", app, dict),
@@ -104,6 +105,16 @@ def main() -> int:
     if isinstance(app, dict):
         for key in ("name", "summary", "targets", "locales"):
             expect(key in app, f"app.{key} is required", errors)
+        locales = app.get("locales")
+        expect(isinstance(locales, list) and bool(locales), "app.locales must be a non-empty array", errors)
+        if isinstance(locales, list):
+            locale_values = [item for item in locales if isinstance(item, str) and item.strip()]
+            expect(
+                len(locale_values) == len(locales),
+                "app.locales must contain non-empty strings only",
+                errors,
+            )
+            check_unique("locale", locale_values, errors)
     if isinstance(constraints, dict):
         for key in ("offlineMode", "privacy", "accessibility", "performance"):
             expect(key in constraints, f"constraints.{key} is required", errors)
@@ -111,6 +122,7 @@ def main() -> int:
            "openQuestions must be an array", errors)
 
     requires_ui_contract = version_major == 1 and version_minor >= 1
+    requires_localization_contract = version_major == 1 and version_minor >= 2
     if requires_ui_contract:
         design_path = root / "design.md"
         expect(design_path.is_file(), "Missing required file for AppSpec 1.1+: design.md", errors)
@@ -123,6 +135,21 @@ def main() -> int:
 
     if isinstance(ui_quality, dict):
         validate_ui_quality(ui_quality, errors, warnings)
+
+    if requires_localization_contract:
+        expect(
+            isinstance(localization, dict),
+            "localization must be an object for AppSpec 1.2+",
+            errors,
+        )
+    elif version_major == 1 and not isinstance(localization, dict):
+        warnings.append(
+            "Legacy AppSpec has no localization contract; Compose resources, stable localization keys, "
+            "native fallbacks, and hardcoded-string policy must be derived and confirmed during implementation"
+        )
+
+    if isinstance(localization, dict):
+        validate_localization(localization, errors)
 
     open_questions = data.get("openQuestions")
     if isinstance(open_questions, list):
@@ -237,7 +264,10 @@ def main() -> int:
         for capability, terms in CAPABILITY_TERMS.items():
             enabled = capabilities.get(capability)
             expect(isinstance(enabled, bool), f"capabilities.{capability} must be boolean", errors)
-            mentioned = any(term in corpus for term in terms)
+            mentioned = any(
+                re.search(rf"\b{re.escape(term)}\b", corpus) is not None
+                for term in terms
+            )
             if enabled is True and not mentioned:
                 errors.append(f"Capability {capability}=true is not described in data.md or flows")
             elif enabled is False and mentioned:
@@ -259,6 +289,20 @@ def main() -> int:
             "## Visual quality and design review",
         ):
             expect(heading in quality_text, f"quality.md must contain {heading}", errors)
+
+    if requires_localization_contract:
+        data_text = read_utf8(root / "data.md", errors)
+        quality_text = read_utf8(root / "quality.md", errors)
+        expect(
+            "## Localized text storage" in data_text,
+            "data.md must contain ## Localized text storage for AppSpec 1.2+",
+            errors,
+        )
+        expect(
+            "## Localization resource checks" in quality_text,
+            "quality.md must contain ## Localization resource checks for AppSpec 1.2+",
+            errors,
+        )
 
     if data.get("openQuestions"):
         warnings.append("openQuestions is not empty; resolve material product decisions before implementation")
@@ -353,6 +397,26 @@ def validate_ui_quality(
         expect(
             iconography.get("customAssetsStatus") in {"provided", "not-required"},
             "uiQuality.iconography.customAssetsStatus must be provided or not-required",
+            errors,
+        )
+
+
+def validate_localization(
+    localization: dict[str, object],
+    errors: list[str],
+) -> None:
+    expected = {
+        "resourceSystem": "compose-multiplatform-resources",
+        "resourceFileFormat": "strings.xml",
+        "keyStrategy": "shared-key-across-locales",
+        "localDataTextStorage": "resource-keys-only",
+        "nativeFallback": "platform-localized-resources",
+        "hardcodedUserFacingStrings": False,
+    }
+    for key, value in expected.items():
+        expect(
+            localization.get(key) == value,
+            f"localization.{key} must be {value!r}",
             errors,
         )
 

@@ -1,10 +1,10 @@
 {
-  "schemaVersion": "1.1",
+  "schemaVersion": "1.2",
   "app": {
     "name": "Example App",
     "summary": "A validated hand-off example.",
     "targets": ["android", "ios"],
-    "locales": ["en", "ru"]
+    "locales": ["ru", "en"]
   },
   "requirements": [
     {
@@ -32,6 +32,14 @@
     "privacy": ["Do not collect personal data."],
     "accessibility": ["Support screen readers and font scaling."],
     "performance": ["Persist the preference without visible delay."]
+  },
+  "localization": {
+    "resourceSystem": "compose-multiplatform-resources",
+    "resourceFileFormat": "strings.xml",
+    "keyStrategy": "shared-key-across-locales",
+    "localDataTextStorage": "resource-keys-only",
+    "nativeFallback": "platform-localized-resources",
+    "hardcodedUserFacingStrings": false
   },
   "uiQuality": {
     "previewThemes": ["light", "dark"],

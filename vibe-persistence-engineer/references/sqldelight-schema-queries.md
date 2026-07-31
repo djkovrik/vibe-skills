@@ -6,6 +6,7 @@
 - Encode nullability and referential actions deliberately.
 - Write forward migrations for every supported deployed schema.
 - Never use destructive reset without explicit product/data approval.
+- For app-bundled localized content, store stable item IDs/resource keys only. Do not add translated text columns, one column per locale, or seed translated literals; Compose Multiplatform `strings.xml` files own those values.
 
 Primary sources:
 
@@ -13,4 +14,3 @@ Primary sources:
 - https://kotlinlang.org/docs/multiplatform/multiplatform-ktor-sqldelight.html
 
 Check the current SQLDelight docs for the target version before implementing migrations, adapters, or flows.
-

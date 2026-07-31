@@ -6,7 +6,7 @@
 
 ## Entities and value objects
 
-`PreferenceValue` is a validated value object.
+`PreferenceValue` is a validated, language-neutral value object. Presentation maps its stable ID to the shared Compose string resource key; domain code does not contain translated labels or Compose resource types.
 
 ## Invariants
 
@@ -19,4 +19,3 @@ No time-based rules.
 ## Error semantics
 
 Persistence failures preserve their cause and surface a retryable error.
-

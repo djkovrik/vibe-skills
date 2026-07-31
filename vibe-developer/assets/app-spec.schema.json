@@ -74,6 +74,26 @@
       },
       "additionalProperties": true
     },
+    "localization": {
+      "type": "object",
+      "required": [
+        "resourceSystem",
+        "resourceFileFormat",
+        "keyStrategy",
+        "localDataTextStorage",
+        "nativeFallback",
+        "hardcodedUserFacingStrings"
+      ],
+      "properties": {
+        "resourceSystem": { "const": "compose-multiplatform-resources" },
+        "resourceFileFormat": { "const": "strings.xml" },
+        "keyStrategy": { "const": "shared-key-across-locales" },
+        "localDataTextStorage": { "const": "resource-keys-only" },
+        "nativeFallback": { "const": "platform-localized-resources" },
+        "hardcodedUserFacingStrings": { "const": false }
+      },
+      "additionalProperties": true
+    },
     "uiQuality": {
       "type": "object",
       "required": [
@@ -177,6 +197,16 @@
       },
       "then": {
         "required": ["uiQuality"]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "schemaVersion": { "pattern": "^1\\.(?:[2-9]|[1-9][0-9]+)(?:\\.[0-9]+)?$" }
+        }
+      },
+      "then": {
+        "required": ["localization"]
       }
     }
   ]

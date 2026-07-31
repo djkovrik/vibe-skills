@@ -1,6 +1,6 @@
 ---
 name: vibe-domain-engineer
-description: Model Kotlin Multiplatform domain entities, value objects, invariants, pure algorithms, manager/watcher/provider contracts, sealed events and errors, time-zone and recurrence semantics, and cross-feature outputs. Use for business calculations, scheduling rules, domain vocabulary, Result-based boundaries, or extracting logic from Stores, components, UI, persistence, and platform code.
+description: Model Kotlin Multiplatform domain entities, value objects, invariants, pure algorithms, language-neutral IDs and localization keys, manager/watcher/provider contracts, sealed events and errors, time-zone and recurrence semantics, and cross-feature outputs. Use for business calculations, local catalog identity, scheduling rules, domain vocabulary, Result-based boundaries, or extracting logic from Stores, components, UI, persistence, and platform code.
 ---
 
 # Vibe Domain Engineer
@@ -11,7 +11,7 @@ Own business meaning and pure rules. Do not orchestrate UI state machines or cho
 
 ## Inputs
 
-Read AppSpec `domain.md`, requirements, flows, acceptance scenarios, and relevant target contracts/tests. Use [domain-modeling.md](references/domain-modeling.md), [managers-events-errors.md](references/managers-events-errors.md), and [time-and-scheduling.md](references/time-and-scheduling.md). Consult the shared [source registry](../vibe-developer/references/source-registry.md) only for adaptations.
+Read AppSpec `domain.md`, requirements, flows, acceptance scenarios, and relevant target contracts/tests. Apply the shared [localization contract](../vibe-developer/references/localization-contract.md) to app-bundled translatable data. Use [domain-modeling.md](references/domain-modeling.md), [managers-events-errors.md](references/managers-events-errors.md), and [time-and-scheduling.md](references/time-and-scheduling.md). Consult the shared [source registry](../vibe-developer/references/source-registry.md) only for adaptations.
 
 ## Workflow
 
@@ -25,6 +25,7 @@ Read AppSpec `domain.md`, requirements, flows, acceptance scenarios, and relevan
 ## Decision rules
 
 - Avoid Android/iOS types in `commonMain`.
+- Model bundled catalog entries with stable language-neutral IDs/keys. Do not put resolved translations, per-locale fields, or Compose `StringResource` types in the core domain.
 - Inject clock/time-zone abstractions.
 - Keep calculation deterministic and side effects outside pure functions.
 - Use typed events/errors with actionable root/presentation semantics.
@@ -33,7 +34,7 @@ Read AppSpec `domain.md`, requirements, flows, acceptance scenarios, and relevan
 
 ## Validation
 
-Trace every invariant to requirements and acceptance IDs. Test valid/invalid boundaries, recurrence/DST/time-zone behavior, error causes, cancellation semantics, and cross-feature output exhaustiveness.
+Trace every invariant to requirements and acceptance IDs. Test valid/invalid boundaries, stable localization-key mapping where applicable, recurrence/DST/time-zone behavior, error causes, cancellation semantics, and cross-feature output exhaustiveness.
 
 ## Escalation/hand-off
 
@@ -42,4 +43,3 @@ Hand persistence contracts to Persistence, transport contracts to Network, platf
 ## Reusable learning
 
 Propose reusable domain rules for [learned-patterns.md](references/learned-patterns.md) with evidence and migration impact; never auto-apply them.
-

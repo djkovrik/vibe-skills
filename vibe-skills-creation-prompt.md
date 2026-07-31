@@ -620,7 +620,9 @@ Atomic cross-entity replacement?
 Базовые правила UI:
 
 - каждый screen имеет loading/content/empty/error/offline/permission states, где применимо;
-- все пользовательские строки локализуемы; минимум EN/RU, если spec не переопределяет;
+- все app-bundled пользовательские строки и локализуемые поля локальных catalog/database/seed/reference datasets хранятся только в Compose Multiplatform Resources locale-specific `strings.xml`; начальный набор RU/EN расширяется добавлением locale resource set с теми же ключами;
+- domain, Store/component state, persistence, sync и seed data содержат только language-neutral IDs/stable localization keys, никогда resolved translations, per-locale columns/maps или hardcoded product copy;
+- когда Compose resources недоступны в native `actual`, Android/iOS implementation использует native localization resources со стабильными ключами и без translated literals в коде;
 - component model остаётся UI-oriented и не раскрывает Store state;
 - theme tokens централизованы;
 - light/dark variants проверяются визуально;
@@ -800,7 +802,7 @@ Atomic cross-entity replacement?
 - устаревшие Ktor engine/plugin APIs;
 - project-specific test locations, если новая module graph предлагает более естественное размещение.
 
-## Стандартизованный вход: Vibe AppSpec v1
+## Стандартизованный вход: Vibe AppSpec v1.2
 
 Создай в `vibe-developer/assets/app-spec-template/` шаблон hand-off спецификации:
 
@@ -834,12 +836,12 @@ app-spec/
 
 ```json
 {
-  "schemaVersion": "1.0",
+  "schemaVersion": "1.2",
   "app": {
     "name": "",
     "summary": "",
     "targets": ["android", "ios"],
-    "locales": ["en", "ru"]
+    "locales": ["ru", "en"]
   },
   "requirements": [
     {
@@ -868,6 +870,14 @@ app-spec/
     "accessibility": [],
     "performance": []
   },
+  "localization": {
+    "resourceSystem": "compose-multiplatform-resources",
+    "resourceFileFormat": "strings.xml",
+    "keyStrategy": "shared-key-across-locales",
+    "localDataTextStorage": "resource-keys-only",
+    "nativeFallback": "platform-localized-resources",
+    "hardcodedUserFacingStrings": false
+  },
   "openQuestions": []
 }
 ```
@@ -893,6 +903,7 @@ app-spec/
 `data.md`:
 
 - local tables/settings;
+- bundled local catalogs/seed/reference data: stable item IDs, shared localization keys, Compose `strings.xml` owner и native fallback tables; никаких translated values в persistence/seed/code;
 - remote APIs/auth;
 - offline/cache;
 - sync/conflict policy;
@@ -903,6 +914,7 @@ app-spec/
 - NFR;
 - test matrix;
 - accessibility/localization;
+- completeness shared localization keys для всех `app.locales`, locale-switch/key-mapping/persistence round-trip tests и scan hardcoded user-visible strings;
 - security/privacy;
 - release acceptance.
 
@@ -939,6 +951,7 @@ Validator должен:
 - проверять уникальность IDs;
 - проверять ссылки requirements -> acceptance scenarios -> flows/screens;
 - проверять, что capability согласована с data/flow sections;
+- для AppSpec 1.2+ проверять обязательный localization contract и соответствующие `data.md`/`quality.md` sections;
 - выдавать errors и warnings раздельно;
 - не генерировать spec и не исправлять её молча.
 

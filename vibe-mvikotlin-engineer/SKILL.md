@@ -11,7 +11,7 @@ Own Store state-machine orchestration. Do not create a Store for stateless callb
 
 ## Inputs
 
-Read the component/domain contracts and target MVIKotlin version. Use [store-decision-and-shape.md](references/store-decision-and-shape.md), [executor-reducer-result.md](references/executor-reducer-result.md), [initialization-retention-logging.md](references/initialization-retention-logging.md), and [blinkly-unwrap-pattern.md](references/blinkly-unwrap-pattern.md). Consult local paths only through the shared [source registry](../vibe-developer/references/source-registry.md).
+Read the component/domain contracts and target MVIKotlin version. Apply the shared [localization contract](../vibe-developer/references/localization-contract.md) when state represents app-bundled localized content. Use [store-decision-and-shape.md](references/store-decision-and-shape.md), [executor-reducer-result.md](references/executor-reducer-result.md), [initialization-retention-logging.md](references/initialization-retention-logging.md), and [blinkly-unwrap-pattern.md](references/blinkly-unwrap-pattern.md). Consult local paths only through the shared [source registry](../vibe-developer/references/source-registry.md).
 
 ## Workflow
 
@@ -34,6 +34,8 @@ Complex calculation or multi-source business rule -> Domain manager/engine; Stor
 
 Honor MVIKotlin's main-thread contract for accept/init/dispose, dispatch, and labels. Use the Executor lifecycle scope for async work. Treat labels as uncached one-off events. Do not persist transient loading as restored truth.
 
+Keep Store state locale-neutral for app-bundled content: carry stable domain IDs/localization keys, not resolved strings or generated Compose resource types. Map those IDs/keys at the component/presentation boundary so locale changes do not require Store reload or persistence changes.
+
 ## Validation
 
 Test reducer transitions, intents/actions, bootstrap subscriptions, result branches, cancellation, startup labels, restoration/retention, disposal, and release wiring without logging.
@@ -45,4 +47,3 @@ Hand public component mapping/lifecycle ownership to Decompose, calculations to 
 ## Reusable learning
 
 Propose reusable Store conventions for [learned-patterns.md](references/learned-patterns.md); do not apply them automatically.
-

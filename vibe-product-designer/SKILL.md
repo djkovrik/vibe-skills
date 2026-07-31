@@ -11,7 +11,7 @@ Own product UI decisions and evidence. Do not duplicate Compose API expertise or
 
 ## Inputs
 
-Read AppSpec screens/flows/assets, product constraints, current screenshots, theme/components, and accessibility/localization requirements. Before design work read [lazyweb-routing.md](references/lazyweb-routing.md). Select [design-system-and-theme.md](references/design-system-and-theme.md), [screen-states-responsive-accessibility.md](references/screen-states-responsive-accessibility.md), [compose-expert-handoff.md](references/compose-expert-handoff.md), or [design-to-golden-loop.md](references/design-to-golden-loop.md) as needed. Local evidence paths live in the shared [source registry](../vibe-developer/references/source-registry.md).
+Read AppSpec screens/flows/assets, product constraints, current screenshots, theme/components, and accessibility/localization requirements. Apply the shared [localization contract](../vibe-developer/references/localization-contract.md) to product copy and app-bundled local datasets. Before design work read [lazyweb-routing.md](references/lazyweb-routing.md). Select [design-system-and-theme.md](references/design-system-and-theme.md), [screen-states-responsive-accessibility.md](references/screen-states-responsive-accessibility.md), [compose-expert-handoff.md](references/compose-expert-handoff.md), or [design-to-golden-loop.md](references/design-to-golden-loop.md) as needed. Local evidence paths live in the shared [source registry](../vibe-developer/references/source-registry.md).
 
 ## Workflow
 
@@ -19,7 +19,7 @@ Read AppSpec screens/flows/assets, product constraints, current screenshots, the
 2. Run one `lazyweb_search` for each exact primary-screen pattern before design.
 3. Route the full task through current Lazyweb workflow guidance. For current `lazyweb-design`, use create for a new screen, improve for existing quality, or optimize for an existing conversion metric.
 4. Use screenshot upload flow for an existing full-resolution screen.
-5. Convert evidence into hierarchy, states, actions, responsive/inset rules, accessibility, localization, semantic design tokens, typography roles, and explicit text wrapping/truncation expectations.
+5. Convert evidence into hierarchy, states, actions, responsive/inset rules, accessibility, localization, semantic design tokens, typography roles, shared string-resource keys, and explicit text wrapping/truncation expectations.
 6. Inventory every interactive element before implementation. Decide `icon`, `text`, `icon + text`, or `intentionally no icon`; record semantic purpose, source, selected/unselected variants, accessibility label, and asset status. Ask the user to approve the standard icon source or provide required custom/brand assets before Compose work starts. Put unresolved material choices in blocking AppSpec `openQuestions`.
 7. Define the preview/golden matrix for every primary screen and applicable state: light and dark are mandatory; add the largest required font scale, longest supported locale, compact phone, and adaptive variants where they create distinct risk.
 8. Hand Compose API/state/effect/performance/interop mechanics to Compose Expert. Compose delivery is incomplete until deterministic preview entry points implement the approved matrix.
@@ -30,7 +30,8 @@ Read AppSpec screens/flows/assets, product constraints, current screenshots, the
 ## Decision rules
 
 - Provide loading/content/empty/error/offline/permission states where applicable.
-- Keep all strings localizable; default to EN/RU when the spec says so.
+- Keep all app-bundled user-visible strings in Compose Multiplatform Resources locale-specific `strings.xml` files, using one shared key across locales. New specs default to RU/EN unless explicitly overridden; adding a locale must not change domain or persistence schemas.
+- Keep resolved catalog translations out of Store/component/domain/persistence models. Carry stable IDs/resource references to the presentation boundary; user-authored and server-owned dynamic text remains data.
 - Keep component models UI-oriented and independent of raw Store state.
 - Centralize tokens and verify light/dark/system variants.
 - Support font scaling, touch targets, contrast, content descriptions, and reduced motion.
@@ -42,7 +43,7 @@ Read AppSpec screens/flows/assets, product constraints, current screenshots, the
 
 ## Validation
 
-Trace decisions to evidence and screen IDs. Check every state, compact/expanded layout, safe-area ownership, font loading and glyph coverage, line-count expectations, font scaling, screen reader order, contrast, touch targets, motion preference, EN/RU expansion, dark/light theme, icon inventory, preview determinism, golden coverage, Lazyweb report URLs, and disposition of every blocking finding.
+Trace decisions to evidence and screen IDs. Check every state, compact/expanded layout, safe-area ownership, production string-resource usage and locale key completeness, font loading and glyph coverage, line-count expectations, font scaling, screen reader order, contrast, touch targets, motion preference, RU/EN expansion, dark/light theme, icon inventory, preview determinism, golden coverage, Lazyweb report URLs, and disposition of every blocking finding.
 
 ## Escalation/hand-off
 

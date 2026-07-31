@@ -1,6 +1,6 @@
 ---
 name: vibe-developer
-description: Orchestrate end-to-end Kotlin Multiplatform Android/iOS application delivery from an approved Vibe AppSpec or structured implementation brief. Use for "implement this app", "build this KMP feature", "execute this AppSpec", repository-wide delivery planning, multi-specialist routing, spec-to-code convergence, or coordinated architecture, UI, previews, Paparazzi goldens, Lazyweb design review, data, platform, testing, and release work.
+description: Orchestrate end-to-end Kotlin Multiplatform Android/iOS application delivery from an approved Vibe AppSpec or structured implementation brief. Use for "implement this app", "build this KMP feature", "execute this AppSpec", repository-wide delivery planning, multi-specialist routing, spec-to-code convergence, or coordinated architecture, localization, UI, previews, Paparazzi goldens, Lazyweb design review, data, platform, testing, and release work.
 ---
 
 # Vibe Developer
@@ -18,7 +18,7 @@ For a narrow task, route directly to the owning specialist using [routing-matrix
 - explicit user decisions and constraints
 - allowed build platforms and credentials
 
-Read [app-spec-contract.md](references/app-spec-contract.md) before consuming an AppSpec. Read [source-registry.md](references/source-registry.md) only when consulting the local Blinkly/Tackle adaptations. Read [spec-kit-mapping.md](references/spec-kit-mapping.md) only when the upstream artifacts came from Spec Kit or OpenSpec.
+Read [app-spec-contract.md](references/app-spec-contract.md) before consuming an AppSpec. Read [localization-contract.md](references/localization-contract.md) whenever the app has user-visible bundled text or localized local data. Read [source-registry.md](references/source-registry.md) only when consulting the local Blinkly/Tackle adaptations. Read [spec-kit-mapping.md](references/spec-kit-mapping.md) only when the upstream artifacts came from Spec Kit or OpenSpec.
 
 ## Workflow
 
@@ -27,9 +27,9 @@ Read [app-spec-contract.md](references/app-spec-contract.md) before consuming an
 3. Inspect `git status`; preserve all user changes.
 4. Read settings/root build files, version catalog, convention plugins, platform entry points, module build files, CI, and release configuration.
 5. Map modules, source sets, dependency direction, targets, toolchains, minimum OS/API, variants, package IDs, and composition roots.
-6. Locate domain contracts, Decompose components, Stores, persistence, network, sync, platform services, ads, previews, and tests.
+6. Locate domain contracts, Decompose components, Stores, persistence, network, sync, platform services, localization resources/key mappings, ads, previews, and tests.
 7. Detect installed `vibe-*`, Compose Expert, and Lazyweb capabilities.
-8. Build a dependency-aware plan from the smallest affected subgraph. Assign one owner per change and explicit hand-offs. For product UI, make the icon/asset decision, preview matrix, golden infrastructure, and post-golden design review explicit deliverables rather than optional polish.
+8. Build a dependency-aware plan from the smallest affected subgraph. Assign one owner per change and explicit hand-offs. For localized local data, make stable IDs/keys, Compose resource ownership, native fallbacks, and key-completeness checks explicit deliverables. For product UI, make the icon/asset decision, preview matrix, golden infrastructure, and post-golden design review explicit deliverables rather than optional polish.
 9. Execute only necessary stages:
 
 ```text
@@ -72,6 +72,7 @@ Prevent overlapping edits by giving each file/change one owner. Let the orchestr
 - Route objective rendering defects that violate the AppSpec (clipping, unintended wrapping, missing glyphs, insufficient contrast, missing/incorrect icons, inconsistent tokens) back to Compose/Product Designer. Request a user decision only when a fix changes approved product intent or requires unresolved custom assets.
 - Re-record and re-verify only approved visual changes, then close or explicitly waive every blocking design-review finding with rationale.
 - Require applicable domain, Store/component, persistence/network/sync, UI golden, Android, iOS, quality, and release checks. State why any check was unavailable.
+- Require every declared locale to have a complete shared key set for app-bundled text, reject persisted/resolved translations for local catalogs, and scan production source for hardcoded user-visible strings. Native-only text must be verified in Android/iOS localization resources.
 - Treat warnings separately from failures.
 
 ## Escalation/hand-off

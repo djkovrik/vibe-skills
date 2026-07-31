@@ -18,7 +18,11 @@ Record an approved Paparazzi baseline, inspect every PNG, and require a clean ve
 
 ## Accessibility and localization
 
-Provide EN/RU labels, scalable text, and a screen-reader description.
+Provide RU/EN Compose Multiplatform `strings.xml` resources, scalable text, and a screen-reader description. Adding another `app.locales` entry must require only a matching locale resource set with the same keys, not a domain or database migration.
+
+## Localization resource checks
+
+Require equal and complete string-resource key sets for every locale in `app.locales`, valid stable-ID/key-to-`Res.string.*` mappings, RU/EN locale-switch coverage, and a production-source scan that rejects hardcoded user-visible strings. Persistence tests must prove that restart and locale changes preserve stable IDs/keys rather than resolved translations. Native `actual` text must resolve through Android/iOS localization resources and have matching locale coverage.
 
 ## Security and privacy
 

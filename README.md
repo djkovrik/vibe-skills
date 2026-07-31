@@ -25,7 +25,7 @@
 
 Работа разделена на две сессии:
 
-1. В первой сессии обычный Codex помогает провести продуктовое интервью и подготовить Vibe AppSpec v1. Код приложения на этом этапе не пишется.
+1. В первой сессии обычный Codex помогает провести продуктовое интервью и подготовить Vibe AppSpec v1.2. Код приложения на этом этапе не пишется.
 2. Спецификация проверяется локальным валидатором. Ошибки и blocking `openQuestions`, включая нерешённые custom icon/assets, нужно устранить до реализации.
 3. В отдельной сессии `$vibe-developer` получает путь к AppSpec, проводит preflight репозитория и составляет план.
 4. Оркестратор последовательно подключает нужные skills: архитектура → domain/data/platform → navigation/state → UI и icon/assets gate → previews → Paparazzi/ComposablePreviewScanner goldens → full-UI Lazyweb review → тесты и release checks.
@@ -33,7 +33,7 @@
 
 ```text
 product discovery
-  -> Vibe AppSpec v1
+  -> Vibe AppSpec v1.2
   -> validation
   -> separate $vibe-developer session
   -> implementation and specialist hand-offs
@@ -57,7 +57,7 @@ app-spec/
   assets/
 ```
 
-JSON содержит метаданные, requirements, capabilities, `uiQuality` и связи. Markdown описывает продукт, дизайн-систему и иконки, domain/data contracts, quality gates, пользовательские flows, состояния экранов и preview/golden matrix. Requirements, acceptance scenarios, flows и screens используют стабильные идентификаторы `REQ-*`, `AC-*`, `FLOW-*` и `SCREEN-*`.
+JSON содержит метаданные, requirements, capabilities, `localization`, `uiQuality` и связи. Markdown описывает продукт, дизайн-систему и иконки, domain/data contracts, локализованные локальные данные, quality gates, пользовательские flows, состояния экранов и preview/golden matrix. App-bundled переводы живут в Compose Multiplatform Resources `strings.xml` под общими ключами; domain/persistence хранят только стабильные IDs/keys, а native `actual` при необходимости использует Android/iOS localization resources. Requirements, acceptance scenarios, flows и screens используют стабильные идентификаторы `REQ-*`, `AC-*`, `FLOW-*` и `SCREEN-*`.
 
 AppSpec можно подготовить вручную, через обычный диалог с Codex, GitHub Spec Kit или OpenSpec. Эти инструменты не являются runtime-зависимостями пакета.
 

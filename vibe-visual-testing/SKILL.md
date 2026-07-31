@@ -11,12 +11,12 @@ Own deterministic visual test mechanics for every product UI delivery after the 
 
 ## Inputs
 
-Read approved screens/theme, current previews, Paparazzi/scanner configuration, and target package/source sets. Use [preview-contract.md](references/preview-contract.md), [scanner-and-test-generation.md](references/scanner-and-test-generation.md), [paparazzi-rule-and-identifiers.md](references/paparazzi-rule-and-identifiers.md), [golden-review-and-ci.md](references/golden-review-and-ci.md), and [blinkly-visual-testing-adaptation.md](references/blinkly-visual-testing-adaptation.md). Local paths live in the shared [source registry](../vibe-developer/references/source-registry.md).
+Read approved screens/theme/locales, current previews, Paparazzi/scanner configuration, and target package/source sets. Apply the shared [localization contract](../vibe-developer/references/localization-contract.md). Use [preview-contract.md](references/preview-contract.md), [scanner-and-test-generation.md](references/scanner-and-test-generation.md), [paparazzi-rule-and-identifiers.md](references/paparazzi-rule-and-identifiers.md), [golden-review-and-ci.md](references/golden-review-and-ci.md), and [blinkly-visual-testing-adaptation.md](references/blinkly-visual-testing-adaptation.md). Local paths live in the shared [source registry](../vibe-developer/references/source-registry.md).
 
 ## Workflow
 
 1. Reconcile AppSpec screens/states with preview declarations. Fail the hand-off when a primary screen or applicable state lacks light and dark previews; require risk-based font-scale, longest-locale, and adaptive variants declared by Product Designer.
-2. Create deterministic preview components/data with no real services, clocks, random values, network, database, permissions, ads, or native SDK dependencies.
+2. Create deterministic preview components/data with no real services, clocks, random values, network, database, permissions, ads, or native SDK dependencies. Resolve bundled copy through production Compose string resources; fixture data carries stable IDs/keys, not convenient translated literals.
 3. Ensure the project has a dedicated or clearly isolated Android-host screenshot-test surface with current compatible Paparazzi and ComposablePreviewScanner dependencies.
 4. Scope preview scanning to project packages and required source sets.
 5. Cache the discovered preview list and generate stable parameterized test source before test compilation.
@@ -40,7 +40,7 @@ Read approved screens/theme, current previews, Paparazzi/scanner configuration, 
 
 ## Validation
 
-Verify screen/state matrix completeness, light/dark coverage, declared font-scale/locale/device variants, generator determinism, compile dependency, stable IDs, filename encoding, package scope, each approved variant, record output, verify failure behavior, coverage inventory, Product Designer hand-off, CI artifacts, and Git LFS configuration.
+Verify screen/state matrix completeness, light/dark coverage, production resource resolution and declared locale key completeness, font-scale/locale/device variants, generator determinism, compile dependency, stable IDs, filename encoding, package scope, each approved variant, record output, verify failure behavior, coverage inventory, Product Designer hand-off, CI artifacts, and Git LFS configuration.
 
 ## Escalation/hand-off
 

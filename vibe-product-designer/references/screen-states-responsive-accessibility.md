@@ -5,6 +5,7 @@ For every screen decide applicability of loading, content, empty, error, offline
 - Assign each safe-area/system inset to one owner.
 - Design compact and expanded widths plus portrait/landscape where supported.
 - Test large font scale, long EN/RU strings, RTL when required, keyboard, and screen reader order.
+- Use production Compose `strings.xml` resources and identical keys across declared locales for app-bundled copy and local catalog text; never replace them with hardcoded preview labels.
 - Use semantic headings, roles, labels, state descriptions, focus order, and minimum touch targets.
 - Never encode meaning only by color.
 - Respect reduced motion and avoid time-limited interaction without alternatives.
