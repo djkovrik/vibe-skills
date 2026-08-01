@@ -1,13 +1,13 @@
 ---
 name: vibe-mvikotlin-engineer
-description: Decide whether a Kotlin Multiplatform feature needs MVIKotlin and design or review its Intent, Action, Msg, State, Label, StoreProvider, coroutine Executor, pure Reducer, startup initialization, Result mapping, retention, lifecycle, and debug logging. Use for observable state, async work, bootstrap subscriptions, resume-aware behavior, retained Stores, or Store-level orchestration.
+description: Design and review Kotlin Multiplatform MVIKotlin Stores for every Decompose component with a UI-visible model, including Intent, Action, Msg, State, Label, StoreProvider, Manager-mediated data access, Kotlin Result/unwrap handling, coroutine Executor, pure Reducer, startup initialization, retention, lifecycle, mapping, and debug logging. Use for observable component state, async work, bootstrap subscriptions, resume-aware behavior, or Store-level orchestration.
 ---
 
 # Vibe MVIKotlin Engineer
 
 ## When to use
 
-Own Store state-machine orchestration. Do not create a Store for stateless callbacks or keep complex business calculations inside the Store.
+Own Store state-machine orchestration. Every production Decompose `Value<Model>` is Store-backed; do not create a Store for a component with only stateless callbacks/outputs or keep complex business calculations inside the Store.
 
 ## Inputs
 
@@ -15,22 +15,24 @@ Read the component/domain contracts and target MVIKotlin version. Apply the shar
 
 ## Workflow
 
-1. Apply the Store decision gate.
+1. Apply the Store decision gate: a UI-visible component model requires a Store; a truly stateless callback/output component does not.
 2. Keep the Store module-internal and model raw feature/domain state.
 3. Define Intent/Action/Msg/State/Label and a provider with a fresh stateful Executor.
 4. Put side effects/subscriptions in Executor and state changes in a pure Reducer.
-5. Map manager `Result` values with explicit success/failure/cancellation behavior.
+5. Put data/external calls behind a feature Manager, return standard Kotlin `Result<T>` built with `runCatching`, and map it in the Executor through the shared cancellation-aware `unwrap` helper.
 6. Subscribe to startup labels before `init()` when required.
-7. Retain the Store through InstanceKeeper and map state to the component model.
+7. Retain the Store through InstanceKeeper and expose `store.asValue().map(stateToModel)`; never duplicate its state in a production `MutableValue`.
 8. Enable logging only in debug wiring.
 
 ## Decision rules
 
 ```text
-Stateless callback/output -> no Store; use Decompose.
-Observable state, async/bootstrap/flow/resume behavior -> retained Store.
+Stateless callback/output with no UI-visible model -> no Store; use Decompose.
+Production Value<Model>, async/bootstrap/flow/resume behavior -> retained Store.
 Complex calculation or multi-source business rule -> Domain manager/engine; Store orchestrates.
 ```
+
+Use `Result<T>` from the Kotlin standard library. Do not introduce a generic custom `Success`/`Failure` wrapper that merely duplicates Kotlin `Result`; keep sealed outcomes only when their cases are domain data rather than exception transport. A Store must not call a repository/data source directly. Its Manager owns data calls, mapping/calculation, and the `runCatching` boundary; if a lower layer already returns `Result<T>`, consume it with `getOrThrow()` inside the Manager boundary rather than returning `Result<Result<T>>`.
 
 Honor MVIKotlin's main-thread contract for accept/init/dispose, dispatch, and labels. Use the Executor lifecycle scope for async work. Treat labels as uncached one-off events. Do not persist transient loading as restored truth.
 
@@ -40,7 +42,7 @@ Do not add `selectedLocale` state, language-selection intents, or locale-overrid
 
 ## Validation
 
-Test reducer transitions, intents/actions, bootstrap subscriptions, result branches, cancellation, startup labels, restoration/retention, disposal, and release wiring without logging.
+Test reducer transitions, intents/actions, bootstrap subscriptions, Manager result branches, nullable successes, cancellation rethrow, State-to-Model mapping, startup labels, restoration/retention, disposal, and release wiring without logging.
 
 ## Escalation/hand-off
 

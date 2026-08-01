@@ -1,5 +1,5 @@
 {
-  "schemaVersion": "1.2",
+  "schemaVersion": "1.3",
   "app": {
     "name": "Example App",
     "summary": "A validated hand-off example.",
@@ -42,6 +42,18 @@
     "localDataTextStorage": "resource-keys-only",
     "nativeFallback": "platform-localized-resources",
     "hardcodedUserFacingStrings": false
+  },
+  "architecture": {
+    "resultType": "kotlin-result",
+    "componentModel": "immutable-value",
+    "stateOwner": "mvikotlin-store",
+    "stateMapping": "store-state-to-component-model",
+    "storeDataAccess": "manager-result-unwrap",
+    "managerResultCapture": "runCatching",
+    "previewComponent": "separate-preview-implementation",
+    "componentModuleStrategy": "screen-or-flow-boundary",
+    "screenshotTestHost": "compose-ui-module",
+    "screenshotTestHostRationale": "The Compose module owns production previews, theme, fonts, resources, generated Android unit tests, and snapshots."
   },
   "uiQuality": {
     "previewThemes": ["light", "dark"],

@@ -7,6 +7,7 @@
 - [Identifiers and links](#identifiers-and-links)
 - [UI quality contract](#ui-quality-contract)
 - [Localization contract](#localization-contract)
+- [Architecture contract](#architecture-contract)
 - [Validation](#validation)
 
 ## Boundary
@@ -28,7 +29,7 @@ app-spec/
   assets/
 ```
 
-`app-spec.json` declares app metadata, requirements, flow/screen IDs, capabilities, constraints, localization, UI quality gates, and open questions. Additional fields are allowed. Reject any schema major other than `1`. `design.md` and `uiQuality` are required for AppSpec 1.1+; `localization` and the localized-text Markdown contract are required for AppSpec 1.2+. Accept older 1.x specs as legacy inputs but surface their missing contracts.
+`app-spec.json` declares app metadata, requirements, flow/screen IDs, capabilities, constraints, localization, architecture, UI quality gates, and open questions. Additional fields are allowed. Reject any schema major other than `1`. `design.md` and `uiQuality` are required for AppSpec 1.1+; `localization` and the localized-text Markdown contract are required for AppSpec 1.2+; `architecture` is required for AppSpec 1.3+. Accept older 1.x specs as legacy inputs but surface their missing contracts.
 
 The Markdown files define product intent, design direction, domain semantics, data contracts, quality gates, flows, acceptance scenarios, screen states, accessibility, localization, iconography/assets, preview/golden coverage, and allowed monetization slots.
 
@@ -66,6 +67,20 @@ For AppSpec 1.2+:
 - `quality.md` contains `Localization resource checks` covering locale key completeness, valid key mapping, system-locale changes and English fallback, absence of an in-app selector/persisted locale, persistence of IDs/keys rather than translations, and hardcoded-string detection.
 
 Apply the detailed [localized local text contract](localization-contract.md). User-authored and server-owned dynamic content remains data; app-bundled translatable copy remains a resource.
+
+## Architecture contract
+
+For AppSpec 1.3+:
+
+- use standard Kotlin `Result<T>` instead of a generic app-specific Success/Failure wrapper;
+- make every production Decompose `Value<Model>` immutable and Store-backed through a dedicated `State -> Model` mapper; router-owned `Value<Child*>` is excluded;
+- route Store data/external work through a feature Manager that creates one `Result<T>` with `runCatching`; the Executor consumes it through a shared cancellation-aware `unwrap`;
+- provide a sibling Preview component implementation when Compose previews need deterministic data;
+- use a screen or cohesive flow as the default component-module boundary, with documented grouping exceptions;
+- host Paparazzi/ComposablePreviewScanner in the Compose UI/resource-owning module by default. A dedicated screenshot module requires an explicit aggregation or plugin/source-set rationale.
+- add `quality.md` `Architecture checks` covering these constraints and any documented module/screenshot-host exceptions.
+
+The `architecture.screenshotTestHost` value records the selected host. `architecture.screenshotTestHostRationale` records why it is correct for the target graph; the template selects `compose-ui-module`.
 
 ## Validation
 

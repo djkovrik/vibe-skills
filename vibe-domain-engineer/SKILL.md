@@ -19,7 +19,7 @@ Read AppSpec `domain.md`, requirements, flows, acceptance scenarios, and relevan
 2. Model entities/value objects and narrow external interfaces in common code.
 3. Separate pure calculation from side effects and presentation state.
 4. Put stable cross-source calculations behind manager/engine/provider contracts.
-5. Represent recoverable boundaries with explicit `Result`/sealed outcomes while preserving causes.
+5. Use standard Kotlin `Result<T>` for exception-bearing operation boundaries and sealed outcomes only for meaningful domain alternatives; preserve causes.
 6. Add table-driven and boundary tests, including multiple time zones where applicable.
 
 ## Decision rules
@@ -29,6 +29,8 @@ Read AppSpec `domain.md`, requirements, flows, acceptance scenarios, and relevan
 - Inject clock/time-zone abstractions.
 - Keep calculation deterministic and side effects outside pure functions.
 - Use typed events/errors with actionable root/presentation semantics.
+- Do not introduce a generic custom `Success`/`Failure` wrapper that duplicates Kotlin `Result`.
+- Put feature-facing data/external orchestration in Manager methods that return one `Result<T>` via `runCatching`; avoid nested `Result<Result<T>>`.
 - Never swallow exceptions in empty `catch` or `.catch {}` blocks.
 - If a Store becomes a calculation engine, move the calculation here and leave Store orchestration.
 

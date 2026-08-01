@@ -27,9 +27,9 @@ Read [app-spec-contract.md](references/app-spec-contract.md) before consuming an
 3. Inspect `git status`; preserve all user changes.
 4. Read settings/root build files, version catalog, convention plugins, platform entry points, module build files, CI, and release configuration.
 5. Map modules, source sets, dependency direction, targets, toolchains, minimum OS/API, variants, package IDs, and composition roots.
-6. Locate domain contracts, Decompose components, Stores, persistence, network, sync, platform services, localization resources/key mappings, ads, previews, and tests.
+6. Locate domain contracts, Decompose components, Stores, Managers, persistence, network, sync, platform services, localization resources/key mappings, preview component implementations, screenshot host, and tests.
 7. Detect installed `vibe-*`, Compose Expert, and Lazyweb capabilities.
-8. Build a dependency-aware plan from the smallest affected subgraph. Assign one owner per change and explicit hand-offs. For localized local data, make stable IDs/keys, Compose resource ownership, native fallbacks, and key-completeness checks explicit deliverables. For product UI, make the icon/asset decision, preview matrix, golden infrastructure, and post-golden design review explicit deliverables rather than optional polish.
+8. Build a dependency-aware plan from the smallest affected subgraph. Assign one owner per change and explicit hand-offs. For every production component `Value<Model>`, require `Default component -> retained Store -> State-to-Model mapper -> immutable Value<Model>`; data-facing Stores use Managers, standard Kotlin `Result`, and cancellation-aware `unwrap`. For localized local data, make stable IDs/keys, Compose resource ownership, native fallbacks, and key-completeness checks explicit deliverables. For product UI, make component-module ownership, the Preview implementation, icon/asset decision, preview matrix, Compose-owned golden infrastructure, and post-golden design review explicit deliverables rather than optional polish.
 9. Execute only necessary stages:
 
 ```text
@@ -68,6 +68,8 @@ Prevent overlapping edits by giving each file/change one owner. Let the orchestr
 - Redirect stdout/stderr to a UTF-8 log. On success report only the task and exit code. On failure inspect the tail and targeted matches before requesting verbose diagnostics.
 - Do not update goldens until the visual difference is approved.
 - Treat product UI as incomplete until every primary screen and applicable state has deterministic light/dark previews, the required font-scale/locale/device stress variants exist, ComposablePreviewScanner-generated Paparazzi tests compile, approved goldens are recorded, and verification passes.
+- Reject custom generic Success/Failure wrappers that duplicate Kotlin `Result`, production `MutableValue<Model>` state outside a Store, stateful components that call repositories directly, and nested `Result<Result<T>>` Manager boundaries.
+- Host screenshot testing in the Compose UI/resource-owning module by default; require a written build/aggregation constraint for a dedicated screenshot module.
 - After recording approved goldens, require Product Designer to run the current Lazyweb review workflow across the declared primary-screen/flow coverage. Do not claim a full-app review when only one screen was reviewed.
 - Route objective rendering defects that violate the AppSpec (clipping, unintended wrapping, missing glyphs, insufficient contrast, missing/incorrect icons, inconsistent tokens) back to Compose/Product Designer. Request a user decision only when a fix changes approved product intent or requires unresolved custom assets.
 - Re-record and re-verify only approved visual changes, then close or explicitly waive every blocking design-review finding with rationale.

@@ -281,6 +281,8 @@ AppSpec validation
 - dependencies собираются в composition root через interfaces, dependency interfaces, top-level factories и `by lazy`;
 - не вводи DI-framework без явного требования;
 - не передавай service dependencies в сериализуемые Decompose configs;
+- screen-level Decompose component или cohesive flow по умолчанию получает отдельный component module с contract/Default/Preview/Store/Manager/mapper; группировку thin leaves документируй как exception;
+- Paparazzi/ComposablePreviewScanner по умолчанию живут в Compose UI/resource-owning module; dedicated screenshot module разрешён только для aggregation или подтверждённой plugin/source-set incompatibility;
 - версии извлекай из проекта; новые версии проверяй по официальным источникам;
 - держи Android и iOS startup ordering явным;
 - для native SDK проверяй Gradle artifact, Podfile, lockfile и Xcode linkage как один контракт;
@@ -346,9 +348,11 @@ AppSpec validation
 - navigation и root creation выполняются на main/UI thread;
 - navigation properties создаются один раз, а не через computed getter;
 - при click navigation предпочитай операции, устойчивые к double click;
-- callback-only feature остаётся thin component;
-- retained Store используй только при state/async/resume needs;
-- mapper отделяет raw Store state от component model;
+- callback-only feature без UI-visible model остаётся thin component;
+- каждый production `Value<Model>` получает retained Store; production component не мутирует `MutableValue<Model>` и не вызывает repository напрямую;
+- mapper отделяет raw Store state от immutable component model и exposes `store.asValue().map(stateToModel)`;
+- Store data access проходит через feature Manager;
+- sibling `*ComponentPreview` может использовать static `MutableValue`, но не Store, `ComponentContext`, Manager или production services;
 - labels подписывай до `store.init()`, если bootstrapper способен синхронно выдать startup label.
 
 Создай references:
@@ -374,10 +378,10 @@ AppSpec validation
 Decision gate:
 
 ```text
-Только stateless callback/output?
+Только stateless callback/output без UI-visible `Value<Model>`?
   -> Store не нужен.
 
-Есть observable state, async work, bootstrap, flow subscription
+Есть production `Value<Model>`, observable state, async work, bootstrap, flow subscription
 или resume-aware behavior?
   -> retained MVIKotlin Store.
 
@@ -392,7 +396,9 @@ Store выполняет сложные расчёты или объединяе
 - Reducer — pure object;
 - main-thread contract MVIKotlin обязателен;
 - `CoroutineExecutor.scope` отвечает за lifecycle async work;
-- `Result` разворачивай централизованным helper, аналогичным Blinkly `unwrap`, с явными success/failure branches;
+- не создавай generic custom Success/Failure wrapper: используй standard Kotlin `Result<T>`;
+- data/external calls Store выполняет только через feature Manager, который создаёт один flat `Result<T>` через `runCatching`;
+- `Result` разворачивай централизованным helper, аналогичным Blinkly `unwrap`, с явными success/failure/cancellation branches и корректным nullable success;
 - не копируй `unwrap` вслепую: адаптируй package, error policy и cancellation semantics;
 - при startup labels используй `autoInit = false`, сначала undistpatched label collector, затем `init()`;
 - retain Store через `instanceKeeper.getStore`;
@@ -647,6 +653,7 @@ Atomic cross-entity replacement?
 - preview components и deterministic fake data;
 - `@Preview` coverage;
 - ComposablePreviewScanner;
+- host Paparazzi/ComposablePreviewScanner in the Compose UI/resource-owning module by default; require a documented aggregation or plugin/source-set constraint for a dedicated screenshot-test module;
 - generated parameterized Paparazzi tests;
 - stable screenshot IDs;
 - record/verify workflow;
@@ -769,7 +776,8 @@ Atomic cross-entity replacement?
 - shared Compose UI для Android/iOS;
 - ручная DI через module interface, dependencies interface, top-level factory и `by lazy`;
 - отдельный platform root factory;
-- feature modules с component contract/default/preview, integration mapper, optional Store и manager;
+- feature modules с component contract/default/preview, integration mapper, Store for every UI-visible production model, and manager-mediated data access;
+- standard Kotlin `Result<T>` + Manager `runCatching` + cancellation-aware Executor `unwrap`, without custom generic Success/Failure wrappers or nested Results;
 - thin components без Store для callback-only экранов;
 - Store state -> mapper -> component model;
 - retained Stores через InstanceKeeper;
@@ -782,7 +790,7 @@ Atomic cross-entity replacement?
 - notifications/alarms с логическим schedule и физическими alarm instances;
 - permission state machines и re-check на resume;
 - theme, localization, ads host и privacy-first ad request;
-- preview scanner -> generated Paparazzi parameterized tests -> CI verify;
+- Compose-owned preview scanner -> generated Paparazzi parameterized tests -> CI verify;
 - Detekt Compose/Decompose rules, Kover и CI quality gates;
 - centralized component integration tests.
 
@@ -803,7 +811,7 @@ Atomic cross-entity replacement?
 - устаревшие Ktor engine/plugin APIs;
 - project-specific test locations, если новая module graph предлагает более естественное размещение.
 
-## Стандартизованный вход: Vibe AppSpec v1.2
+## Стандартизованный вход: Vibe AppSpec v1.3
 
 Создай в `vibe-developer/assets/app-spec-template/` шаблон hand-off спецификации:
 
@@ -837,7 +845,7 @@ app-spec/
 
 ```json
 {
-  "schemaVersion": "1.2",
+  "schemaVersion": "1.3",
   "app": {
     "name": "",
     "summary": "",
@@ -880,6 +888,18 @@ app-spec/
     "localDataTextStorage": "resource-keys-only",
     "nativeFallback": "platform-localized-resources",
     "hardcodedUserFacingStrings": false
+  },
+  "architecture": {
+    "resultType": "kotlin-result",
+    "componentModel": "immutable-value",
+    "stateOwner": "mvikotlin-store",
+    "stateMapping": "store-state-to-component-model",
+    "storeDataAccess": "manager-result-unwrap",
+    "managerResultCapture": "runCatching",
+    "previewComponent": "separate-preview-implementation",
+    "componentModuleStrategy": "screen-or-flow-boundary",
+    "screenshotTestHost": "compose-ui-module",
+    "screenshotTestHostRationale": "The Compose module owns previews, resources, generated Android tests, and snapshots."
   },
   "openQuestions": []
 }
@@ -955,6 +975,8 @@ Validator должен:
 - проверять ссылки requirements -> acceptance scenarios -> flows/screens;
 - проверять, что capability согласована с data/flow sections;
 - для AppSpec 1.2+ проверять обязательный localization contract и соответствующие `data.md`/`quality.md` sections;
+- для AppSpec 1.3+ проверять обязательный architecture contract для Kotlin Result, Store-backed component models, Manager/unwrap, Preview implementations, component module strategy и screenshot-test host;
+- для AppSpec 1.3+ требовать `quality.md` section `## Architecture checks`;
 - выдавать errors и warnings раздельно;
 - не генерировать spec и не исправлять её молча.
 

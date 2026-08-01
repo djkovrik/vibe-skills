@@ -25,7 +25,7 @@
 
 Работа разделена на две сессии:
 
-1. В первой сессии обычный Codex помогает провести продуктовое интервью и подготовить Vibe AppSpec v1.2. Код приложения на этом этапе не пишется.
+1. В первой сессии обычный Codex помогает провести продуктовое интервью и подготовить Vibe AppSpec v1.3. Код приложения на этом этапе не пишется.
 2. Спецификация проверяется локальным валидатором. Ошибки и blocking `openQuestions`, включая нерешённые custom icon/assets, нужно устранить до реализации.
 3. В отдельной сессии `$vibe-developer` получает путь к AppSpec, проводит preflight репозитория и составляет план.
 4. Оркестратор последовательно подключает нужные skills: архитектура → domain/data/platform → navigation/state → UI и icon/assets gate → previews → Paparazzi/ComposablePreviewScanner goldens → full-UI Lazyweb review → тесты и release checks.
@@ -33,7 +33,7 @@
 
 ```text
 product discovery
-  -> Vibe AppSpec v1.2
+  -> Vibe AppSpec v1.3
   -> validation
   -> separate $vibe-developer session
   -> implementation and specialist hand-offs

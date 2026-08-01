@@ -91,6 +91,7 @@ def main() -> int:
     capabilities = data.get("capabilities")
     constraints = data.get("constraints")
     localization = data.get("localization")
+    architecture = data.get("architecture")
     ui_quality = data.get("uiQuality")
     for key, value, kind in (
         ("app", app, dict),
@@ -123,6 +124,7 @@ def main() -> int:
 
     requires_ui_contract = version_major == 1 and version_minor >= 1
     requires_localization_contract = version_major == 1 and version_minor >= 2
+    requires_architecture_contract = version_major == 1 and version_minor >= 3
     if requires_ui_contract:
         design_path = root / "design.md"
         expect(design_path.is_file(), "Missing required file for AppSpec 1.1+: design.md", errors)
@@ -156,6 +158,22 @@ def main() -> int:
                 "localization.defaultLocale must be included in app.locales",
                 errors,
             )
+
+    if requires_architecture_contract:
+        expect(
+            isinstance(architecture, dict),
+            "architecture must be an object for AppSpec 1.3+",
+            errors,
+        )
+    elif version_major == 1 and not isinstance(architecture, dict):
+        warnings.append(
+            "Legacy AppSpec has no architecture contract; Kotlin Result boundaries, Store-backed component "
+            "models, Manager/unwrap data access, preview implementations, component modules, and screenshot "
+            "host ownership must be derived and confirmed during implementation"
+        )
+
+    if isinstance(architecture, dict):
+        validate_architecture(architecture, errors)
 
     open_questions = data.get("openQuestions")
     if isinstance(open_questions, list):
@@ -310,6 +328,14 @@ def main() -> int:
             errors,
         )
 
+    if requires_architecture_contract:
+        quality_text = read_utf8(root / "quality.md", errors)
+        expect(
+            "## Architecture checks" in quality_text,
+            "quality.md must contain ## Architecture checks for AppSpec 1.3+",
+            errors,
+        )
+
     if data.get("openQuestions"):
         warnings.append("openQuestions is not empty; resolve material product decisions before implementation")
 
@@ -427,6 +453,41 @@ def validate_localization(
             f"localization.{key} must be {value!r}",
             errors,
         )
+
+
+def validate_architecture(
+    architecture: dict[str, object],
+    errors: list[str],
+) -> None:
+    expected = {
+        "resultType": "kotlin-result",
+        "componentModel": "immutable-value",
+        "stateOwner": "mvikotlin-store",
+        "stateMapping": "store-state-to-component-model",
+        "storeDataAccess": "manager-result-unwrap",
+        "managerResultCapture": "runCatching",
+        "previewComponent": "separate-preview-implementation",
+        "componentModuleStrategy": "screen-or-flow-boundary",
+    }
+    for key, value in expected.items():
+        expect(
+            architecture.get(key) == value,
+            f"architecture.{key} must be {value!r}",
+            errors,
+        )
+
+    host = architecture.get("screenshotTestHost")
+    expect(
+        host in {"compose-ui-module", "dedicated-android-host-module"},
+        "architecture.screenshotTestHost must be compose-ui-module or dedicated-android-host-module",
+        errors,
+    )
+    rationale = architecture.get("screenshotTestHostRationale")
+    expect(
+        isinstance(rationale, str) and len(rationale.strip()) >= 20,
+        "architecture.screenshotTestHostRationale must explain the target-specific ownership decision",
+        errors,
+    )
 
 
 def report(errors: list[str], warnings: list[str]) -> int:

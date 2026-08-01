@@ -24,6 +24,10 @@ Provide default EN and additional RU Compose Multiplatform `strings.xml` resourc
 
 Require a complete default EN key set and equal key coverage for every additional locale in `app.locales`, valid stable-ID/key-to-`Res.string.*` mappings, system-locale-driven EN/RU changes and unsupported-locale-to-EN fallback, and a production-source scan that rejects hardcoded user-visible strings. Assert that no language picker, locale preference key, or app-specific locale override exists. Persistence tests must prove that restart and system-locale changes preserve stable IDs/keys rather than resolved translations. Native `actual` text must resolve through Android/iOS localization resources and have matching locale coverage.
 
+## Architecture checks
+
+Reject custom generic Success/Failure wrappers, production `MutableValue<Model>` state outside previews/tests, stateful components that call repositories directly, Stores that bypass Managers, nested `Result<Result<T>>`, and `unwrap` implementations that lose nullable successes or swallow cancellation. Verify each screen/flow component-module boundary or documented grouping exception. Keep Paparazzi/ComposablePreviewScanner in the Compose UI/resource-owning module; a dedicated screenshot module requires an explicit aggregation or plugin/source-set rationale.
+
 ## Security and privacy
 
 Do not log the selected value.

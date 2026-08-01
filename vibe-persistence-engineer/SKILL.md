@@ -16,7 +16,7 @@ Read AppSpec data/privacy/offline/localization rules and current schema/settings
 ## Workflow
 
 1. Choose SQLDelight, Settings, or both.
-2. Define domain persistence contracts before implementations.
+2. Define domain persistence contracts before implementations. Use plain values/flows or standard Kotlin `Result<T>` for an intentional repository failure boundary; never add an app-specific generic Success/Failure wrapper.
 3. Add schema/queries/migrations or typed setting keys/defaults/codecs.
 4. For bundled localized datasets, persist only stable item IDs/resource keys and keep every translation in Compose `strings.xml` resources.
 5. Implement mappers, adapters, drivers, dispatchers, and transactions.
@@ -37,6 +37,8 @@ Do not expose generated entities. Use stable timestamp/enum/collection encodings
 Do not store resolved translations, per-locale text columns, or translation maps for app-bundled catalogs. Translation changes must not require a database/settings migration; only stable IDs or localization keys cross the persistence boundary.
 
 Do not create a language/locale setting or migrate one forward. Locale selection is system-only and has no persistence contract.
+
+Do not let MVIKotlin Stores or stateful Decompose components call persistence repositories directly. A feature Manager owns the data call and exposes a single Kotlin `Result<T>`; when the repository already returns `Result<T>`, the Manager flattens it with `getOrThrow()` inside its `runCatching` boundary.
 
 ## Validation
 

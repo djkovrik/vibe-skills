@@ -17,7 +17,7 @@ Read acceptance IDs, public contracts, owner-specific decision records, current 
 
 1. Map acceptance scenarios and risks to the smallest test layer.
 2. Build deterministic fakes/fixtures and injected dispatchers/clock.
-3. Cover pure rules, then Store/component behavior through public contracts.
+3. Cover pure rules and Managers, then Store/component behavior through public contracts and the Store-State-to-component-Model mapping.
 4. Reproduce lifecycle and virtual-time transitions explicitly.
 5. Cover persistence/network/sync contract and failure paths.
 6. For app-bundled localized text, verify that English is the complete default/base resource set, compare key sets across every additional `app.locales` resource set, exercise ID/key mappings, system-locale changes and unsupported-locale-to-English fallback, assert the absence of a language picker/persisted locale/app override, and scan production source/seed data for hardcoded user-visible copy.
@@ -28,6 +28,8 @@ Read acceptance IDs, public contracts, owner-specific decision records, current 
 - Prefer real `DefaultStoreFactory`, `DefaultComponentContext`, controlled lifecycle, and test dispatchers for component behavior.
 - Disable MVIKotlin main-thread assertions only in test setup and restore them in teardown.
 - Assert component outputs/models/navigation, not Store internals from component tests.
+- For every production component `Value<Model>`, verify that callbacks drive Store transitions and mapped models; flag direct repository access or production `MutableValue` mutation as an architecture violation.
+- Cover Manager Kotlin `Result` success, failure, nullable success, cause preservation, and cancellation; cover Executor `unwrap` branches without custom generic result wrappers.
 - Preserve and assert failure causes.
 - Use real SQLDelight schema/test driver, Ktor MockEngine, and sanitized JSON fixtures.
 - Assert that persistence/Store/component fixtures keep stable IDs or localization keys rather than resolved translations; use production resources when the displayed copy itself matters.

@@ -8,6 +8,8 @@
 - Introduce a module only when it creates an enforceable ownership, dependency, build, or test boundary.
 - Reject cycles and “shared-utils” dumping grounds.
 
+For screen-level Decompose architecture, default to a component module per screen or cohesive nested flow. Let it own the public component contract, `integration/*Default`, optional `integration/*Preview`, Store, feature Manager/domain data, mapper, and focused wiring. Group only trivial callback-only leaves or inseparable screens when a separate module would enforce no boundary, and document that decision.
+
 Inspect current Kotlin Multiplatform structure before editing:
 
 - https://kotlinlang.org/docs/multiplatform/multiplatform-discover-project.html
@@ -15,5 +17,4 @@ Inspect current Kotlin Multiplatform structure before editing:
 
 ## Blinkly adaptation
 
-Blinkly demonstrates platform app -> root factory -> components -> domain interfaces, with database/settings/notifier/alarm/compose modules around those contracts. Treat its layout as evidence, not a required naming scheme. Resolve paths through the shared source registry.
-
+Blinkly demonstrates platform app -> root factory -> screen/flow component modules -> domain interfaces, with database/settings/notifier/alarm/compose modules around those contracts. Its `shared/component/**` graph is evidence for per-component ownership, not a required directory name. Resolve paths through the shared source registry.
