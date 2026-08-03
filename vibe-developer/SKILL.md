@@ -1,6 +1,6 @@
 ---
 name: vibe-developer
-description: Orchestrate end-to-end Kotlin Multiplatform Android/iOS application delivery from an approved Vibe AppSpec or structured implementation brief. Use for "implement this app", "build this KMP feature", "execute this AppSpec", repository-wide delivery planning, multi-specialist routing, spec-to-code convergence, or coordinated architecture, localization, UI, previews, Paparazzi goldens, Lazyweb design review, data, platform, testing, and release work.
+description: Orchestrate end-to-end Kotlin Multiplatform Android/iOS application delivery from an approved Vibe AppSpec or structured implementation brief. Use for "implement this app", "build this KMP feature", "execute this AppSpec", repository-wide delivery planning, multi-specialist routing, spec-to-code convergence, or coordinated architecture, localization, UI, previews, Paparazzi goldens, Lazyweb design review, data, platform, testing, CI, and release automation.
 ---
 
 # Vibe Developer
@@ -18,7 +18,7 @@ For a narrow task, route directly to the owning specialist using [routing-matrix
 - explicit user decisions and constraints
 - allowed build platforms and credentials
 
-Read [app-spec-contract.md](references/app-spec-contract.md) before consuming an AppSpec. Read [localization-contract.md](references/localization-contract.md) whenever the app has user-visible bundled text or localized local data. Read [source-registry.md](references/source-registry.md) only when consulting the local Blinkly/Tackle adaptations. Read [spec-kit-mapping.md](references/spec-kit-mapping.md) only when the upstream artifacts came from Spec Kit or OpenSpec.
+Read [app-spec-contract.md](references/app-spec-contract.md) before consuming an AppSpec. Read [localization-contract.md](references/localization-contract.md) whenever the app has user-visible bundled text or localized local data. Read [ci-release-contract.md](references/ci-release-contract.md) before the late-stage CI/release pass. Read [source-registry.md](references/source-registry.md) only when consulting the local Blinkly/Tackle adaptations. Read [spec-kit-mapping.md](references/spec-kit-mapping.md) only when the upstream artifacts came from Spec Kit or OpenSpec.
 
 ## Workflow
 
@@ -29,7 +29,7 @@ Read [app-spec-contract.md](references/app-spec-contract.md) before consuming an
 5. Map modules, source sets, dependency direction, targets, toolchains, minimum OS/API, variants, package IDs, and composition roots.
 6. Locate domain contracts, Decompose components, Stores, Managers, persistence, network, sync, platform services, localization resources/key mappings, preview component implementations, screenshot host, and tests.
 7. Detect installed `vibe-*`, Compose Expert, and Lazyweb capabilities.
-8. Build a dependency-aware plan from the smallest affected subgraph. Assign one owner per change and explicit hand-offs. For every production component `Value<Model>`, require `Default component -> retained Store -> State-to-Model mapper -> immutable Value<Model>`; data-facing Stores use Managers, standard Kotlin `Result`, and cancellation-aware `unwrap`. For localized local data, make stable IDs/keys, Compose resource ownership, native fallbacks, and key-completeness checks explicit deliverables. For product UI, make component-module ownership, the Preview implementation, icon/asset decision, preview matrix, Compose-owned golden infrastructure, and post-golden design review explicit deliverables rather than optional polish.
+8. Build a dependency-aware plan from the smallest affected subgraph. Assign one owner per change and explicit hand-offs. For every production component `Value<Model>`, require `Default component -> retained Store -> State-to-Model mapper -> immutable Value<Model>`; data-facing Stores use Managers, standard Kotlin `Result`, and cancellation-aware `unwrap`. For localized local data, make stable IDs/keys, Compose resource ownership, native fallbacks, and key-completeness checks explicit deliverables. For product UI, make component-module ownership, the Preview implementation, icon/asset decision, preview matrix, Compose-owned golden infrastructure, and post-golden design review explicit deliverables rather than optional polish. Make the adapted baseline workflows and repository setup guide explicit late-stage deliverables owned by Project Architect.
 9. Execute only necessary stages:
 
 ```text
@@ -39,12 +39,14 @@ AppSpec validation -> repository preflight -> architecture
 -> Decompose -> MVIKotlin -> Compose -> monetization
 -> non-visual tests -> previews -> Paparazzi/scanner -> approved goldens
 -> full-UI Lazyweb review -> approved fixes and golden re-verification
+-> Detekt/Kover/build readiness gate -> baseline CI/release automation
 -> quality/platform/release checks
 ```
 
-10. Run targeted checks first. Use `scripts/run-gradle.ps1` on Windows.
-11. Reconcile implementation against requirement and acceptance IDs.
-12. Report implementation, owners used, requirement coverage, changed modules, checks, unrun checks, risks, deviations, and reusable-learning candidates.
+10. When Detekt, Kover verification, numeric line coverage, and the required debug/platform builds pass, immediately apply [ci-release-contract.md](references/ci-release-contract.md). Create all five adapted baseline workflows under `.github/workflows/` and a project-specific `docs/CI-RELEASE-SETUP.md`; do not wait for external credentials. Leave unavailable external publication truthfully blocked and document the exact setup steps.
+11. Run targeted checks first. Use `scripts/run-gradle.ps1` on Windows.
+12. Reconcile implementation against requirement and acceptance IDs.
+13. Report implementation, owners used, requirement coverage, changed modules, checks, unrun checks, risks, deviations, CI/release readiness, external setup blockers, and reusable-learning candidates.
 
 ## Decision rules
 
@@ -74,6 +76,8 @@ Prevent overlapping edits by giving each file/change one owner. Let the orchestr
 - Route objective rendering defects that violate the AppSpec (clipping, unintended wrapping, missing glyphs, insufficient contrast, missing/incorrect icons, inconsistent tokens) back to Compose/Product Designer. Request a user decision only when a fix changes approved product intent or requires unresolved custom assets.
 - Re-record and re-verify only approved visual changes, then close or explicitly waive every blocking design-review finding with rationale.
 - Require applicable domain, Store/component, persistence/network/sync, UI golden, Android, iOS, quality, and release checks. State why any check was unavailable.
+- Treat the late-stage CI baseline as incomplete unless `AnalysisAndTest.yml`, `MeasureTestCoverage.yml`, `CodeCoverageBadge.yml`, `CreateAndroidRelease.yml`, `PublishAndroidRelease.yml`, and `docs/CI-RELEASE-SETUP.md` exist, are adapted to the target repository, and pass the static/runtime checks available without credentials.
+- Do not claim release automation ready when GitHub/Firebase/Google Play/Google Cloud prerequisites remain unverified. Distinguish committed automation from configured external state.
 - Require `en` as the default/base locale and complete fallback key set, with `ru` as the initial additional locale. Derive the active locale from the operating system only; reject an in-app language picker, persisted locale preference, or app-specific locale override. Require every declared locale to cover the shared keys, reject persisted/resolved translations for local catalogs, and scan production source for hardcoded user-visible strings. Native-only text must follow the same system-locale/EN-default contract in Android/iOS localization resources.
 - Treat warnings separately from failures.
 

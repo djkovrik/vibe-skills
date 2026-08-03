@@ -1,4 +1,4 @@
 interface:
   display_name: "Vibe Project Architect"
-  short_description: "Design KMP modules, build logic, and release"
-  default_prompt: "Use $vibe-project-architect to design the KMP module graph and build setup."
+  short_description: "Design KMP build, CI, and release architecture"
+  default_prompt: "Use $vibe-project-architect to design the KMP module graph, CI pipelines, and release setup."
