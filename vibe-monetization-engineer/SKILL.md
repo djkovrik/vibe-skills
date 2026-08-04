@@ -17,7 +17,7 @@ Read approved AppSpec ad slots/privacy constraints, current platform startup/lin
 
 1. Confirm an allowed slot and research placement with Product Designer/Lazyweb.
 2. Select a format based on interruption, space, reward, and lifecycle semantics.
-3. Re-check current Yandex quick start, changelog, and native requirements; extract versions from the target project.
+3. Re-check current Yandex quick start, changelog, and native requirements. Resolve the Yandex SDK version from the artifact metadata currently published in Maven Central, not from the version shown only in the documentation; use the latest available published version and reconcile any existing target-project pin deliberately.
 4. Configure privacy choices before SDK initialization.
 5. Wire per-platform/per-build ad unit IDs and safe-disabled preview/test hosts.
 6. Implement loading/failure/visibility/reward lifecycle without blocking core flows.
@@ -30,12 +30,13 @@ Read approved AppSpec ad slots/privacy constraints, current platform startup/lin
 - Keep rewarded ads opt-in and grant exactly once.
 - Send only the necessary ad unit ID unless product/legal explicitly approves more.
 - Keep real requests out of previews/tests.
+- Treat Maven Central as the source of truth for Yandex SDK version availability. Never select a documentation-only version that Maven Central has not published yet.
 - Align Gradle and CocoaPods SDK versions, but never hardcode a version in this skill.
 - Treat ATT/personalization/tracking as separate product/legal decisions.
 
 ## Validation
 
-Test disabled/no-ID, load/failure/retry, lifecycle changes, reward exactly once, placement/insets, privacy-before-init, debug test IDs, release real-ID guard, Android manifest, iOS Pod/Xcode linkage, SKAdNetwork, and device/integration diagnostics.
+Test disabled/no-ID, load/failure/retry, lifecycle changes, reward exactly once, placement/insets, privacy-before-init, debug test IDs, release real-ID guard, Android manifest, iOS Pod/Xcode linkage, SKAdNetwork, device/integration diagnostics, and successful resolution of the selected Yandex SDK version from Maven Central.
 
 ## Escalation/hand-off
 
@@ -44,4 +45,3 @@ Placement hierarchy -> Product Designer/Lazyweb. Legal/privacy choices -> user/p
 ## Reusable learning
 
 Propose durable, policy-approved integration rules for [learned-patterns.md](references/learned-patterns.md); never learn consent or identifiers from a project snapshot.
-
