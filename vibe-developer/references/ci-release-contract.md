@@ -41,7 +41,7 @@ Create these five files under `.github/workflows/` even when their credential-de
    - Authorize the configured release actor/role and default branch, validate note length, calculate a monotonic Google Play `versionCode`, create an annotated SemVer tag and GitHub prerelease, attach localized note files, then call the reusable publish workflow with inherited secrets.
    - Set only the prepare job's `contents` permission to write and disable cancellation for release creation.
 5. `PublishAndroidRelease.yml`
-   - Support SemVer tag pushes, manual retry of an existing tag, and `workflow_call` from release creation. Serialize by release tag and target a protected `google-play-internal` environment.
+   - Support SemVer tag pushes, manual retry of an existing tag, and `workflow_call` from release creation. Serialize by release tag and target a protected `google-play-publishing` environment. Keep the environment name independent of the current Google Play track so it remains valid when releases move from Internal or Closed testing to Production.
    - Check out the exact tag, validate SemVer and ancestry from the default branch, and reuse localized notes from inputs or the matching GitHub prerelease.
    - Fail clearly when signing or Google Play secrets are missing. Decode the upload keystore only in the runner temporary directory.
    - Validate the target Firebase configuration when Firebase is used. Build signed release APK and AAB from explicit version inputs; locate and verify signatures, R8 mapping, optional native symbols, and project-specific release invariants.

@@ -10,7 +10,7 @@ Document `AnalysisAndTest.yml`, `MeasureTestCoverage.yml`, `CodeCoverageBadge.ym
 
 - [ ] Protect `<default branch>` and require the quality/coverage checks used by this repository.
 - [ ] Verify repository Actions permissions and allow only the permissions declared by the workflows.
-- [ ] Create the protected `google-play-internal` environment; configure required reviewers and deployment branches/tags.
+- [ ] Create the protected `google-play-publishing` environment; configure required reviewers and deployment branches/tags. Keep this track-neutral name when moving releases between Internal testing, Closed/Open testing, and Production.
 - [ ] Create repository variable `COVERAGE_GIST_ID` and secret `GIST_SECRET`; document the project-unique badge filename and README URL.
 - [ ] Create the signing and publication secrets listed below without copying their values into this file:
   - `ANDROID_KEYSTORE_BASE64`
