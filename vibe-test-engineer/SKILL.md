@@ -7,7 +7,7 @@ description: Design and implement the non-visual Kotlin Multiplatform test pyram
 
 ## When to use
 
-Own non-visual behavioral confidence. Do not update screenshot goldens.
+Own non-visual behavioral confidence. Use Decompose component tests through public contracts as the primary/default way to cover application behavior. Do not update screenshot goldens.
 
 ## Inputs
 
@@ -15,17 +15,20 @@ Read acceptance IDs, public contracts, owner-specific decision records, current 
 
 ## Workflow
 
-1. Map acceptance scenarios and risks to the smallest test layer.
+1. Map application acceptance scenarios to Decompose component tests by default, then move pure algorithms, infrastructure contracts, and native-only behavior to a lower or more specialized layer when that layer is more faithful.
 2. Build deterministic fakes/fixtures and injected dispatchers/clock.
 3. Cover pure rules and Managers, then Store/component behavior through public contracts and the Store-State-to-component-Model mapping.
 4. Reproduce lifecycle and virtual-time transitions explicitly.
 5. Cover persistence/network/sync contract and failure paths.
 6. For app-bundled localized text, verify that English is the complete default/base resource set, compare key sets across every additional `app.locales` resource set, exercise ID/key mappings, system-locale changes and unsupported-locale-to-English fallback, assert the absence of a language picker/persisted locale/app override, and scan production source/seed data for hardcoded user-visible copy.
-7. Run focused tests, then aggregate coverage/CI gates.
+7. Keep the main component-test suite in the `root` component module when root is a separate module and can assemble the production component graph and fakes without reversing dependencies. Otherwise document the nearest natural aggregation module.
+8. Run focused tests, then aggregate coverage/CI gates.
 
 ## Decision rules
 
 - Prefer real `DefaultStoreFactory`, `DefaultComponentContext`, controlled lifecycle, and test dispatchers for component behavior.
+- Treat Decompose component tests as the main application-level coverage, not as optional integration polish. Add narrower Store/domain/data tests where component tests would be indirect, slow, or unable to isolate the contract.
+- Prefer the separate `root` component module for centralized component tests because it owns application assembly and cross-component flows; do not force this location when it creates invalid dependency direction or the root does not live in its own module.
 - Disable MVIKotlin main-thread assertions only in test setup and restore them in teardown.
 - Assert component outputs/models/navigation, not Store internals from component tests.
 - For every production component `Value<Model>`, verify that callbacks drive Store transitions and mapped models; flag direct repository access or production `MutableValue` mutation as an architecture violation.
@@ -37,7 +40,7 @@ Read acceptance IDs, public contracts, owner-specific decision records, current 
 
 ## Validation
 
-Verify deterministic repeat runs, explicit create/resume/pause/destroy, virtual delays/cooldowns, active child/back dispatcher, success/failure/cancellation, English default/fallback behavior, locale key-set completeness, stable key mappings, hardcoded user-visible string checks, migration/schema/auth/conflict cases, teardown cleanup, and coverage gate exit codes.
+Verify that acceptance coverage is led by public-contract Decompose component tests and that a separate `root` component module hosts the centralized suite when structurally valid. Also verify deterministic repeat runs, explicit create/resume/pause/destroy, virtual delays/cooldowns, active child/back dispatcher, success/failure/cancellation, English default/fallback behavior, locale key-set completeness, stable key mappings, hardcoded user-visible string checks, migration/schema/auth/conflict cases, teardown cleanup, and coverage gate exit codes.
 
 ## Escalation/hand-off
 

@@ -695,7 +695,7 @@ Atomic cross-entity replacement?
 
 - product-safe ad placement;
 - Lazyweb research по monetization UX;
-- Yandex Mobile Ads Compose Multiplatform integration;
+- Yandex Mobile Ads Compose Multiplatform integration как приоритетный/default вариант;
 - Android/iOS native setup;
 - privacy/consent/age/location policies;
 - ad lifecycle, loading/failure/visibility;
@@ -709,7 +709,12 @@ Atomic cross-entity replacement?
 - не перекрывай основной контент и системную навигацию;
 - fullscreen ads показывай только в естественных паузах;
 - rewarded ads всегда opt-in и дают обещанную награду ровно один раз;
-- privacy choices устанавливай до SDK initialization;
+- consent gate обязательно геозависимый: CMP определяет применимость privacy-режима по сетевому региону и хранит/обновляет consent state;
+- не показывай глобальный allow/deny popup всем пользователям: consent form появляется только когда CMP сообщает, что он требуется в текущем регионе;
+- в GDPR-регионах не инициализируй Yandex SDK и не загружай рекламу, пока CMP не разрешит ad requests; при неизвестной применимости без валидного сохранённого state реклама остаётся выключенной;
+- используй IAB TCF-compatible CMP: Yandex автоматически читает стандартные `IABTCF_*` consent strings из Android `SharedPreferences` и iOS `UserDefaults`;
+- если CMP нужна и другая не выбрана, внедряй Google UMP SDK как автономный инструмент consent без добавления Google Mobile Ads/AdMob SDK;
+- privacy choices устанавливай до SDK initialization и отключай/defer automatic Yandex initialization, если она может обойти CMP gate;
 - не предполагай consent, location tracking или age status;
 - ad request по умолчанию содержит только необходимый ad unit ID;
 - ad unit IDs приходят из build config/environment и отличаются по platform/build type;
@@ -737,7 +742,7 @@ Atomic cross-entity replacement?
 
 - pure domain/manager tests;
 - Store tests;
-- Decompose component tests через публичный contract;
+- Decompose component tests через публичный contract как основной способ покрытия поведения приложения;
 - navigation/lifecycle/resume tests;
 - persistence/network/sync tests;
 - fakes/mocks/fixtures;
@@ -746,6 +751,8 @@ Atomic cross-entity replacement?
 
 Базовые правила:
 
+- основной application-level coverage строится на Decompose component tests; pure/infrastructure/native contracts получают более узкие тесты там, где это точнее;
+- если root component живёт в отдельном модуле, основной centralized component-test suite по умолчанию размещается в модуле `root`; другое размещение требует естественной module/dependency причины;
 - component tests используют real `DefaultStoreFactory`, `DefaultComponentContext`, controlled `LifecycleRegistry` и injected test dispatchers;
 - отключение MVIKotlin main-thread assertion допускается только в test setup и обязательно откатывается в teardown;
 - lifecycle create/resume/pause/destroy воспроизводится явно;
@@ -792,7 +799,7 @@ Atomic cross-entity replacement?
 - theme, localization, ads host и privacy-first ad request;
 - Compose-owned preview scanner -> generated Paparazzi parameterized tests -> CI verify;
 - Detekt Compose/Decompose rules, Kover и CI quality gates;
-- centralized component integration tests.
+- centralized component integration tests, предпочтительно в отдельном модуле root component.
 
 Не делай Blinkly правилом там, где target AppSpec или актуальная документация требуют иного.
 
@@ -809,7 +816,7 @@ Atomic cross-entity replacement?
 - TODO-like exception swallowing;
 - Tackle DTO typos и idempotency через `hashCode`;
 - устаревшие Ktor engine/plugin APIs;
-- project-specific test locations, если новая module graph предлагает более естественное размещение.
+- exact test source-set/package names; при этом отдельный root component module остаётся предпочтительным местом для основного component-test suite, если dependency direction это допускает.
 
 ## Стандартизованный вход: Vibe AppSpec v1.3
 
