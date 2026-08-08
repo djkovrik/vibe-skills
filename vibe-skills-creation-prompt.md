@@ -709,12 +709,12 @@ Atomic cross-entity replacement?
 - не перекрывай основной контент и системную навигацию;
 - fullscreen ads показывай только в естественных паузах;
 - rewarded ads всегда opt-in и дают обещанную награду ровно один раз;
-- consent gate обязательно геозависимый: CMP определяет применимость privacy-режима по сетевому региону и хранит/обновляет consent state;
-- не показывай глобальный allow/deny popup всем пользователям: consent form появляется только когда CMP сообщает, что он требуется в текущем регионе;
-- в GDPR-регионах не инициализируй Yandex SDK и не загружай рекламу, пока CMP не разрешит ad requests; при неизвестной применимости без валидного сохранённого state реклама остаётся выключенной;
-- используй IAB TCF-compatible CMP: Yandex автоматически читает стандартные `IABTCF_*` consent strings из Android `SharedPreferences` и iOS `UserDefaults`;
-- если CMP нужна и другая не выбрана, внедряй Google UMP SDK как автономный инструмент consent без добавления Google Mobile Ads/AdMob SDK;
-- privacy choices устанавливай до SDK initialization и отключай/defer automatic Yandex initialization, если она может обойти CMP gate;
+- consent gate обязательно геозависимый: custom privacy-region endpoint определяет необходимость consent по IP сетевого выхода, а приложение хранит минимальный response и choice, привязанный к `policyVersion`;
+- не показывай глобальный allow/deny popup всем пользователям: app-owned consent form появляется только при свежем `consentRequired=true` и содержит accept, decline и privacy-policy actions;
+- не инициализируй Yandex SDK и не загружай рекламу после decline или пока endpoint/choice отсутствует, невалиден, просрочен либо unresolved; любой endpoint/transport error fail closed только для рекламы;
+- не определяй регион через locale, SIM, time zone, device location или bundled country list; не сохраняй IP, country, GeoIP data, advertising ID или request identity;
+- вызывай `YandexAds.setUserConsent(...)` перед каждой разрешённой инициализацией и отключай/defer automatic Yandex initialization, если она может обойти privacy gate;
+- не называй custom endpoint IAB TCF CMP и используй этот lightweight flow только с Yandex Ads; партнер, требующий certified CMP/TCF, требует нового privacy inventory и явного product/legal approval;
 - не предполагай consent, location tracking или age status;
 - ad request по умолчанию содержит только необходимый ad unit ID;
 - ad unit IDs приходят из build config/environment и отличаются по platform/build type;
@@ -730,6 +730,7 @@ Atomic cross-entity replacement?
 
 - `placement-and-format-decisions.md`;
 - `yandex-kmp-integration.md`;
+- `privacy-region-endpoint.md`;
 - `privacy-and-request-policy.md`;
 - `ios-cocoapods-xcode-preflight.md`;
 - `ad-lifecycle-testing-release.md`.

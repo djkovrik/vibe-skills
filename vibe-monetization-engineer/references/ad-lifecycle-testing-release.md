@@ -8,12 +8,12 @@ Cover:
 - no core-flow blockage when ads fail;
 - rewarded callback exactly once;
 - no real requests in previews/tests;
-- geography-aware CMP refresh before initialization, including forced GDPR-applicable and non-applicable test regions;
-- required-form-only behavior rather than a global consent popup;
-- persisted valid, expired, denied, unknown, network-error, and retry consent states;
-- no Yandex initialization or ad request before the CMP permits requests in an applicable/unknown region;
-- Android `SharedPreferences` and iOS `UserDefaults` IAB TCF values visible to Yandex;
-- standalone Google UMP linkage without a Google Mobile Ads/AdMob SDK dependency when UMP is the selected CMP;
+- fresh privacy-region endpoint resolution before initialization, including controlled protected, non-protected, and unknown/failing routes;
+- app-owned required-form-only behavior rather than a global consent popup;
+- minimal cached response plus policy-version-bound accepted, declined, withdrawn, expired, unknown, network-error, and retry states;
+- no Yandex initialization or ad request before the endpoint and consent state permit it;
+- `YandexAds.setUserConsent(...)` applied before every initialization on Android and iOS;
+- absence of certified-CMP/TCF assumptions in the Yandex-only lightweight flow;
 - Android manifest/diagnostic logs;
 - iOS Pod/workspace/device and SKAdNetwork checks;
 - Release Archive, privacy report/manifest, and no test IDs;

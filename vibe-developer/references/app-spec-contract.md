@@ -8,6 +8,7 @@
 - [UI quality contract](#ui-quality-contract)
 - [Localization contract](#localization-contract)
 - [Architecture contract](#architecture-contract)
+- [Monetization and privacy contract](#monetization-and-privacy-contract)
 - [Validation](#validation)
 
 ## Boundary
@@ -81,6 +82,20 @@ For AppSpec 1.3+:
 - add `quality.md` `Architecture checks` covering these constraints and any documented module/screenshot-host exceptions.
 
 The `architecture.screenshotTestHost` value records the selected host. `architecture.screenshotTestHostRationale` records why it is correct for the target graph; the template selects `compose-ui-module`.
+
+## Monetization and privacy contract
+
+For an AppSpec that enables ads:
+
+- declare Yandex Mobile Ads as the provider and enumerate every allowed slot/format; the lightweight privacy-region flow does not authorize another demand or mediation partner;
+- record product/legal decisions for consent copy, protected-region policy, age, advertising identifiers, ATT, personalization, and the public privacy-policy URL; unresolved material choices remain blocking `openQuestions`;
+- make `data.md` reference the custom privacy-region endpoint contract, build-configured base URL, strict response validation, maximum 72-hour cache, minimal persisted response plus policy-version-bound choice, and prohibited IP/country/GeoIP/identifier storage;
+- give the first ad-eligible flow explicit protected, non-protected, accept, decline, withdrawal, policy-change, expired, offline, malformed, and endpoint-error branches. Every unresolved or declined branch keeps ads hidden and blocks Yandex initialization/requests without blocking the core product;
+- specify the app-owned consent screen and Settings withdrawal entry only for a fresh `consentRequired=true` response. Include accept, decline, and privacy-policy actions; do not specify a global popup;
+- require `YandexAds.setUserConsent(...)` before every permitted initialization and disable/defer automatic initialization that could bypass the privacy gate;
+- add acceptance coverage proving privacy-before-init on Android and iOS with controlled protected, non-protected, and failing/unknown network routes.
+
+Do not label the custom endpoint or app screen as an IAB TCF CMP. A future partner that requires certified CMP/TCF behavior needs a new privacy inventory, explicit product/legal approval, and a replacement integration contract.
 
 ## Validation
 

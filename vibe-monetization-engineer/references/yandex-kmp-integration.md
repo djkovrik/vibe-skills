@@ -11,10 +11,10 @@ Checklist:
 - align Compose Multiplatform artifact and native iOS SDK;
 - configure the platform-specific setup;
 - make Yandex the preferred/default ads provider unless an explicit approved constraint selects another provider;
-- run a geography-aware CMP update before initialization, use its network-region applicability and persisted consent state, and show a form only when required;
-- for GDPR-applicable users, require the CMP to permit ad requests before initializing Yandex or loading ads;
-- verify Yandex can read the CMP's IAB TCF v2.0 values from Android `SharedPreferences` and iOS `UserDefaults`;
-- when needed, integrate Google UMP as a standalone CMP dependency without adding Google Mobile Ads/AdMob SDK;
+- resolve a fresh custom privacy-region endpoint response before initialization and show the app-owned consent screen only when `consentRequired=true`;
+- bind the persisted choice to `policyVersion`, clamp endpoint freshness to 72 hours, and fail closed for declined, expired, malformed, unknown, or transport-error states;
+- call `YandexAds.setUserConsent(...)` before every permitted initialization and verify the exact selected SDK's consent behavior;
+- keep this lightweight consent flow Yandex-only; replace it after a new privacy review if another demand/mediation partner requires certified CMP/TCF behavior;
 - disable/defer Android automatic initialization if it could precede privacy resolution;
 - initialize before loading;
 - use per-platform/per-build ad unit IDs;
@@ -25,6 +25,5 @@ Primary sources:
 - https://ads.yandex.com/helpcenter/ru/dev/compose-multiplatform
 - https://ads.yandex.com/helpcenter/ru/dev/compose-multiplatform/quick-start
 - https://ads.yandex.com/helpcenter/en/dev/compose-multiplatform/quick-start
-- https://ads.yandex.com/helpcenter/en/dev/android/tcf-2-0
-- https://ads.yandex.com/helpcenter/en/dev/ios/tcf-2-0
+- https://ads.yandex.com/helpcenter/en/dev/android/gdpr
 - https://github.com/yandexmobile/yandex-ads-multiplatform

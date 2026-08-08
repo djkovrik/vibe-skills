@@ -36,6 +36,19 @@ $extra = @($actual | Where-Object { $_ -notin $expected })
 if ($missing) { Add-Failure "Missing skill directories: $($missing -join ', ')" }
 if ($extra) { Add-Failure "Unexpected skill directories: $($extra -join ', ')" }
 
+$privacyContractFiles = Get-ChildItem -LiteralPath $root -File -Recurse -Force |
+    Where-Object {
+        $_.Extension -in @('.md', '.json', '.py', '.ps1', '.yaml', '.yml') -and
+        $_.FullName -notlike "$root\.git\*" -and
+        $_.FullName -notlike "$root\.tooling\*"
+    }
+foreach ($privacyContractFile in $privacyContractFiles) {
+    $privacyContractText = Get-Content -LiteralPath $privacyContractFile.FullName -Raw -Encoding UTF8
+    if ($privacyContractText -match ('(?i)\bU' + 'MP\b')) {
+        Add-Failure "Unsupported consent SDK reference in $($privacyContractFile.FullName)"
+    }
+}
+
 $quickValidate = 'C:\Users\Sergey\.codex\skills\.system\skill-creator\scripts\quick_validate.py'
 $localPython = Join-Path $root '.tooling\venv\Scripts\python.exe'
 if (-not (Test-Path -LiteralPath $localPython -PathType Leaf)) {
