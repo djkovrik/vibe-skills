@@ -24,7 +24,7 @@ Read approved screens/theme/locales, current previews, Paparazzi/scanner configu
 7. Build stable encoded snapshot IDs independent of scan or parameter order.
 8. Run the generator/compile check, record only an approved baseline, inspect every PNG, then run verify from a clean-enough state.
 9. Produce a machine-readable coverage inventory mapping `SCREEN/state/theme/fontScale/locale/device -> preview -> snapshot`.
-10. Hand the approved golden paths and coverage inventory to Product Designer for the mandatory Lazyweb/full-UI review. After approved fixes, re-record only affected goldens and re-run complete verification.
+10. Hand the approved golden paths and an explicit screen review order to Product Designer for the mandatory Lazyweb/full-UI review. The hand-off must require a strict one-screen-at-a-time queue with exactly one report in flight and no next submission before the previous report is received and recorded; do not split the queue across parallel reviewers. After approved fixes, re-record only affected goldens and re-run complete verification.
 11. Verify in CI and publish failure/report artifacts.
 
 ## Decision rules

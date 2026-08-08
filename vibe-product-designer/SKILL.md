@@ -24,7 +24,7 @@ Read AppSpec screens/flows/assets, product constraints, current screenshots, the
 7. Define the preview/golden matrix for every primary screen and applicable state: light and dark are mandatory; add the largest required font scale, longest supported locale, compact phone, and adaptive variants where they create distinct risk.
 8. Hand Compose API/state/effect/performance/interop mechanics to Compose Expert. Compose delivery is incomplete until deterministic preview entry points implement the approved matrix.
 9. Hand scanner/Paparazzi mechanics to Visual Testing.
-10. After approved goldens exist, review all declared primary screens and flows through the current Lazyweb workflow, using one existing screen per improve report unless the live workflow explicitly supports a multi-screen artifact. Track screen, state, theme, locale, and font-scale coverage.
+10. After approved goldens exist, build an ordered queue of all declared primary screens and review it through the current Lazyweb workflow. Use exactly one screen per report and keep exactly one Lazyweb review report in flight for the task. Do not batch screens, launch per-screen reviews through parallel agents/calls, or submit the next screen until the previous report reaches terminal completion, has been retrieved, and its URL, coverage, and findings are recorded. If a screen needs separate theme/state reports, run those sequentially before advancing to the next screen. Track screen, state, theme, locale, and font-scale coverage.
 11. Audit the complete golden set for cross-screen consistency, fonts/glyphs, unintended wrapping or clipping, typography hierarchy, light/dark color and contrast, Material 3 component/state use, icon correctness and missing icon opportunities, touch targets, insets, accessibility, and localization. Route approved fixes back through Compose and repeat golden verification.
 
 ## Decision rules
@@ -40,6 +40,7 @@ Read AppSpec screens/flows/assets, product constraints, current screenshots, the
 - Prefer canonical Material Symbols for standard actions when approved; require user-provided or explicitly licensed assets for custom/brand iconography. Do not replace clear text with icon-only controls merely to increase icon count.
 - Treat unintended one-line-to-two-line wrapping, clipped glyphs, fallback-font changes, and hierarchy drift as defects. Treat intentional wrapping at the declared stress font scale as expected behavior.
 - Treat approved design/spec as truth; goldens record it.
+- Treat one-screen-at-a-time Lazyweb review as a hard reliability constraint even when orchestration or tool batching could run requests concurrently.
 - If Lazyweb is unavailable, disclose this and use official platform guidance plus existing evidence without presenting taste as research.
 
 ## Validation

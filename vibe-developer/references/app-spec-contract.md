@@ -50,7 +50,7 @@ For AppSpec 1.1+:
 - `uiQuality.previewThemes` includes `light` and `dark`.
 - `uiQuality.fontScales` includes the default scale and any product-required stress scale.
 - `uiQuality.goldenTesting` requires Paparazzi plus ComposablePreviewScanner.
-- `uiQuality.designReview` requires the current Lazyweb workflow after approved goldens and declares Material 3 as a review standard where applicable.
+- `uiQuality.designReview` requires the current Lazyweb workflow after approved goldens, declares Material 3 as a review standard where applicable, and fixes the execution contract to a strict ordered queue: one screen per report, exactly one report in flight, and no next submission until the previous report is complete, retrieved, and recorded.
 - `uiQuality.iconography.inventoryStatus` is resolved before implementation. Standard actions may use an approved canonical icon set; custom/brand assets must be provided or explicitly waived.
 - Every `screens/SCREEN-*.md` contains `Actions and iconography`, `Text layout expectations`, and `Preview and golden matrix`.
 

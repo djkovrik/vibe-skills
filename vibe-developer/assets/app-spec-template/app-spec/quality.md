@@ -14,7 +14,7 @@ Require deterministic `@Preview` coverage for SCREEN-001 content and error state
 
 ## Visual quality and design review
 
-Record an approved Paparazzi baseline, inspect every PNG, and require a clean verify run. Then run the current Lazyweb improve workflow for every primary-screen coverage row and review the complete golden set for cross-screen consistency, font/glyph rendering, unintended line wrapping or clipping, typography hierarchy, light/dark color and contrast, Material 3 component/state use, icons, touch targets, insets, accessibility, localization, and responsive behavior. Resolve or explicitly waive every blocking finding before release.
+Record an approved Paparazzi baseline, inspect every PNG, and require a clean verify run. Then run the current Lazyweb improve workflow for every primary-screen coverage row as a strict ordered queue: one screen per report, exactly one report in flight, no batching or parallel reviewers, and no next submission until the previous report is complete, retrieved, and recorded. Review the complete golden set for cross-screen consistency, font/glyph rendering, unintended line wrapping or clipping, typography hierarchy, light/dark color and contrast, Material 3 component/state use, icons, touch targets, insets, accessibility, localization, and responsive behavior. Resolve or explicitly waive every blocking finding before release.
 
 ## Accessibility and localization
 
