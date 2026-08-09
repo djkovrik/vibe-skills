@@ -10,7 +10,7 @@ Cover default, update, restart simulation, invalid legacy value, Android, and iO
 
 ## Preview and golden matrix
 
-Require deterministic `@Preview` coverage for SCREEN-001 content and error states in light and dark. Add EN/RU, a 200% font-scale text-stress case, and the declared expanded-width layout. ComposablePreviewScanner must discover the declared previews and generate Paparazzi tests with stable IDs.
+Require SCREEN-001's Compose-rendered public component contract to have a sibling `*ComponentPreview` in its component module; Compose must not substitute a local fake. Require deterministic `@Preview` coverage for content and error states in light and dark. Add EN/RU, a 200% font-scale text-stress case, and the declared expanded-width layout. ComposablePreviewScanner must discover the declared previews and generate Paparazzi tests with stable IDs.
 
 ## Visual quality and design review
 
@@ -26,7 +26,7 @@ Require a complete default EN key set and equal key coverage for every additiona
 
 ## Architecture checks
 
-Reject custom generic Success/Failure wrappers, production `MutableValue<Model>` state outside previews/tests, stateful components that call repositories directly, Stores that bypass Managers, nested `Result<Result<T>>`, and `unwrap` implementations that lose nullable successes or swallow cancellation. Verify each screen/flow component-module boundary or documented grouping exception. Keep Paparazzi/ComposablePreviewScanner in the Compose UI/resource-owning module; a dedicated screenshot module requires an explicit aggregation or plugin/source-set rationale.
+Reject custom generic Success/Failure wrappers, production `MutableValue<Model>` state outside previews/tests, stateful components that call repositories directly, Stores that bypass Managers, nested `Result<Result<T>>`, and `unwrap` implementations that lose nullable successes or swallow cancellation. Verify each screen/flow component-module boundary or documented grouping exception and enforce contract-at-root, `integration` Default/Preview/mappers, `store` Store/provider, and `domain` Manager/models. Map every Compose-rendered contract to its component-module Preview or a documented navigation-only exception. Verify each non-Decompose implementation module that provides constructed dependencies outward exposes `di/*Module.kt` with output/dependencies interfaces, a same-named factory, and lazy outputs used by composition roots. Keep Paparazzi/ComposablePreviewScanner in the Compose UI/resource-owning module; a dedicated screenshot module requires an explicit aggregation or plugin/source-set rationale.
 
 ## Security and privacy
 

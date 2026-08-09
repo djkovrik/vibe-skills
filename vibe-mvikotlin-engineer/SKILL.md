@@ -16,7 +16,7 @@ Read the component/domain contracts and target MVIKotlin version. Apply the shar
 ## Workflow
 
 1. Apply the Store decision gate: a UI-visible component model requires a Store; a truly stateless callback/output component does not.
-2. Keep the Store module-internal and model raw feature/domain state.
+2. Keep the Store module-internal in the component module's dedicated `.store` package and model raw feature/domain state.
 3. Define Intent/Action/Msg/State/Label and a provider with a fresh stateful Executor.
 4. Put side effects/subscriptions in Executor and state changes in a pure Reducer.
 5. Put data/external calls behind a feature Manager, return standard Kotlin `Result<T>` built with `runCatching`, and map it in the Executor through the shared cancellation-aware `unwrap` helper.
@@ -36,13 +36,15 @@ Use `Result<T>` from the Kotlin standard library. Do not introduce a generic cus
 
 Honor MVIKotlin's main-thread contract for accept/init/dispose, dispatch, and labels. Use the Executor lifecycle scope for async work. Treat labels as uncached one-off events. Do not persist transient loading as restored truth.
 
+Inside a Decompose component module, place `*Store` and `*StoreProvider` in the feature's `.store` package, separate from the root component contract and `.integration` implementations. Keep the Store contract/provider internal unless a cross-module contract is explicitly required. Do not put Store declarations in `*Component.kt`, `*ComponentDefault.kt`, or the feature package root.
+
 Keep Store state locale-neutral for app-bundled content: carry stable domain IDs/localization keys, not resolved strings or generated Compose resource types. Map those IDs/keys at the component/presentation boundary so locale changes do not require Store reload or persistence changes.
 
 Do not add `selectedLocale` state, language-selection intents, or locale-override effects. The resource environment follows the operating-system locale only.
 
 ## Validation
 
-Test reducer transitions, intents/actions, bootstrap subscriptions, Manager result branches, nullable successes, cancellation rethrow, State-to-Model mapping, startup labels, restoration/retention, disposal, and release wiring without logging.
+Test reducer transitions, intents/actions, bootstrap subscriptions, Manager result branches, nullable successes, cancellation rethrow, State-to-Model mapping, startup labels, restoration/retention, disposal, dedicated `.store` package placement, internal visibility, and release wiring without logging.
 
 ## Escalation/hand-off
 

@@ -6,6 +6,7 @@ Keep all machine-specific absolute source paths here. Other `vibe-*` skills must
 VIBE_PACKAGE_ROOT = D:\Sources\vibe-skills
 BLINKLY_ROOT = D:\Sources\Android\Blinkly
 BULBMATCH_ROOT = D:\Sources\Android\BulbMatch
+STAINFIRSTAID_ROOT = D:\Sources\Android\StainFirstAid
 TACKLE_ROOT = D:\Sources\Android\Tackle
 SKILL_CREATOR_ROOT = C:\Users\Sergey\.codex\skills\.system\skill-creator
 COMPOSE_EXPERT_SKILL = C:\Users\Sergey\.codex\skills-src\compose-skill\skills\compose-expert\SKILL.md
@@ -20,5 +21,6 @@ LAZYWEB_SKILL = C:\Users\Sergey\.codex\skills\lazyweb\SKILL.md
 - BulbMatch CI/release: `.github/workflows/` and `docs/ANDROID-FIRST-RELEASE-GUIDE.md`.
 - Tackle networking: `shared/network/`, domain API contracts and exception model, mapper tests, and JSON fixtures.
 - Blinkly advertising: `docs/yandex-inline-ads-macos-guide.md`.
+- StainFirstAid architecture drift evidence: flattened `shared/component/**` packages, Compose-local preview fakes in `shared/compose/PreviewComponents.kt`, non-Decompose implementation modules without `di/*Module.kt`, and direct construction in platform root factories.
 
 Treat these as read-only adaptation evidence. Never copy project IDs, secrets, versions, packages, ad unit IDs, signing data, Firebase files, or app-specific thresholds.

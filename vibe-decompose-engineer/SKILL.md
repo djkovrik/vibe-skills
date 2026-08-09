@@ -15,19 +15,21 @@ Read target instructions, component graph, AppSpec flows/screens, and [component
 
 ## Workflow
 
-1. Define the public component model/callback/output contract.
+1. Define the public component model/callback/output contract in the component module's feature package root.
 2. Keep a truly stateless callback/output component thin. If production exposes UI-visible `Value<Model>`, create a retained Store; Decompose router-owned `Value<Child*>` does not by itself require a Store.
 3. Build strict parent-child factories with one `ComponentContext` per child.
 4. Keep immutable serializable navigation arguments in configs; inject dependencies in factories.
 5. Create navigation properties once and route child outputs upward.
 6. Wire lifecycle, back handling, StateKeeper/InstanceKeeper, and platform root lifecycle.
 7. Map Store `State` to the immutable component `Model` in a dedicated mapper and expose `store.asValue().map(stateToModel)`.
-8. Add a sibling `*ComponentPreview` implementation for Compose previews when needed and hand behavior tests to Test Engineer.
+8. Enforce the component-module package layout: contract at the feature root, production and preview implementations plus mappers in `integration`, Stores/providers in `store`, and feature Managers/models in `domain`.
+9. Add a sibling `*ComponentPreview` in `integration` for every component contract rendered by production Compose, including stateless components, and hand behavior tests to Test Engineer.
 
 ## Decision rules
 
 - UI depends on the component; the component never depends on Compose UI.
 - Delegate `ComponentContext` in default implementations.
+- Keep `*Component.kt` at the feature package root. Put `*ComponentDefault`, `*ComponentPreview`, and `Mappers.kt` in `.integration`; put `*Store` and `*StoreProvider` in `.store`; put feature-specific Managers and their models in `.domain`. Do not flatten these files into one package or co-locate a Store with the public contract.
 - Create root/navigation on the main/UI thread.
 - Prefer double-click-safe stack operations and avoid duplicate configs.
 - Keep callback-only features with no UI-visible model thin.
@@ -37,10 +39,11 @@ Read target instructions, component graph, AppSpec flows/screens, and [component
 - Keep app-bundled localized content locale-neutral in component contracts: expose stable IDs/localization keys, not resolved translations or Compose resource types. User-authored and server-owned text may remain data.
 - Do not expose language-selection callbacks, outputs, or navigation destinations; locale selection is owned by the operating system.
 - Subscribe to possible startup labels before manual Store initialization.
+- Treat the sibling Preview implementation as part of every Compose-rendered component's public development contract, not optional visual-test polish. Omit it only for a navigation/composition-only component that has no production Compose render surface, and record that exception in the architecture plan.
 
 ## Validation
 
-Verify hierarchy/context uniqueness, serializable config restoration, active children, back behavior, lifecycle transitions, output routing, duplicate clicks, Store retention, State-to-Model mapping, absence of production model mutation outside the Store, preview isolation, and root creation on both platforms.
+Verify hierarchy/context uniqueness, serializable config restoration, active children, back behavior, lifecycle transitions, output routing, duplicate clicks, canonical package placement, Store retention, State-to-Model mapping, absence of production model mutation outside the Store, one component-module-owned Preview per Compose-rendered contract, documented navigation-only exceptions, preview isolation, and root creation on both platforms.
 
 ## Escalation/hand-off
 

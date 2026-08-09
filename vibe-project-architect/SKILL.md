@@ -17,9 +17,9 @@ Read the target AppSpec, repository instructions, module/build graph, catalogs, 
 
 1. Map current modules, source sets, plugins, and dependencies.
 2. Extract versions and target requirements from the project.
-3. Define the minimal affected graph and ownership boundaries. Treat a screen-level Decompose component as a component-module boundary by default when that module can own its contract, Default/Preview implementations, Store, Manager, mappers, and wiring.
+3. Define the minimal affected graph and ownership boundaries. Treat a screen-level Decompose component as a component-module boundary by default when that module can own its root contract, `integration` Default/Preview/mappers, `store` Store/provider, `domain` Manager/models, and wiring.
 4. Keep domain contracts inward and implementations/platform code outward.
-5. Design manual composition roots and explicit startup order.
+5. Design manual composition roots and explicit startup order. For every non-Decompose implementation module that provides constructed dependencies outward, define a `di/*Module.kt` output interface, optional `*ModuleDependencies` input interface, same-named top-level factory, and lazy-owned outputs.
 6. When the product has bundled localized text, assign one common resource-owning module, configure Compose Multiplatform Resources and generated accessors, keep the complete English default/base set in `values`, and keep native-only EN-default fallback resources in their platform source sets. Do not scaffold locale-selection settings, app-specific overrides, or language-picker infrastructure.
 7. When the product has Compose UI, host Paparazzi, ComposablePreviewScanner, generated Android unit tests, and snapshots in the Compose UI/resource-owning module by default. Create a dedicated Android-host screenshot module only for a documented constraint such as aggregating multiple UI artifacts or an incompatible plugin/source-set graph. Provision version-catalog entries, compatible tooling, task wiring, record/verify tasks, Git LFS, and CI artifacts as default scaffolding.
 8. After Detekt, Kover verification/XML/numeric line coverage, and required debug/platform builds pass, create the five adapted baseline workflows and `docs/CI-RELEASE-SETUP.md` required by the shared CI/release contract. Scaffold credential-dependent publication immediately, but keep it truthfully blocked until external setup is complete.
@@ -31,7 +31,7 @@ Read the target AppSpec, repository instructions, module/build graph, catalogs, 
 - Keep domain and public feature contracts independent of UI/infrastructure.
 - Keep generated Compose resource types at the presentation/resource boundary; domain and persistence depend only on stable language-neutral IDs/keys.
 - Put platform implementations in platform source sets.
-- Prefer narrow interfaces, dependency interfaces, top-level factories, and `by lazy`; add a DI framework only by explicit decision.
+- Require narrow `*Module` output interfaces, `*ModuleDependencies` input interfaces when inputs exist, same-named top-level factories, and `by lazy` outputs for non-Decompose implementation modules that provide dependencies outward. A zero-input module omits only the dependencies interface. Add a DI framework only by explicit decision.
 - Keep Decompose configs free of services.
 - Prefer one module per screen-level Decompose component or cohesive nested flow when it enforces dependency/ownership/test boundaries. Group trivial callback-only leaves when a new module would enforce nothing; record the exception.
 - Treat Gradle artifact, Podfile, lockfile, generated framework, and Xcode linkage as one native dependency contract.
@@ -42,7 +42,7 @@ Read the target AppSpec, repository instructions, module/build graph, catalogs, 
 
 ## Validation
 
-Check settings inclusion, component-module boundaries/exceptions, dependency direction, source-set compilation, catalog/convention use, Compose resource generation, English default/fallback and locale packaging, native fallback resource packaging, screenshot host ownership/rationale, generator-to-compile task dependency, Paparazzi record/verify availability, snapshot/Git-LFS paths, CI diff/report artifacts, Android builds, available iOS framework/Pod/Xcode builds, Detekt/Kover, all five baseline workflow files, CI syntax, minimum permissions, concurrency, signing-variable contract, release artifacts, and the project-specific external setup guide. Distinguish local validation from credential-dependent end-to-end publication.
+Check settings inclusion, component-module boundaries/exceptions and package roles, dependency direction, source-set compilation, catalog/convention use, per-module manual-DI contracts, composition-root use of module factories instead of direct concrete construction, lazy ownership, Compose resource generation, English default/fallback and locale packaging, native fallback resource packaging, screenshot host ownership/rationale, generator-to-compile task dependency, Paparazzi record/verify availability, snapshot/Git-LFS paths, CI diff/report artifacts, Android builds, available iOS framework/Pod/Xcode builds, Detekt/Kover, all five baseline workflow files, CI syntax, minimum permissions, concurrency, signing-variable contract, release artifacts, and the project-specific external setup guide. Distinguish local validation from credential-dependent end-to-end publication.
 
 ## Escalation/hand-off
 

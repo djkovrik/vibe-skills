@@ -7,9 +7,28 @@ Decompose components are UI-independent and lifecycle-aware. Define:
 - callbacks for user actions;
 - typed outputs for parent communication;
 - a default implementation delegating `ComponentContext`;
-- a static preview implementation when Compose previews need one.
+- a static preview implementation for every contract rendered by production Compose.
 
 Keep UI dependent on the component and keep Compose/platform types out of the contract.
+
+## Component-module layout
+
+Use this package shape inside each screen/flow component module:
+
+```text
+<feature>/
+  FeatureComponent.kt
+  domain/                 # only when feature-local managers/models exist
+  integration/
+    FeatureComponentDefault.kt
+    FeatureComponentPreview.kt
+    Mappers.kt            # when Store State maps to Component.Model
+  store/                  # only for Store-backed components
+    FeatureStore.kt
+    FeatureStoreProvider.kt
+```
+
+The contract stays at the feature package root. Production/preview implementations, Stores, and feature-domain helpers belong to distinct subpackages even when the feature is small. Additional cohesive subpackages are allowed, but flattening `Component`, `Default`, Store, and Manager files into one package is not.
 
 ## Stateful production contract
 
@@ -27,7 +46,9 @@ This rule does not apply to `Value<ChildStack>`, `Value<ChildSlot>`, or other va
 
 ## Preview contract
 
-Place `*ComponentPreview` beside `*ComponentDefault` when Compose previews need data. It implements the same public interface, may use a static `MutableValue(Model(...))`, and has no Store, `ComponentContext`, Manager, repository, platform service, or production wiring. Never insert preview implementations into production child factories.
+Place `*ComponentPreview` beside `*ComponentDefault` in the component module's `integration` package for every public component contract rendered by production Compose. This includes stateless callback-only screens. It implements the same public interface, may use a static `MutableValue(Model(...))`, and has no Store, `ComponentContext`, Manager, repository, platform service, or production wiring. Compose previews must instantiate this implementation instead of declaring private ad-hoc component fakes in the Compose module. Never insert preview implementations into production child factories.
+
+A navigation/composition-only component with no production Compose render surface may omit a Preview implementation. Record the exception; do not infer it merely because the component has no `Value<Model>`.
 
 Official sources:
 

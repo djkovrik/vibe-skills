@@ -1,6 +1,6 @@
 # Preview contract
 
-- Use the production composable with a sibling `*ComponentPreview` implementation of the public component contract.
+- Use the production composable with the sibling `*ComponentPreview` owned by the component module's `integration` package. Require one for every component contract rendered by production Compose, including stateless screens; do not replace it with a private ad-hoc fake in the Compose module.
 - Keep data, clock, locale, theme, dimensions, and animation state deterministic.
 - Avoid real network, database, SDK, permission, or platform services.
 - Cover every primary screen and each applicable content, empty, error, loading, permission, and offline state in both light and dark.
@@ -15,4 +15,4 @@ Primary source:
 
 - https://developer.android.com/develop/ui/compose/tooling/previews
 
-Blinkly adaptation: place static preview implementations beside `*ComponentDefault`; a preview may use `MutableValue`, but production component models remain Store-backed.
+Blinkly adaptation: place static preview implementations beside `*ComponentDefault` in each component module's `integration` package; a preview may use `MutableValue`, but production component models remain Store-backed. A navigation-only component with no production Compose render surface may omit one only through a documented architecture exception.

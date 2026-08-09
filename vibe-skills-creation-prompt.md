@@ -278,10 +278,10 @@ AppSpec validation
 
 - интерфейсы и domain model не должны зависеть от UI/infrastructure;
 - platform implementations живут в platform source sets;
-- dependencies собираются в composition root через interfaces, dependency interfaces, top-level factories и `by lazy`;
+- каждый non-Decompose implementation module, предоставляющий созданные зависимости наружу, экспортирует `di/*Module.kt` с `*Module`, optional `*ModuleDependencies`, одноимённой top-level factory и `by lazy`; composition root использует этот API вместо прямых concrete constructors;
 - не вводи DI-framework без явного требования;
 - не передавай service dependencies в сериализуемые Decompose configs;
-- screen-level Decompose component или cohesive flow по умолчанию получает отдельный component module с contract/Default/Preview/Store/Manager/mapper; группировку thin leaves документируй как exception;
+- screen-level Decompose component или cohesive flow по умолчанию получает отдельный component module: contract в корне feature package, Default/Preview/mappers в `integration`, Store/provider в `store`, Manager/models в `domain`; grouped thin leaves и navigation-only Preview omission документируй как exceptions;
 - Paparazzi/ComposablePreviewScanner по умолчанию живут в Compose UI/resource-owning module; dedicated screenshot module разрешён только для aggregation или подтверждённой plugin/source-set incompatibility;
 - версии извлекай из проекта; новые версии проверяй по официальным источникам;
 - держи Android и iOS startup ordering явным;
@@ -352,7 +352,7 @@ AppSpec validation
 - каждый production `Value<Model>` получает retained Store; production component не мутирует `MutableValue<Model>` и не вызывает repository напрямую;
 - mapper отделяет raw Store state от immutable component model и exposes `store.asValue().map(stateToModel)`;
 - Store data access проходит через feature Manager;
-- sibling `*ComponentPreview` может использовать static `MutableValue`, но не Store, `ComponentContext`, Manager или production services;
+- каждый Compose-rendered component contract, включая stateless screen, получает sibling `integration/*ComponentPreview` в своём component module; он может использовать static `MutableValue`, но не Store, `ComponentContext`, Manager или production services; Compose-local fake не заменяет этот контракт;
 - labels подписывай до `store.init()`, если bootstrapper способен синхронно выдать startup label.
 
 Создай references:
@@ -782,9 +782,9 @@ Atomic cross-entity replacement?
 Используй Blinkly как основной implementation reference для следующих решений:
 
 - shared Compose UI для Android/iOS;
-- ручная DI через module interface, dependencies interface, top-level factory и `by lazy`;
-- отдельный platform root factory;
-- feature modules с component contract/default/preview, integration mapper, Store for every UI-visible production model, and manager-mediated data access;
+- обязательная ручная DI для каждого non-Decompose implementation module через `di/*Module.kt`, module output interface, optional dependencies interface, same-named top-level factory и `by lazy`;
+- отдельный platform root factory, потребляющий module factories вместо прямого создания concrete cross-module implementations;
+- feature modules с contract в корне package, default/preview/mapper в `integration`, Store/provider в `store`, Manager/models в `domain`, Store for every UI-visible production model, and manager-mediated data access;
 - standard Kotlin `Result<T>` + Manager `runCatching` + cancellation-aware Executor `unwrap`, without custom generic Success/Failure wrappers or nested Results;
 - thin components без Store для callback-only экранов;
 - Store state -> mapper -> component model;

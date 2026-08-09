@@ -76,7 +76,9 @@ For AppSpec 1.3+:
 - use standard Kotlin `Result<T>` instead of a generic app-specific Success/Failure wrapper;
 - make every production Decompose `Value<Model>` immutable and Store-backed through a dedicated `State -> Model` mapper; router-owned `Value<Child*>` is excluded;
 - route Store data/external work through a feature Manager that creates one `Result<T>` with `runCatching`; the Executor consumes it through a shared cancellation-aware `unwrap`;
-- provide a sibling Preview component implementation when Compose previews need deterministic data;
+- keep each component module's public contract at the feature package root, Default/Preview/mappers in `integration`, Store/provider in `store`, and feature Manager/models in `domain`;
+- provide a sibling component-module `*ComponentPreview` for every component contract rendered by production Compose, including stateless screens; document the only exception, a navigation-only component with no Compose render surface;
+- expose every non-Decompose implementation module that constructs outward dependencies through `di/*Module.kt`: a narrow output interface, optional dependencies interface, same-named top-level factory, and lazy outputs consumed by platform/root composition;
 - use a screen or cohesive flow as the default component-module boundary, with documented grouping exceptions;
 - host Paparazzi/ComposablePreviewScanner in the Compose UI/resource-owning module by default. A dedicated screenshot module requires an explicit aggregation or plugin/source-set rationale.
 - add `quality.md` `Architecture checks` covering these constraints and any documented module/screenshot-host exceptions.

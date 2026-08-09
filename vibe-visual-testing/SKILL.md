@@ -15,8 +15,8 @@ Read approved screens/theme/locales, current previews, Paparazzi/scanner configu
 
 ## Workflow
 
-1. Reconcile AppSpec screens/states with preview declarations. Fail the hand-off when a primary screen or applicable state lacks light and dark previews; require default-English, risk-based font-scale, longest-locale, and adaptive variants declared by Product Designer.
-2. Create deterministic preview components/data with no real services, clocks, random values, network, database, permissions, ads, or native SDK dependencies. Resolve bundled copy through production Compose string resources; fixture data carries stable IDs/keys, not convenient translated literals.
+1. Reconcile AppSpec screens/states with preview declarations. Fail the hand-off when a primary screen or applicable state lacks light and dark previews, or when a Compose-rendered component contract lacks its component-module-owned `integration/*ComponentPreview`; require default-English, risk-based font-scale, longest-locale, and adaptive variants declared by Product Designer.
+2. Create deterministic preview components/data with no real services, clocks, random values, network, database, permissions, ads, or native SDK dependencies. Compose previews instantiate the public sibling Preview implementation rather than a private Compose-local fake. Resolve bundled copy through production Compose string resources; fixture data carries stable IDs/keys, not convenient translated literals.
 3. Put the Android-host screenshot-test surface in the Compose UI/resource-owning module by default. Use a dedicated module only for a documented aggregation or plugin/source-set constraint.
 4. Scope preview scanning to project packages and required source sets.
 5. Cache the discovered preview list and generate stable parameterized test source before test compilation.
@@ -41,7 +41,7 @@ Read approved screens/theme/locales, current previews, Paparazzi/scanner configu
 
 ## Validation
 
-Verify screen/state matrix completeness, light/dark coverage, English default/fallback rendering, production resource resolution and declared locale key completeness, font-scale/locale/device variants, screenshot-host ownership/rationale, generator determinism, Android unit-test compile dependency, stable IDs, filename encoding, package scope, each approved variant, record output, verify failure behavior, coverage inventory, Product Designer hand-off, CI artifacts, and Git LFS configuration.
+Verify screen/state matrix completeness, component-module Preview ownership for every Compose-rendered contract, documented navigation-only exceptions, absence of substitute Compose-local component fakes, light/dark coverage, English default/fallback rendering, production resource resolution and declared locale key completeness, font-scale/locale/device variants, screenshot-host ownership/rationale, generator determinism, Android unit-test compile dependency, stable IDs, filename encoding, package scope, each approved variant, record output, verify failure behavior, coverage inventory, Product Designer hand-off, CI artifacts, and Git LFS configuration.
 
 ## Escalation/hand-off
 

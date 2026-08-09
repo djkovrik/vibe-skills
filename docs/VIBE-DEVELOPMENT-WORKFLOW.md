@@ -116,8 +116,10 @@ Blinkly и Tackle остаются помеченными reference adaptations,
 | --- | --- | --- |
 | Component state | Каждый production Decompose `Value<Model>` — immutable, backed retained Store и отдельным `State -> Model` mapper; router-owned `Value<Child*>` и полностью stateless callback components — оговорённые исключения | Decompose + MVIKotlin |
 | Data boundary | Stateful Store работает с data/external operations через feature Manager; используется стандартный Kotlin `Result<T>`, одна `runCatching` boundary и cancellation-aware `unwrap`, без `Result<Result<T>>` | MVIKotlin + Domain |
+| Component packages | Contract лежит в корне feature package, Default/Preview/mappers — в `integration`, Store/provider — в `store`, feature Manager/models — в `domain`; flattened package запрещён | Project Architect + Decompose + MVIKotlin |
 | Modules | Экран или cohesive flow — стандартная component-module boundary; группировка допустима только с зафиксированной причиной | Project Architect + Decompose |
-| Preview implementation | Для deterministic Compose previews создаётся sibling Preview component implementation | Decompose + Product Designer |
+| Preview implementation | Каждый Compose-rendered component contract, включая stateless screen, имеет sibling `*ComponentPreview` в component module; исключение допустимо только для документированного navigation-only component без Compose render surface | Decompose + Product Designer + Visual Testing |
+| Manual DI | Каждый non-Decompose implementation module, предоставляющий созданные зависимости наружу, экспортирует `di/*Module.kt` с output/dependencies interfaces, одноимённой top-level factory и lazy outputs; composition root не обходит этот API прямыми конструкторами | Project Architect |
 | Visual coverage | Для каждого primary screen и applicable state обязательны light/dark previews; stress variants выбираются по рискам font scale, locale и device/layout | Product Designer + Visual Testing |
 | Golden tests | Paparazzi и ComposablePreviewScanner размещаются в Compose UI/resource-owning module; отдельный host требует архитектурного обоснования | Project Architect + Visual Testing |
 | Design review | После утверждённых goldens выполняется полный Lazyweb review: строго по одному screen/report за раз, затем approved fixes и повторная golden verification | Product Designer + Visual Testing |
