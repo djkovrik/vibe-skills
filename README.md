@@ -2,6 +2,12 @@
 
 Локальный пакет из 13 Agent Skills для разработки Kotlin Multiplatform приложений под Android и iOS. Skills принимают согласованную спецификацию приложения, проектируют архитектуру, реализуют функциональность, проверяют UI и поведение, затем готовят проект к выпуску.
 
+## Начало работы
+
+Основной пользовательский процесс, формат AppSpec, актуальные примеры промптов и граница между решениями пользователя и обязательными гарантиями skills описаны в [`docs/VIBE-DEVELOPMENT-WORKFLOW.md`](docs/VIBE-DEVELOPMENT-WORKFLOW.md). Используйте его как точку входа вместо копирования технического чек-листа в каждый промпт.
+
+Коротко: сначала в отдельной сессии подготовьте и утвердите Vibe AppSpec, затем проверьте его валидатором и передайте `$vibe-developer` для реализации.
+
 ## Состав пакета
 
 Главная точка входа — [`vibe-developer`](vibe-developer/SKILL.md). Он проверяет AppSpec и целевой репозиторий, строит dependency-aware план и подключает только нужных специалистов:
@@ -21,46 +27,6 @@
 
 Каждый specialist можно вызывать напрямую для узкой задачи. Матрица владельцев и hand-off правил находится в [`routing-matrix.md`](vibe-developer/references/routing-matrix.md).
 
-## Рабочий процесс с AppSpec
-
-Работа разделена на две сессии:
-
-1. В первой сессии обычный Codex помогает провести продуктовое интервью и подготовить Vibe AppSpec v1.3. Код приложения на этом этапе не пишется.
-2. Спецификация проверяется локальным валидатором. Ошибки и blocking `openQuestions`, включая нерешённые custom icon/assets, нужно устранить до реализации.
-3. В отдельной сессии `$vibe-developer` получает путь к AppSpec, проводит preflight репозитория и составляет план.
-4. Оркестратор последовательно подключает нужные skills: архитектура → domain/data/platform → navigation/state → UI и icon/assets gate → previews → Paparazzi/ComposablePreviewScanner goldens → full-UI Lazyweb review → тесты и release checks.
-5. Работа завершается отчётом о закрытых requirement IDs, изменённых модулях, выполненных проверках, рисках и отклонениях.
-
-```text
-product discovery
-  -> Vibe AppSpec v1.3
-  -> validation
-  -> separate $vibe-developer session
-  -> implementation and specialist hand-offs
-  -> tests, goldens, platform builds, release checks
-```
-
-## Структура AppSpec
-
-Готовый шаблон находится в [`vibe-developer/assets/app-spec-template/app-spec`](vibe-developer/assets/app-spec-template/app-spec).
-
-```text
-app-spec/
-  app-spec.json
-  product.md
-  design.md
-  domain.md
-  data.md
-  quality.md
-  flows/FLOW-*.md
-  screens/SCREEN-*.md
-  assets/
-```
-
-JSON содержит метаданные, requirements, capabilities, `localization`, `uiQuality` и связи. Markdown описывает продукт, дизайн-систему и иконки, domain/data contracts, локализованные локальные данные, quality gates, пользовательские flows, состояния экранов и preview/golden matrix. App-bundled переводы живут в Compose Multiplatform Resources `strings.xml` под общими ключами: английский всегда default/base locale, русский — начальная дополнительная локаль. Активная локаль определяется только системой — без language picker, сохранённой locale preference или app-specific override. Domain/persistence хранят только стабильные IDs/keys, а native `actual` при необходимости использует Android/iOS localization resources с тем же английским default. Requirements, acceptance scenarios, flows и screens используют стабильные идентификаторы `REQ-*`, `AC-*`, `FLOW-*` и `SCREEN-*`.
-
-AppSpec можно подготовить вручную, через обычный диалог с Codex, GitHub Spec Kit или OpenSpec. Эти инструменты не являются runtime-зависимостями пакета.
-
 ## Проверка и запуск
 
 Проверить спецификацию:
@@ -74,7 +40,8 @@ python .\vibe-developer\scripts\validate-app-spec.py D:\Projects\MyApp\app-spec
 ```text
 Используй $vibe-developer. Реализуй приложение по спецификации
 D:\Projects\MyApp\app-spec.
-Сначала проверь спецификацию и не меняй утверждённые требования молча.
+Сначала проверь спецификацию, выполни repository preflight и не меняй
+утверждённые требования или обязательный технический профиль молча.
 ```
 
 Проверить и установить пакет:
