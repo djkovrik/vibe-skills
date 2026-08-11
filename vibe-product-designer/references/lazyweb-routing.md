@@ -13,6 +13,8 @@ Before product UI design, critique, or change:
 6. Use `lazyweb-apply-design-best-practices` for craft guidance and `lazyweb-propose-ui-changes` for reviewable proposals.
 7. Poll the generated report and open/share its hosted URL.
 
+Lazyweb supplies evidence about real product patterns; current official Material 3 guidance supplies the normative component, accessibility, token, and Compose contract. When they conflict, preserve Material semantics and label the Lazyweb pattern as inspiration or a proposed deviation.
+
 For the post-golden gate:
 
 1. Inventory every declared primary screen and risk-bearing state from the AppSpec and put the screens in an explicit review order.

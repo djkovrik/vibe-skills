@@ -9,6 +9,7 @@ Accepted patterns:
 - `MVIKOTLIN-002` — component-module Stores live in a dedicated internal `store` package; see `../../vibe-mvikotlin-engineer/references/learned-patterns.md`.
 - `ARCH-001` — screen/flow component modules and Compose-owned screenshot testing; see `../../vibe-project-architect/references/learned-patterns.md`.
 - `ARCH-002` — interface/factory/`by lazy` manual DI boundaries for non-Decompose implementation modules; see `../../vibe-project-architect/references/learned-patterns.md`.
+- `PRODUCT-DESIGN-001` — Material 3-first product UI with semantic component selection, controlled M3 Expressive identity, and Compose Multiplatform API fallbacks; see `../../vibe-product-designer/references/learned-patterns.md`.
 
 Use this record format:
 
