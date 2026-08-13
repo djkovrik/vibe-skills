@@ -6,8 +6,8 @@ Use this contract during the late-stage Project Architect pass. Adapt the BulbMa
 
 Start this pass as soon as all of the following succeed locally or in an existing trusted CI environment:
 
-- Detekt;
-- Kover verification and XML report generation;
+- the strict Detekt task using the newest official release (or a documented newest-compatible toolchain exception) and committed generated config;
+- Kover verification and XML report generation over the declared domain/Decompose scope with its baseline-derived minimum;
 - a task that prints only numeric line coverage;
 - the required Android debug assembly;
 - applicable iOS tests/framework linkage and other project-specific build gates.
@@ -16,7 +16,7 @@ Do not wait for signing keys, Firebase access, Google Play access, or GitHub sec
 
 ## Inspect before generating
 
-Derive the default branch, JDK, Gradle wrapper, Android application module, package ID, version inputs, APK/AAB/mapping/symbol paths, Kover report path and threshold, screenshot task/report paths, migration checks, iOS modules/workspace/scheme/Xcode requirements, Firebase usage, release verifier, and localized release-note locales from the target repository and AppSpec. Verify current action versions in official sources. Pin third-party or release-mutating actions to full commit SHAs; use least-privilege permissions everywhere.
+Derive the default branch, JDK, Gradle wrapper, Android application module, package ID, version inputs, APK/AAB/mapping/symbol paths, strict Detekt task/report paths, Kover report path, filters, recorded baseline and derived threshold, screenshot task/report paths, migration checks, iOS modules/workspace/scheme/Xcode requirements, Firebase usage, release verifier, and localized release-note locales from the target repository and AppSpec. Verify current action versions in official sources. Pin third-party or release-mutating actions to full commit SHAs; use least-privilege permissions everywhere.
 
 ## Required workflows
 
@@ -25,12 +25,12 @@ Create these five files under `.github/workflows/` even when their credential-de
 1. `AnalysisAndTest.yml`
    - Trigger on push and pull request to the derived default branch plus `workflow_dispatch`.
    - Use per-ref concurrency with cancellation and `contents: read` by default.
-   - Run Android Detekt, tests, `koverVerify`, screenshot verification, migrations or validators, compilation, debug assembly, and applicable artifact/platform compatibility checks.
+   - Run the repository's strict Detekt gate, tests, `koverVerify`, screenshot verification, migrations or validators, compilation, debug assembly, and applicable artifact/platform compatibility checks.
    - Run iOS tests, framework linkage, CocoaPods/workspace build, or the repository's equivalent on a compatible macOS/Xcode runner when iOS is in scope.
    - Upload reports with `if: always()` and screenshot diffs/failures with `if: failure()`.
 2. `MeasureTestCoverage.yml`
    - Trigger for pull requests to the default branch and use per-PR concurrency.
-   - Generate the Kover XML report, enforce the repository's overall and changed-line thresholds, and publish one updated PR comment only for same-repository branches. Do not expose write tokens to fork code.
+   - Generate the Kover XML report with the same domain/Decompose filters used by verification, enforce the repository's baseline-derived overall threshold and its approved changed-line policy, and publish one updated PR comment only for same-repository branches. Do not expose write tokens to fork code.
    - Upload the XML report even when the threshold/comment step fails.
 3. `CodeCoverageBadge.yml`
    - Trigger on default-branch pushes plus `workflow_dispatch` and serialize updates.

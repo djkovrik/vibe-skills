@@ -43,7 +43,7 @@ AppSpec validation -> repository preflight -> architecture
 -> quality/platform/release checks
 ```
 
-10. When Detekt, Kover verification, numeric line coverage, and the required debug/platform builds pass, immediately apply [ci-release-contract.md](references/ci-release-contract.md). Create all five adapted baseline workflows under `.github/workflows/` and a project-specific `docs/CI-RELEASE-SETUP.md`; do not wait for external credentials. Leave unavailable external publication truthfully blocked and document the exact setup steps.
+10. Treat the readiness stage as a real quality gate. Require the newest official Detekt release (or a documented newest-compatible toolchain exception), a complete generated `detekt/base-config.yml` with current-schema Blinkly threshold adaptations when available, configuration validation, and strict failure on Warning/Error findings. Require Kover filters limited to the declared domain and production Decompose scope, a recorded first filtered baseline, an immediately committed baseline-derived minimum, XML/numeric output, and passing verification. When those gates and the required debug/platform builds pass, immediately apply [ci-release-contract.md](references/ci-release-contract.md). Create all five adapted baseline workflows under `.github/workflows/` and a project-specific `docs/CI-RELEASE-SETUP.md`; do not wait for external credentials. Leave unavailable external publication truthfully blocked and document the exact setup steps.
 11. Run targeted checks first. Use `scripts/run-gradle.ps1` on Windows.
 12. Reconcile implementation against requirement and acceptance IDs.
 13. Report implementation, owners used, requirement coverage, changed modules, checks, unrun checks, risks, deviations, CI/release readiness, external setup blockers, and reusable-learning candidates.
@@ -83,6 +83,7 @@ Prevent overlapping edits by giving each file/change one owner. Let the orchestr
 - Do not claim release automation ready when GitHub/Firebase/Google Play/Google Cloud prerequisites remain unverified. Distinguish committed automation from configured external state.
 - Require `en` as the default/base locale and complete fallback key set, with `ru` as the initial additional locale. Derive the active locale from the operating system only; reject an in-app language picker, persisted locale preference, or app-specific locale override. Require every declared locale to cover the shared keys, reject persisted/resolved translations for local catalogs, and scan production source for hardcoded user-visible strings. Native-only text must follow the same system-locale/EN-default contract in Android/iOS localization resources.
 - Treat warnings separately from failures.
+- Reject report-only Detekt integration, stale copied Detekt versions/configs, automatic baseline regeneration, whole-repository Kover denominators, and coverage thresholds chosen before measuring the filtered target repository.
 
 ## Escalation/hand-off
 

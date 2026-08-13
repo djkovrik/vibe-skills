@@ -22,7 +22,7 @@ Read acceptance IDs, public contracts, owner-specific decision records, current 
 5. Cover persistence/network/sync contract and failure paths.
 6. For app-bundled localized text, verify that English is the complete default/base resource set, compare key sets across every additional `app.locales` resource set, exercise ID/key mappings, system-locale changes and unsupported-locale-to-English fallback, assert the absence of a language picker/persisted locale/app override, and scan production source/seed data for hardcoded user-visible copy.
 7. Keep the main component-test suite in the `root` component module when root is a separate module and can assemble the production component graph and fakes without reversing dependencies. Otherwise document the nearest natural aggregation module.
-8. Run focused tests, then aggregate coverage/CI gates.
+8. Configure Kover to include the target repository's domain logic and production Decompose component behavior while excluding UI, previews, generated/passive code, and unrelated infrastructure. Run focused tests, then the deterministic aggregate test set, inspect the filtered report inventory, record the first numeric line-coverage baseline, immediately set a baseline-derived minimum, and pass `koverVerify` plus the CI coverage gates.
 
 ## Decision rules
 
@@ -37,10 +37,12 @@ Read acceptance IDs, public contracts, owner-specific decision records, current 
 - Use real SQLDelight schema/test driver, Ktor MockEngine, and sanitized JSON fixtures.
 - Assert that persistence/Store/component fixtures keep stable IDs or localization keys rather than resolved translations; use production resources when the displayed copy itself matters.
 - Treat coverage as a gap signal, not a substitute for assertions.
+- Never measure the whole codebase by default. Keep the Kover denominator tied to the documented domain/Decompose production scope, and require the XML report, numeric task, and verification rule to share that exact scope.
+- Choose the initial minimum only after the first clean filtered run, using the rule in [coverage-and-ci.md](references/coverage-and-ci.md); do not copy a percentage from Blinkly or invent a generic target.
 
 ## Validation
 
-Verify that acceptance coverage is led by public-contract Decompose component tests and that a separate `root` component module hosts the centralized suite when structurally valid. Also verify deterministic repeat runs, explicit create/resume/pause/destroy, virtual delays/cooldowns, active child/back dispatcher, success/failure/cancellation, English default/fallback behavior, locale key-set completeness, stable key mappings, hardcoded user-visible string checks, migration/schema/auth/conflict cases, teardown cleanup, and coverage gate exit codes.
+Verify that acceptance coverage is led by public-contract Decompose component tests and that a separate `root` component module hosts the centralized suite when structurally valid. Also verify deterministic repeat runs, explicit create/resume/pause/destroy, virtual delays/cooldowns, active child/back dispatcher, success/failure/cancellation, English default/fallback behavior, locale key-set completeness, stable key mappings, hardcoded user-visible string checks, migration/schema/auth/conflict cases, teardown cleanup, the Kover in-scope/out-of-scope class inventory, recorded baseline and derived minimum, identical filtering across reports/verification, and coverage gate exit codes.
 
 ## Escalation/hand-off
 
