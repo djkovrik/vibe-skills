@@ -4,6 +4,8 @@
 
 Store only the stable `PreferenceValue` ID through a typed settings contract with a documented default. Do not persist a translated label.
 
+The managed entity is `PreferenceSelection`. Its create, read, and update behavior is covered by AC-001, AC-002, and AC-003. Delete is intentionally not applicable because the product always retains a valid selection and has no reset action.
+
 Do not store a language or locale preference. The active language follows the operating-system locale only; there is no application-specific locale override.
 
 ## Localized text storage

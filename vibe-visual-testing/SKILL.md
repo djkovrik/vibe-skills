@@ -47,6 +47,10 @@ Verify screen/state matrix completeness, component-module Preview ownership for 
 
 Product differences -> Product Designer. Compose rendering bugs -> Compose Expert. Native-view behavior -> Platform/Test Engineer. Non-visual assertions -> Test Engineer.
 
+## Orchestrated evidence hand-off
+
+When `$vibe-developer` assigns work, accept explicit acceptance-scenario/quality-gate IDs and file boundaries. Change only the assigned, non-overlapping slice. Return an evidence package containing production `path`/`symbol`/`surface`, test `path`/exact test name/surface, commands requested from the Gradle owner, checks actually run, and unresolved blockers. Do not edit `.vibe/delivery-ledger.json` or claim completion; `$vibe-developer` is the only ledger writer and the only Gradle owner. Parallel work is allowed only when files and contracts do not overlap.
+
 ## Reusable learning
 
 Propose reusable preview/golden infrastructure rules for [learned-patterns.md](references/learned-patterns.md); never auto-bless snapshots.

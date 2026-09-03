@@ -1,4 +1,4 @@
-# Vibe AppSpec v1 contract
+# Vibe AppSpec 1.4 contract
 
 ## Contents
 
@@ -8,6 +8,10 @@
 - [UI quality contract](#ui-quality-contract)
 - [Localization contract](#localization-contract)
 - [Architecture contract](#architecture-contract)
+- [Atomic behavior contract](#atomic-behavior-contract)
+- [Managed entity contract](#managed-entity-contract)
+- [Quality gate inventory](#quality-gate-inventory)
+- [Legacy migration](#legacy-migration)
 - [Monetization and privacy contract](#monetization-and-privacy-contract)
 - [Validation](#validation)
 
@@ -30,17 +34,45 @@ app-spec/
   assets/
 ```
 
-`app-spec.json` declares app metadata, requirements, flow/screen IDs, capabilities, constraints, localization, architecture, UI quality gates, and open questions. Additional fields are allowed. Reject any schema major other than `1`. `design.md` and `uiQuality` are required for AppSpec 1.1+; `localization` and the localized-text Markdown contract are required for AppSpec 1.2+; `architecture` is required for AppSpec 1.3+. Accept older 1.x specs as legacy inputs but surface their missing contracts.
+`app-spec.json` declares app metadata, requirements, atomic acceptance scenarios, managed-entity operation decisions, flow/screen IDs, capabilities, constraints, localization, architecture, quality gates, and open questions. Additional fields are allowed. `design.md` and `uiQuality` are required for AppSpec 1.1+; `localization` and the localized-text Markdown contract are required for AppSpec 1.2+; `architecture` is required for AppSpec 1.3+; `acceptanceScenarios`, `managedEntities`, and `qualityGates` are required for AppSpec 1.4.
+
+The validator accepts 1.0–1.3 as legacy inputs and warns that they are suitable only for narrow specialist work. A complete or cross-cutting `$vibe-developer` cycle must validate an approved 1.4 specification with `--require-current`. Schema major versions other than 1 and versions newer than this contract are unsupported.
 
 The Markdown files define product intent, design direction, domain semantics, data contracts, quality gates, flows, acceptance scenarios, screen states, accessibility, localization, iconography/assets, preview/golden coverage, and allowed monetization slots.
 
 ## Identifiers and links
 
-- Use stable `REQ-NNN`, `FLOW-NNN`, `SCREEN-NNN`, and `AC-NNN` identifiers.
-- Put each acceptance scenario in one flow and include Given/When/Then.
-- Link requirements to acceptance IDs.
+- Use stable `REQ-NNN`, `FLOW-NNN`, `SCREEN-NNN`, `AC-NNN`, and `QG-NNN` identifiers.
+- Put each acceptance scenario in exactly one flow under its own `## AC-NNN` section. That section, rather than a shared flow preamble, contains its own ordered Given/When/Then.
+- Keep the union of every requirement's `acceptanceScenarioIds` exactly equal to the IDs in `acceptanceScenarios`; duplicates and orphans are invalid.
+- Link every acceptance scenario back to exactly one declared requirement and flow and to one or more declared screens. Its flow file links the same requirement and screens.
 - Link screens to requirements and flows.
 - Keep filenames equal to their stable flow/screen IDs.
+
+## Atomic behavior contract
+
+For AppSpec 1.4, each `acceptanceScenarios` entry declares `id`, `title`, `requirementId`, `flowId`, `screenIds`, `kind`, `subject`, `operation`, and `verificationSurfaces`. `kind` is one of `action`, `state`, or `failure`. One entry describes one observable outcome and one primary action, state, or failure; split compound outcomes into separate ACs even when they share a flow.
+
+`subject` is the behavior owner or managed entity, `operation` is the single behavior being exercised, and `verificationSurfaces` names the independent surfaces that must demonstrate it, such as `domain-test`, `component-test`, `settings-integration-test`, `platform-test`, or `ui-golden`. Detailed conditions remain in `FLOW-*.md`; the JSON inventory is the stable planning and traceability boundary.
+
+Migration may add `reviewStatus: needs-review`, but such a scenario is invalid for implementation until a human has reviewed it. New approved specs may use `reviewStatus: approved` or omit the optional field.
+
+## Managed entity contract
+
+Every item in `managedEntities` names an `entity` and an `operations` object. The object explicitly contains all four `create`, `read`, `update`, and `delete` cells. Each cell is either:
+
+- `{ "status": "required", "acceptanceScenarioIds": ["AC-NNN"] }`; or
+- `{ "status": "not-applicable", "reason": "product-specific explanation" }`.
+
+Additional operation keys such as `rename`, `reuse`, `restore`, or `delete-all` use the same decision shape. A required operation has at least one existing AC whose `subject` equals the entity and whose `operation` equals the operation key. Do not group an omitted behavior into a generic partial status; absence needs an explicit not-applicable decision and reason.
+
+An empty `managedEntities` array is valid only when review has established that the product manages no entities. If migration cannot determine that safely, it leaves a blocking question.
+
+## Quality gate inventory
+
+Every `qualityGates` entry declares a stable `id`, `title`, `category`, `platform`, `requirement`, `verificationMethod`, and `contractSource`. Categories are `repository`, `platform`, `external`, and `release`. `platform` is `all` or one declared app target. `contractSource` points to a normative AppSpec file and optional heading anchor.
+
+`requirement` is `required` or `conditional`; a conditional gate also states its explicit `condition`. Every 1.4 spec contains at least one required repository gate, one required release gate, and one required platform gate for each declared target. Conditional external publication or service checks stay separate so they cannot be mistaken for repository verification.
 
 ## UI quality contract
 
@@ -99,12 +131,23 @@ For an AppSpec that enables ads:
 
 Do not label the custom endpoint or app screen as an IAB TCF CMP. A future partner that requires certified CMP/TCF behavior needs a new privacy inventory, explicit product/legal approval, and a replacement integration contract.
 
+## Legacy migration
+
+Migrate an AppSpec 1.3 directory into a new, nonexistent directory:
+
+```powershell
+python .\vibe-developer\scripts\migrate-app-spec.py <legacy-app-spec-directory> <new-app-spec-directory>
+```
+
+The migrator copies the source tree without changing it, creates the 1.4 JSON inventories, marks inferred acceptance scenarios `needs-review`, and adds blocking questions for scenario approval, managed-entity inventory, and quality-gate confirmation. It refuses an existing output path. Review the generated JSON and flow sections manually, resolve the blocking questions, and validate with `--require-current`; migration output is not an approved implementation hand-off by itself.
+
 ## Validation
 
 Run:
 
 ```powershell
 python .\vibe-developer\scripts\validate-app-spec.py <app-spec-directory>
+python .\vibe-developer\scripts\validate-app-spec.py --require-current <app-spec-directory>
 ```
 
-The validator is read-only. Errors block implementation; warnings require review. It validates contract structure, references, blocking questions, and the machine-checkable UI quality contract, not full product correctness.
+The validator is read-only. Errors block implementation; warnings require review. It validates contract structure, references, per-AC Given/When/Then, operation decisions, mandatory/conditional gate declarations, blocking questions, and the machine-checkable UI quality contract, not full product correctness. Use the first command only for compatibility or narrow legacy specialist work; the full workflow requires the second command.

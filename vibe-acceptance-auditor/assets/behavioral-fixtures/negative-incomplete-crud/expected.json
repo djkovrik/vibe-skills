@@ -1,0 +1,16 @@
+{
+  "verdict": "GAPS",
+  "implementationComplete": false,
+  "releaseReady": false,
+  "requiredGapOperationIds": [
+    "preset:rename",
+    "preset:update",
+    "history:reuse",
+    "history:delete",
+    "draft:resume",
+    "draft:discard",
+    "draft-item:update-quantity",
+    "draft-item:remove",
+    "draft-item:delete-granular"
+  ]
+}

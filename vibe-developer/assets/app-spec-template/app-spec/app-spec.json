@@ -1,5 +1,5 @@
 {
-  "schemaVersion": "1.3",
+  "schemaVersion": "1.4",
   "app": {
     "name": "Example App",
     "summary": "A validated hand-off example.",
@@ -12,7 +12,104 @@
       "title": "Persist the selected preference",
       "priority": "must",
       "status": "approved",
-      "acceptanceScenarioIds": ["AC-001"]
+      "acceptanceScenarioIds": ["AC-001", "AC-002", "AC-003"]
+    }
+  ],
+  "acceptanceScenarios": [
+    {
+      "id": "AC-001",
+      "title": "Save the first preference selection",
+      "requirementId": "REQ-001",
+      "flowId": "FLOW-001",
+      "screenIds": ["SCREEN-001"],
+      "kind": "action",
+      "subject": "PreferenceSelection",
+      "operation": "create",
+      "verificationSurfaces": ["component-test", "settings-integration-test"],
+      "reviewStatus": "approved"
+    },
+    {
+      "id": "AC-002",
+      "title": "Restore the persisted preference selection",
+      "requirementId": "REQ-001",
+      "flowId": "FLOW-001",
+      "screenIds": ["SCREEN-001"],
+      "kind": "state",
+      "subject": "PreferenceSelection",
+      "operation": "read",
+      "verificationSurfaces": ["component-test", "settings-integration-test"],
+      "reviewStatus": "approved"
+    },
+    {
+      "id": "AC-003",
+      "title": "Replace a saved preference selection",
+      "requirementId": "REQ-001",
+      "flowId": "FLOW-001",
+      "screenIds": ["SCREEN-001"],
+      "kind": "action",
+      "subject": "PreferenceSelection",
+      "operation": "update",
+      "verificationSurfaces": ["component-test", "settings-integration-test"],
+      "reviewStatus": "approved"
+    }
+  ],
+  "managedEntities": [
+    {
+      "entity": "PreferenceSelection",
+      "operations": {
+        "create": { "status": "required", "acceptanceScenarioIds": ["AC-001"] },
+        "read": { "status": "required", "acceptanceScenarioIds": ["AC-002"] },
+        "update": { "status": "required", "acceptanceScenarioIds": ["AC-003"] },
+        "delete": { "status": "not-applicable", "reason": "The product always keeps one selection and exposes no clear/reset action." }
+      }
+    }
+  ],
+  "qualityGates": [
+    {
+      "id": "QG-001",
+      "title": "Repository tests and static checks",
+      "category": "repository",
+      "platform": "all",
+      "requirement": "required",
+      "verificationMethod": "Run the focused test, Detekt, Kover, and build tasks declared in quality.md.",
+      "contractSource": "quality.md#test-matrix"
+    },
+    {
+      "id": "QG-002",
+      "title": "Android build and platform checks",
+      "category": "platform",
+      "platform": "android",
+      "requirement": "required",
+      "verificationMethod": "Run the declared Android build and platform test tasks.",
+      "contractSource": "quality.md#release-acceptance"
+    },
+    {
+      "id": "QG-003",
+      "title": "iOS compilation and platform checks",
+      "category": "platform",
+      "platform": "ios",
+      "requirement": "required",
+      "verificationMethod": "Run the declared iOS compilation and platform test tasks.",
+      "contractSource": "quality.md#release-acceptance"
+    },
+    {
+      "id": "QG-004",
+      "title": "Release acceptance",
+      "category": "release",
+      "platform": "all",
+      "requirement": "required",
+      "verificationMethod": "Verify every release acceptance item and its current evidence.",
+      "contractSource": "quality.md#release-acceptance"
+    },
+    {
+      "id": "QG-005",
+      "title": "External publication configuration",
+      "category": "external",
+      "platform": "all",
+      "requirement": "conditional",
+      "condition": "A distribution build is being published to an external store or service.",
+      "verificationMethod": "Verify the configured external account, credentials, and publication result.",
+      "contractSource": "quality.md#release-acceptance"
     }
   ],
   "flows": ["FLOW-001"],

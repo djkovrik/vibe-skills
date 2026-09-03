@@ -49,6 +49,10 @@ Verify hierarchy/context uniqueness, serializable config restoration, active chi
 
 Hand Store internals to MVIKotlin, pure rules to Domain, Compose APIs/design to Product Designer/Compose Expert, and behavioral coverage to Test Engineer.
 
+## Orchestrated evidence hand-off
+
+When `$vibe-developer` assigns work, accept explicit acceptance-scenario/quality-gate IDs and file boundaries. Change only the assigned, non-overlapping slice. Return an evidence package containing production `path`/`symbol`/`surface`, test `path`/exact test name/surface, commands requested from the Gradle owner, checks actually run, and unresolved blockers. Do not edit `.vibe/delivery-ledger.json` or claim completion; `$vibe-developer` is the only ledger writer and the only Gradle owner. Parallel work is allowed only when files and contracts do not overlap.
+
 ## Reusable learning
 
 Propose reusable component/navigation rules for [learned-patterns.md](references/learned-patterns.md); never modify it without approval.

@@ -40,7 +40,10 @@ Cover success, malformed payload, each failure class, 401 refresh/logout, refres
 
 Domain owns API semantics; Sync owns snapshots/conflicts; Platform/Architect own engine and native dependency setup; Test Engineer owns broader integration coverage.
 
+## Orchestrated evidence hand-off
+
+When `$vibe-developer` assigns work, accept explicit acceptance-scenario/quality-gate IDs and file boundaries. Change only the assigned, non-overlapping slice. Return an evidence package containing production `path`/`symbol`/`surface`, test `path`/exact test name/surface, commands requested from the Gradle owner, checks actually run, and unresolved blockers. Do not edit `.vibe/delivery-ledger.json` or claim completion; `$vibe-developer` is the only ledger writer and the only Gradle owner. Parallel work is allowed only when files and contracts do not overlap.
+
 ## Reusable learning
 
 Propose approved network contracts for [learned-patterns.md](references/learned-patterns.md); do not auto-promote project quirks.
-

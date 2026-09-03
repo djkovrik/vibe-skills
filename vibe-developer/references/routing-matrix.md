@@ -19,6 +19,7 @@ Each row contains four forward prompts and the expected route.
 | Visual Testing | “Add Paparazzi goldens for all preview states.” | “Turn every primary screen/state into light/dark preview/golden CI.” | “Choose a better empty-state hierarchy.” -> Product Designer | “Paparazzi cannot render a native ad view.” -> Visual Testing adds seam; Platform/Monetization test native behavior |
 | Monetization | “Integrate Yandex inline ads safely.” | “Implement the requested ads capability.” | “Redesign the feed hierarchy.” -> Product Designer | “Enable personalized ads.” -> user/product/legal decides; Monetization implements only approved policy |
 | Test Engineer | “Test Decompose component behavior.” | “Cover non-visual acceptance scenarios.” | “Update screenshot snapshots.” -> Visual Testing | “Test a Store-backed component.” -> Test Engineer owns harness; Decompose/MVIKotlin clarify contracts |
+| Acceptance Auditor | “Audit whether this AppSpec is fully implemented.” | “Run the fresh closure audit after all ledger entries are locally closed.” | “Implement the missing CRUD path.” -> owning implementation specialist | “The ledger says complete but code is incomplete.” -> Auditor builds an independent shadow inventory and reports `GAPS`; Developer assigns fixes |
 
 Localized local catalog hand-off: Domain owns stable item IDs/key semantics; Persistence stores only IDs/keys; Project Architect owns Compose resource generation/module wiring; Product Designer and Compose resolve common `strings.xml` resources; Platform owns Android/iOS native resource fallbacks; Test Engineer checks key completeness and hardcoded-string policy; Visual Testing renders declared locales.
 
@@ -43,6 +44,7 @@ For a new Android+iOS KMP app with onboarding, home tabs, OAuth REST, SQLDelight
 | Compose-owned previews/scanner/Paparazzi/CI diffs and coverage inventory | Architect hosts -> Visual Testing owns mechanics |
 | post-golden full-UI Lazyweb review and approved-fix loop | Product Designer -> Compose Expert -> Visual Testing |
 | localized local catalogs and bundled text | Domain IDs/keys -> Persistence key storage -> Architect resource wiring -> Product Designer/Compose resources -> Platform native fallback -> Test/Visual verification |
-| final quality/platform/release gates | Project Architect, coordinated by Developer |
+| independent closure verdict | fresh-context Acceptance Auditor after implementers stop |
+| final quality/platform/release gates | Project Architect, coordinated by Developer only after audit `PASS` |
 
 No responsibility is intentionally shared without an explicit hand-off.

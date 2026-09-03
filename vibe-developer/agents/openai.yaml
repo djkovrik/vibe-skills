@@ -1,4 +1,4 @@
 interface:
   display_name: "Vibe Developer"
-  short_description: "Orchestrate KMP app delivery end to end"
-  default_prompt: "Use $vibe-developer to implement this KMP app from the validated AppSpec."
+  short_description: "Deliver KMP apps with evidence and audit"
+  default_prompt: "Use $vibe-developer to deliver this approved AppSpec 1.4 through ledger-backed implementation and a fresh acceptance audit."

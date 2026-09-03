@@ -8,6 +8,8 @@ Keep reads deterministic and writes responsive.
 
 Cover default, update, restart simulation, invalid legacy value, Android, and iOS.
 
+The machine-readable gate inventory is `app-spec.json#qualityGates`. Every required gate and every conditional gate whose condition is active needs a verification receipt tied to the current AppSpec and workspace fingerprints.
+
 ## Preview and golden matrix
 
 Require SCREEN-001's Compose-rendered public component contract to have a sibling `*ComponentPreview` in its component module; Compose must not substitute a local fake. Require deterministic `@Preview` coverage for content and error states in light and dark. Add EN/RU, a 200% font-scale text-stress case, and the declared expanded-width layout. ComposablePreviewScanner must discover the declared previews and generate Paparazzi tests with stable IDs.

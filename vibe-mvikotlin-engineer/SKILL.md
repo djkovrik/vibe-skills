@@ -50,6 +50,10 @@ Test reducer transitions, intents/actions, bootstrap subscriptions, Manager resu
 
 Hand public component mapping/lifecycle ownership to Decompose, calculations to Domain, IO implementations to the owning infrastructure skill, and tests to Test Engineer.
 
+## Orchestrated evidence hand-off
+
+When `$vibe-developer` assigns work, accept explicit acceptance-scenario/quality-gate IDs and file boundaries. Change only the assigned, non-overlapping slice. Return an evidence package containing production `path`/`symbol`/`surface`, test `path`/exact test name/surface, commands requested from the Gradle owner, checks actually run, and unresolved blockers. Do not edit `.vibe/delivery-ledger.json` or claim completion; `$vibe-developer` is the only ledger writer and the only Gradle owner. Parallel work is allowed only when files and contracts do not overlap.
+
 ## Reusable learning
 
 Propose reusable Store conventions for [learned-patterns.md](references/learned-patterns.md); do not apply them automatically.

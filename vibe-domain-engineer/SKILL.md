@@ -42,6 +42,10 @@ Trace every invariant to requirements and acceptance IDs. Test valid/invalid bou
 
 Hand persistence contracts to Persistence, transport contracts to Network, platform scheduling to Platform, and observable orchestration to MVIKotlin. Ask Developer for materially ambiguous business choices.
 
+## Orchestrated evidence hand-off
+
+When `$vibe-developer` assigns work, accept explicit acceptance-scenario/quality-gate IDs and file boundaries. Change only the assigned, non-overlapping slice. Return an evidence package containing production `path`/`symbol`/`surface`, test `path`/exact test name/surface, commands requested from the Gradle owner, checks actually run, and unresolved blockers. Do not edit `.vibe/delivery-ledger.json` or claim completion; `$vibe-developer` is the only ledger writer and the only Gradle owner. Parallel work is allowed only when files and contracts do not overlap.
+
 ## Reusable learning
 
 Propose reusable domain rules for [learned-patterns.md](references/learned-patterns.md) with evidence and migration impact; never auto-apply them.

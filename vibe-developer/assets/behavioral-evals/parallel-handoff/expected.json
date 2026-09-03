@@ -1,0 +1,8 @@
+{
+  "parallelizeOverlappingFiles": false,
+  "parallelizeOverlappingContracts": false,
+  "ledgerWriters": ["vibe-developer"],
+  "gradleOwners": ["vibe-developer"],
+  "specialistOutput": "evidence-package",
+  "requiresCanonicalProjectMutex": true
+}

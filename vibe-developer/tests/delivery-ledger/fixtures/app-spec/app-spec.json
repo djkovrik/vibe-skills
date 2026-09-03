@@ -1,0 +1,121 @@
+{
+  "schemaVersion": "1.4",
+  "app": {
+    "name": "Ledger Fixture",
+    "summary": "A minimal fixture for delivery-ledger verification.",
+    "targets": ["android"],
+    "locales": ["en", "ru"]
+  },
+  "requirements": [
+    {
+      "id": "REQ-001",
+      "title": "Persist a value",
+      "priority": "must",
+      "status": "approved",
+      "acceptanceScenarioIds": ["AC-001"]
+    }
+  ],
+  "acceptanceScenarios": [
+    {
+      "id": "AC-001",
+      "title": "Saved value is observable",
+      "requirementId": "REQ-001",
+      "flowId": "FLOW-001",
+      "screenIds": ["SCREEN-001"],
+      "kind": "action",
+      "subject": "Value",
+      "operation": "create",
+      "verificationSurfaces": ["component-test"],
+      "reviewStatus": "approved"
+    }
+  ],
+  "managedEntities": [
+    {
+      "entity": "Value",
+      "operations": {
+        "create": {"status": "required", "acceptanceScenarioIds": ["AC-001"]},
+        "read": {"status": "not-applicable", "reason": "Observation is part of the create outcome."},
+        "update": {"status": "not-applicable", "reason": "The fixture models one immutable observation."},
+        "delete": {"status": "not-applicable", "reason": "The fixture has no deletion behavior."}
+      }
+    }
+  ],
+  "qualityGates": [
+    {
+      "id": "QG-001",
+      "title": "Repository tests",
+      "category": "repository",
+      "platform": "all",
+      "requirement": "required",
+      "verificationMethod": "Run repository tests.",
+      "contractSource": "quality.md#repository-tests"
+    },
+    {
+      "id": "QG-002",
+      "title": "Android release build",
+      "category": "platform",
+      "platform": "android",
+      "requirement": "required",
+      "verificationMethod": "Build the Android release.",
+      "contractSource": "quality.md#android-release"
+    },
+    {
+      "id": "QG-003",
+      "title": "Release acceptance",
+      "category": "release",
+      "platform": "all",
+      "requirement": "required",
+      "verificationMethod": "Verify release acceptance.",
+      "contractSource": "quality.md#release-acceptance"
+    }
+  ],
+  "flows": ["FLOW-001"],
+  "screens": ["SCREEN-001"],
+  "capabilities": {
+    "network": false,
+    "database": false,
+    "settings": true,
+    "sync": false,
+    "authentication": false,
+    "notifications": false,
+    "exactAlarms": false,
+    "ads": false
+  },
+  "constraints": {
+    "offlineMode": "The value remains available offline.",
+    "privacy": ["Do not collect personal data."],
+    "accessibility": ["Support screen readers and font scaling."],
+    "performance": ["Persist without visible delay."]
+  },
+  "localization": {
+    "defaultLocale": "en",
+    "localeSelection": "system-only",
+    "resourceSystem": "compose-multiplatform-resources",
+    "resourceFileFormat": "strings.xml",
+    "keyStrategy": "shared-key-across-locales",
+    "localDataTextStorage": "resource-keys-only",
+    "nativeFallback": "platform-localized-resources",
+    "hardcodedUserFacingStrings": false
+  },
+  "architecture": {
+    "resultType": "kotlin-result",
+    "componentModel": "immutable-value",
+    "stateOwner": "mvikotlin-store",
+    "stateMapping": "store-state-to-component-model",
+    "storeDataAccess": "manager-result-unwrap",
+    "managerResultCapture": "runCatching",
+    "previewComponent": "separate-preview-implementation",
+    "componentModuleStrategy": "screen-or-flow-boundary",
+    "screenshotTestHost": "compose-ui-module",
+    "screenshotTestHostRationale": "The Compose module owns fixture previews, resources, and snapshots."
+  },
+  "uiQuality": {
+    "previewThemes": ["light", "dark"],
+    "fontScales": [1.0, 2.0],
+    "localeCoverage": "all",
+    "goldenTesting": {"required": true, "engine": "paparazzi", "previewDiscovery": "ComposablePreviewScanner"},
+    "designReview": {"required": true, "provider": "lazyweb", "trigger": "after-goldens", "standards": ["material3"]},
+    "iconography": {"inventoryStatus": "not-required", "standardIconSource": "Material Symbols", "customAssetsStatus": "not-required"}
+  },
+  "openQuestions": []
+}

@@ -23,7 +23,18 @@ On failure, keep the previous value and offer retry. After interruption, reload 
 
 ## AC-001
 
-Given the user opens SCREEN-001  
-When the user selects and saves a supported value  
-Then the value is restored after the application restarts.
+Given no explicit preference selection has been persisted
+When the user saves a supported value on SCREEN-001
+Then that value becomes the persisted preference selection.
 
+## AC-002
+
+Given a preference selection was persisted previously
+When the user opens SCREEN-001 after the application restarts
+Then the persisted value is shown as the current selection.
+
+## AC-003
+
+Given a preference selection is already persisted
+When the user saves a different supported value on SCREEN-001
+Then the new value replaces the previous persisted selection.

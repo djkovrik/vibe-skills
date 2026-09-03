@@ -48,6 +48,10 @@ Run real-schema test drivers, all migrations from supported versions, adapter an
 
 Domain owns data meaning; Sync owns conflict/remote-apply coordination; Platform owns native driver factories; Network owns remote DTO transport.
 
+## Orchestrated evidence hand-off
+
+When `$vibe-developer` assigns work, accept explicit acceptance-scenario/quality-gate IDs and file boundaries. Change only the assigned, non-overlapping slice. Return an evidence package containing production `path`/`symbol`/`surface`, test `path`/exact test name/surface, commands requested from the Gradle owner, checks actually run, and unresolved blockers. Do not edit `.vibe/delivery-ledger.json` or claim completion; `$vibe-developer` is the only ledger writer and the only Gradle owner. Parallel work is allowed only when files and contracts do not overlap.
+
 ## Reusable learning
 
 Propose durable persistence conventions for [learned-patterns.md](references/learned-patterns.md); never write them without approval.

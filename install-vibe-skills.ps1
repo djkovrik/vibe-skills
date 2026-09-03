@@ -22,9 +22,11 @@ if (-not (Test-Path -LiteralPath $manifestPath -PathType Leaf)) {
 }
 $manifest = Get-Content -LiteralPath $manifestPath -Raw -Encoding UTF8 | ConvertFrom-Json
 $skills = @($manifest.skillDirectories)
-if ($skills.Count -ne 13 -or ($skills | Where-Object { $_ -notmatch '^vibe-[a-z0-9-]+$' })) {
-    throw 'Manifest must contain the exact validated list of 13 vibe-* directories.'
+if ($skills.Count -eq 0 -or ($skills | Where-Object { $_ -notmatch '^vibe-[a-z0-9-]+$' })) {
+    throw 'Manifest must contain a non-empty validated list of vibe-* directories.'
 }
+$duplicates = @($skills | Group-Object | Where-Object Count -gt 1 | Select-Object -ExpandProperty Name)
+if ($duplicates) { throw "Manifest contains duplicate skill directories: $($duplicates -join ', ')" }
 
 if (-not $Destination) {
     if ($env:CODEX_HOME) {

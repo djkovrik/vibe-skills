@@ -42,6 +42,10 @@ Test schema compatibility, localization-key round trips where applicable, local-
 
 Persistence owns local storage/transactions; Network or Platform owns remote adapter transport; Domain owns merge semantics; Platform owns rescheduling side effects; MVIKotlin owns UI-facing orchestration.
 
+## Orchestrated evidence hand-off
+
+When `$vibe-developer` assigns work, accept explicit acceptance-scenario/quality-gate IDs and file boundaries. Change only the assigned, non-overlapping slice. Return an evidence package containing production `path`/`symbol`/`surface`, test `path`/exact test name/surface, commands requested from the Gradle owner, checks actually run, and unresolved blockers. Do not edit `.vibe/delivery-ledger.json` or claim completion; `$vibe-developer` is the only ledger writer and the only Gradle owner. Parallel work is allowed only when files and contracts do not overlap.
+
 ## Reusable learning
 
 Propose accepted sync policies for [learned-patterns.md](references/learned-patterns.md); never mutate policy from a one-off conflict.

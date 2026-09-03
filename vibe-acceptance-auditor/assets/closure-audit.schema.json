@@ -1,0 +1,173 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://vibe-skills.local/schemas/closure-audit-1.0.json",
+  "title": "Vibe closure audit",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "verdict",
+    "completedAt",
+    "auditorContext",
+    "appSpecFingerprint",
+    "workspaceFingerprint",
+    "shadowInventory",
+    "obligations",
+    "checks",
+    "findings",
+    "completion"
+  ],
+  "properties": {
+    "schemaVersion": { "const": "1.0" },
+    "verdict": { "enum": ["PASS", "GAPS", "BLOCKED"] },
+    "completedAt": { "type": "string", "format": "date-time" },
+    "auditorContext": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["fresh"],
+      "properties": {
+        "fresh": { "type": "boolean" },
+        "contextId": { "type": "string", "minLength": 1 }
+      }
+    },
+    "appSpecFingerprint": { "$ref": "#/$defs/appSpecFingerprint" },
+    "workspaceFingerprint": { "$ref": "#/$defs/workspaceFingerprint" },
+    "shadowInventory": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["requirementIds", "acceptanceScenarioIds", "managedOperationIds", "qualityGateIds"],
+      "properties": {
+        "requirementIds": { "$ref": "#/$defs/uniqueIds" },
+        "acceptanceScenarioIds": { "$ref": "#/$defs/uniqueIds" },
+        "managedOperationIds": { "$ref": "#/$defs/uniqueIds" },
+        "qualityGateIds": { "$ref": "#/$defs/uniqueIds" }
+      }
+    },
+    "obligations": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/obligation" }
+    },
+    "checks": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/check" }
+    },
+    "findings": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/finding" }
+    },
+    "completion": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["implementationComplete", "releaseReady"],
+      "properties": {
+        "implementationComplete": { "type": "boolean" },
+        "releaseReady": { "type": "boolean" }
+      }
+    }
+  },
+  "$defs": {
+    "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "fileHash": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "sha256"],
+      "properties": {
+        "path": { "type": "string", "minLength": 1 },
+        "sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "appSpecFingerprint": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["algorithm", "files", "digest"],
+      "properties": {
+        "algorithm": { "const": "sha256" },
+        "files": { "type": "array", "items": { "$ref": "#/$defs/fileHash" } },
+        "digest": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "workspaceFingerprint": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["algorithm", "gitHead", "binaryDiffSha256", "untrackedFiles", "digest"],
+      "properties": {
+        "algorithm": { "const": "sha256" },
+        "gitHead": { "type": ["string", "null"] },
+        "binaryDiffSha256": { "$ref": "#/$defs/sha256" },
+        "untrackedFiles": { "type": "array", "items": { "$ref": "#/$defs/fileHash" } },
+        "digest": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "uniqueIds": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "surface"],
+      "properties": {
+        "path": { "type": "string", "minLength": 1 },
+        "surface": { "type": "string", "minLength": 1 },
+        "symbol": { "type": "string", "minLength": 1 },
+        "testName": { "type": "string", "minLength": 1 }
+      }
+    },
+    "obligation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "kind", "scope", "result", "verificationSurfaces", "evidence"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "kind": { "enum": ["acceptance-scenario", "managed-operation", "quality-gate"] },
+        "scope": { "enum": ["repository", "platform", "external", "release"] },
+        "result": { "enum": ["verified", "gap", "blocked-external", "waived"] },
+        "acceptanceScenarioIds": { "$ref": "#/$defs/uniqueIds" },
+        "verificationSurfaces": { "$ref": "#/$defs/uniqueIds" },
+        "evidence": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/evidence" }
+        },
+        "decisionReference": { "type": "string", "minLength": 1 },
+        "notes": { "type": "string" }
+      }
+    },
+    "check": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "command", "exitCode", "completedAt", "result", "obligationIds", "workspaceFingerprint"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "command": { "type": "string", "minLength": 1 },
+        "exitCode": { "type": ["integer", "null"] },
+        "completedAt": { "type": "string", "format": "date-time" },
+        "result": { "enum": ["pass", "fail", "blocked"] },
+        "obligationIds": { "$ref": "#/$defs/uniqueIds" },
+        "workspaceFingerprint": { "$ref": "#/$defs/workspaceFingerprint" }
+      }
+    },
+    "finding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "kind", "obligationIds", "summary", "evidence"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "kind": { "enum": ["gap", "audit-blocker", "external-blocker", "waiver", "observation"] },
+        "obligationIds": { "$ref": "#/$defs/uniqueIds" },
+        "summary": { "type": "string", "minLength": 1 },
+        "evidence": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/evidence" }
+        },
+        "neededProof": { "type": "string", "minLength": 1 }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "kind": { "const": "gap" } }, "required": ["kind"] },
+          "then": { "required": ["neededProof"] }
+        }
+      ]
+    }
+  }
+}

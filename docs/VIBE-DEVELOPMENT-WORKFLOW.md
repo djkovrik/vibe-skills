@@ -1,207 +1,160 @@
 # Vibe development workflow
 
-Этот документ — основной пользовательский источник правды о том, как работать с набором `vibe-*` skills: от идеи приложения до проверенной реализации. Нормативные технические правила находятся в самих skills и связанных с ними контрактах; этот документ объясняет, когда их применять и что должен предоставить пользователь.
+Этот документ описывает пользовательский путь от продуктовой идеи до проверенной реализации. Нормативные технические правила находятся в самих `vibe-*` skills и их contracts; этот workflow определяет порядок и условия перехода между этапами.
 
-## Источники правды и приоритеты
+## Источники правды
 
-При расхождениях применяйте следующий порядок:
+При конфликте применяйте порядок:
 
-1. Явные решения пользователя и утверждённый AppSpec.
-2. Инструкции, код, тесты и build logic целевого репозитория.
-3. Текущие `vibe-*` skills и их контракты.
-4. Шаблон AppSpec.
-5. Примеры промптов из этого документа.
+1. явные решения пользователя и утверждённый AppSpec;
+2. инструкции, код, тесты и build logic целевого репозитория;
+3. актуальная официальная документация;
+4. принятые reusable patterns пакета;
+5. помеченные Blinkly/Tackle adaptations;
+6. общие инженерные эвристики.
 
-Примеры промптов — только удобный интерфейс запуска. Они не должны копировать весь технический контракт и не могут отменять требования skills. Если продукту действительно нужно отклонение от стандартной архитектуры, локализации, визуального тестирования или CI, его нужно явно согласовать и записать в AppSpec вместе с причиной и проверками.
+После начала реализации текущими источниками состояния являются AppSpec и `.vibe/delivery-ledger.json`, а не память разговора или итог специалиста.
 
-Основные нормативные файлы:
-
-- [`vibe-developer/SKILL.md`](../vibe-developer/SKILL.md) — end-to-end orchestration и общие quality gates;
-- [`app-spec-contract.md`](../vibe-developer/references/app-spec-contract.md) — формат и обязательные поля AppSpec;
-- [`localization-contract.md`](../vibe-developer/references/localization-contract.md) — локализация bundled text и local data;
-- [`ci-release-contract.md`](../vibe-developer/references/ci-release-contract.md) — обязательный CI/release baseline;
-- [`routing-matrix.md`](../vibe-developer/references/routing-matrix.md) — владельцы узких задач и hand-offs;
-- [актуальный шаблон AppSpec](../vibe-developer/assets/app-spec-template/app-spec).
-
-## Два этапа работы
-
-Разделяйте подготовку спецификации и реализацию на две сессии:
+## Сквозной процесс
 
 ```text
-product discovery and UI evidence
-  -> approved Vibe AppSpec
-  -> local validation
-  -> separate $vibe-developer session
-  -> implementation and specialist hand-offs
-  -> tests, goldens, design review, platform and release gates
+discovery
+  -> approved Vibe AppSpec 1.4
+  -> validate --require-current
+  -> delivery ledger initialization
+  -> independent inventory check
+  -> architecture scaffolding
+  -> vertical acceptance-scenario slices
+  -> fresh-context closure audit
+  -> full quality/platform/release gates
+  -> final ledger validation
 ```
 
-Так продуктовые решения не смешиваются с написанием кода, а `$vibe-developer` получает проверенный контракт и не переизобретает продукт во время реализации.
+## 1. Подготовить и утвердить AppSpec 1.4
 
-## Этап 1. Подготовить AppSpec
+Продуктовое интервью проходит до `$vibe-developer`. Используйте [актуальный шаблон](../vibe-developer/assets/app-spec-template/app-spec) и [контракт](../vibe-developer/references/app-spec-contract.md). Не переносите нерешённые продуктовые вопросы в реализацию.
 
-На этом этапе обычный Codex помогает провести продуктовое интервью. `$vibe-developer` здесь не является интервьюером: его вход — уже согласованный AppSpec или достаточно структурированный implementation brief.
+`app-spec.json` содержит:
 
-### Что нужно решить с пользователем
+- requirements и отдельную запись `acceptanceScenarios[]` для каждого наблюдаемого outcome;
+- `managedEntities[]` с явным решением для каждой CRUD-операции и дополнительных операций;
+- `qualityGates[]` со стабильными ID, category/platform, способом проверки и источником контракта;
+- flows, screens, capabilities, localization, architecture, UI quality и open questions.
 
-До реализации зафиксируйте:
+Подробные Given/When/Then остаются в `flows/FLOW-*.md`. Каждый AC имеет собственную секцию и описывает один основной action/state/failure и один наблюдаемый outcome. JSON-ссылка AC на requirement, flow и screens должна совпадать с prose.
 
-- цели, аудиторию, must-have требования и non-goals;
-- Android/iOS targets, минимальные версии и существенные ограничения;
-- пользовательские flows, все основные экраны и их состояния;
-- domain rules, data sources, offline/sync, platform capabilities и privacy;
-- accessibility, поддерживаемые локали и product-specific quality criteria;
-- визуальное направление, интерактивные элементы, стандартный набор иконок и необходимые custom/brand assets;
-- monetization decisions и допустимые ad slots, если реклама входит в продукт;
-- все нерешённые решения в `openQuestions`; материальные блокеры — с `blocking: true`.
-
-Перед проектированием product UI используйте Lazyweb по правилам `vibe-product-designer`. Нерешённые иконки или assets, способные изменить экран, блокируют Compose implementation.
-
-### Рекомендуемый промпт для подготовки спецификации
-
-```text
-Помоги спроектировать Kotlin Multiplatform приложение для Android и iOS.
-Проведи продуктовое интервью: выясни цели, аудиторию, требования, non-goals,
-ограничения, domain/data/platform capabilities, все пользовательские flows,
-экраны и их состояния. Код приложения пока не пиши.
-
-До фиксации UI используй Lazyweb по правилам установленного
-$vibe-product-designer. Составь инвентарь интерактивных элементов и assets;
-попроси утвердить стандартный набор иконок или предоставить необходимые
-custom/brand assets. Нерешённые материальные вопросы запиши как blocking
-openQuestions и не принимай продуктовые решения молча.
-
-После согласования создай AppSpec по актуальному шаблону
-<vibe-skills>/vibe-developer/assets/app-spec-template/app-spec и контракту
-<vibe-skills>/vibe-developer/references/app-spec-contract.md; используй
-<vibe-skills>/vibe-developer/SKILL.md для orchestration guarantees. Сохрани
-результат в <target-repository>/app-spec. Сохрани обязательный технический
-профиль шаблона и vibe-* skills; не ослабляй и не заменяй его без явного
-согласованного решения. Проверь AppSpec локальным валидатором и исправь ошибки
-до передачи в реализацию.
-```
-
-Пользовательскому промпту не нужно перечислять `Kotlin Result`, `unwrap`, `Value<Model>`, Paparazzi и остальные внутренние правила. Фраза про актуальный шаблон, контракт и обязательный технический профиль защищает промпт от рассинхронизации со skills. Конкретные product decisions, напротив, нельзя прятать в skills: они должны быть явно получены от пользователя и записаны в AppSpec.
-
-## Формат Vibe AppSpec
-
-Текущий обязательный формат для новых спецификаций — Vibe AppSpec v1.3:
-
-```text
-app-spec/
-  app-spec.json             # metadata, requirements, links and machine-checkable contracts
-  product.md                # audience, goals, non-goals and user stories
-  design.md                 # Lazyweb evidence, design tokens, icon/assets and preview matrix
-  domain.md                 # entities, invariants, rules, errors and time semantics
-  data.md                   # API, database, settings, offline, sync and localized local data
-  quality.md                # architecture, tests, accessibility, privacy and release gates
-  flows/
-    FLOW-*.md               # user journeys and Given/When/Then acceptance scenarios
-  screens/
-    SCREEN-*.md             # states, actions, text behavior and golden coverage
-  assets/                   # approved product-specific assets
-```
-
-`app-spec.json` нужен для машинной проверки. Markdown-файлы нужны для обсуждения продуктового намерения, поведения и acceptance criteria. Используйте стабильные идентификаторы `REQ-NNN`, `FLOW-NNN`, `SCREEN-NNN` и `AC-NNN`; связывайте requirements с acceptance scenarios, flows и screens.
-
-Для новых приложений не создавайте структуру вручную по памяти: копируйте [актуальный шаблон](../vibe-developer/assets/app-spec-template/app-spec), затем заменяйте пример реальными решениями. Дополнительные поля разрешены, но обязательные поля текущего контракта удалять нельзя.
-
-## Обязательный технический профиль
-
-Эти правила не являются пользовательскими предпочтениями по умолчанию. Они принадлежат skills, отражаются в AppSpec и проверяются при реализации.
-
-Blinkly и Tackle остаются помеченными reference adaptations, а не прямым шаблоном для копирования. Обязательны не случайные детали конкретного reference app, а уже извлечённые и закреплённые в текущих skills, contracts, template и checks правила. К исходникам reference app обращаются через `source-registry.md` только когда это действительно нужно.
-
-| Область | Обязательная гарантия | Основной владелец |
-| --- | --- | --- |
-| Component state | Каждый production Decompose `Value<Model>` — immutable, backed retained Store и отдельным `State -> Model` mapper; router-owned `Value<Child*>` и полностью stateless callback components — оговорённые исключения | Decompose + MVIKotlin |
-| Data boundary | Stateful Store работает с data/external operations через feature Manager; используется стандартный Kotlin `Result<T>`, одна `runCatching` boundary и cancellation-aware `unwrap`, без `Result<Result<T>>` | MVIKotlin + Domain |
-| Component packages | Contract лежит в корне feature package, Default/Preview/mappers — в `integration`, Store/provider — в `store`, feature Manager/models — в `domain`; flattened package запрещён | Project Architect + Decompose + MVIKotlin |
-| Modules | Экран или cohesive flow — стандартная component-module boundary; группировка допустима только с зафиксированной причиной | Project Architect + Decompose |
-| Preview implementation | Каждый Compose-rendered component contract, включая stateless screen, имеет sibling `*ComponentPreview` в component module; исключение допустимо только для документированного navigation-only component без Compose render surface | Decompose + Product Designer + Visual Testing |
-| Manual DI | Каждый non-Decompose implementation module, предоставляющий созданные зависимости наружу, экспортирует `di/*Module.kt` с output/dependencies interfaces, одноимённой top-level factory и lazy outputs; composition root не обходит этот API прямыми конструкторами | Project Architect |
-| Visual coverage | Для каждого primary screen и applicable state обязательны light/dark previews; stress variants выбираются по рискам font scale, locale и device/layout | Product Designer + Visual Testing |
-| Golden tests | Paparazzi и ComposablePreviewScanner размещаются в Compose UI/resource-owning module; отдельный host требует архитектурного обоснования | Project Architect + Visual Testing |
-| Design review | После утверждённых goldens выполняется полный Lazyweb review: строго по одному screen/report за раз, затем approved fixes и повторная golden verification | Product Designer + Visual Testing |
-| Localization | `en` — полный default/base locale, `ru` — начальная дополнительная локаль, выбор языка только системный; bundled text хранится в resources, domain/persistence — только stable IDs/keys | Все владельцы по localization contract |
-| Behavioral tests | Acceptance coverage возглавляют Decompose component tests через public contracts; централизованный suite живёт в отдельном `root` component module, когда dependency graph это позволяет | Test Engineer |
-| CI and release | После readiness gate создаются пять baseline workflows и `docs/CI-RELEASE-SETUP.md`; отсутствие внешних credentials отмечается честно и не отменяет scaffolding | Project Architect |
-
-Технические гарантии закреплены на нескольких уровнях:
-
-1. specialist skills определяют реализацию и hand-offs;
-2. `app-spec.json` хранит обязательные `architecture`, `localization` и `uiQuality` contracts;
-3. `quality.md` задаёт architecture, localization, visual и release checks;
-4. валидатор блокирует структурные нарушения до реализации;
-5. `$vibe-developer` сверяет реализацию с requirement/acceptance IDs и не считает работу завершённой без применимых quality gates.
-
-Так правила остаются обязательными, но не размножаются и не устаревают в каждом пользовательском промпте.
-
-## Проверить AppSpec
-
-Из корня `vibe-skills`:
+Проверка полного цикла:
 
 ```powershell
-python .\vibe-developer\scripts\validate-app-spec.py <target-repository>\app-spec
+python <vibe-skills>\vibe-developer\scripts\validate-app-spec.py <project>\app-spec --require-current
 ```
 
-Или абсолютным путём:
+Валидатор проверяет равенство множеств AC в requirements и inventory, собственный Given/When/Then каждого AC, ссылки на flows/screens, все CRUD-ячейки managed entities и обязательные/условные quality gates.
+
+### Legacy AppSpec 1.0–1.3
+
+Legacy specification по-прежнему валидируется с предупреждением без `--require-current`, поэтому узкий specialist может безопасно выполнить локальную задачу. Полный или cross-cutting `$vibe-developer`-цикл legacy не запускает.
+
+Миграция всегда пишет в новый каталог и не перезаписывает исходник:
 
 ```powershell
-python <vibe-skills>\vibe-developer\scripts\validate-app-spec.py <target-repository>\app-spec
+python <vibe-skills>\vibe-developer\scripts\migrate-app-spec.py <legacy-app-spec> <new-review-directory>
 ```
 
-Ошибки и unresolved blocking questions останавливают реализацию. Warnings и non-blocking questions нужно показать и осознанно разобрать, но не смешивать с failures.
+Перенесённый 1.3-контент сохраняется, но автоматически извлечённые сценарии отмечаются `needs-review`, а неоднозначности становятся blocking questions. Разработка начинается только после ручной проверки, явного approval и успешного `--require-current`.
 
-## Этап 2. Реализовать AppSpec
+## 2. Инициализировать delivery ledger
 
-Начинайте реализацию в отдельной сессии:
+До первой production-правки `$vibe-developer` создаёт:
+
+```powershell
+python <vibe-skills>\vibe-developer\scripts\init-delivery-ledger.py <app-spec-directory> --project-root <project-root>
+```
+
+Tracked artifacts:
+
+- `.vibe/delivery-ledger.json` — единственный редактируемый источник delivery state;
+- `docs/requirement-traceability.generated.md` — детерминированное представление ledger;
+- `.vibe/closure-audit.json` и `docs/closure-audit.generated.md` — последний независимый аудит.
+
+Ledger хранит fingerprints всех нормативных AppSpec JSON/Markdown, Git HEAD, binary diff hash и hashes неигнорируемых untracked-файлов. Отдельные AC/gate entries имеют статусы `not-started`, `implemented-unverified`, `verified`, `blocked-external`, `waived`, production/test evidence и verification receipts.
+
+Waiver допустим только со ссылкой на явно зафиксированное решение пользователя. `blocked-external` не заменяет незавершённый repository contract.
+
+Подробности и команды находятся в [delivery-ledger-contract.md](../vibe-developer/references/delivery-ledger-contract.md).
+
+## 3. Проверить inventory до реализации
+
+Оркестратор независимо сопоставляет:
+
+- requirement ↔ AC ↔ flow/screen prose;
+- managed entity ↔ create/read/update/delete/additional operations ↔ AC;
+- required/conditional gate ↔ verification method ↔ platform/category.
+
+Противоречия и пробелы блокируют coding. Ledger не считается доказательством корректности AppSpec.
+
+## 4. Реализовать вертикальными slices
+
+После минимального architecture scaffolding планируйте работу по AC. Каждый slice проходит полностью:
+
+```text
+public production contract
+  -> data/domain behavior
+  -> Store/component state
+  -> UI/platform wiring
+  -> required tests
+  -> targeted verification receipt
+  -> ledger evidence
+```
+
+Specialist получает AC/gate IDs и допустимые file boundaries. Он возвращает evidence package: production path/symbol/surface, test path/exact name/surface, нужные команды, выполненные non-Gradle checks и blockers. Specialist не пишет ledger и не заявляет completion.
+
+Параллелить можно только slices без общих файлов и контрактов. Только `$vibe-developer` владеет ledger и запускает Gradle. `run-gradle.ps1` сериализует процессы по canonical project path, ограничивает ожидание/выполнение и записывает receipt с реальным exit code только после завершения команды.
+
+После milestone оркестратор перечитывает AppSpec и ledger. Незакрытый AC/gate остаётся отдельной записью; формулировки `implemented baseline`, `mostly complete` или общий `partial` не заменяют item-level состояние.
+
+## 5. Выполнить fresh closure audit
+
+После закрытия всех локальных entries implementers останавливаются. Новый `$vibe-acceptance-auditor` запускается в изолированном контексте без implementation history. Он:
+
+- самостоятельно строит shadow inventory из JSON и flow/screen prose;
+- не доверяет ledger или implementer report;
+- проходит каждый contract через public API, data/state, UI/platform wiring и требуемые тестовые surfaces;
+- не меняет AppSpec, production code, tests или ledger;
+- пишет только closure audit artifacts и выдаёт `PASS`, `GAPS` или `BLOCKED`.
+
+При `GAPS` оркестратор назначает исправления и после свежих evidence запускает другого чистого auditor. Любое изменение AppSpec/workspace делает прежний `PASS` недействительным.
+
+Если isolated sub-agent недоступен, `$vibe-developer` не объявляет completion. Пользователь запускает отдельную чистую сессию `$vibe-acceptance-auditor`, затем возвращает свежие audit artifacts.
+
+## 6. Финальные gates и verdicts
+
+После audit `PASS` оркестратор выполняет единый полный Gradle/quality/release gate, обновляет receipts, проверяет generated-report drift и запускает финальную ledger validation.
+
+- `implementation-complete`: все обязательные AC и repository gates `verified` или явно `waived`, fingerprints актуальны, audit свежий и имеет `PASS`.
+- `release-ready`: дополнительно закрыты platform, external и release gates; `blocked-external` не допускается.
+
+Committed CI/release automation и реально настроенные GitHub/Firebase/Google Play/Google Cloud prerequisites сообщаются отдельно. Отсутствующие credentials могут сохранить `implementation-complete`, но не `release-ready`, если соответствующие gates не waived явным решением.
+
+## Пример запуска
 
 ```text
 Используй $vibe-developer. Реализуй приложение по утверждённой спецификации
-<target-repository>/app-spec в репозитории <target-repository>.
-Сначала проверь AppSpec валидатором и выполни repository preflight.
-Покажи dependency-aware план и не меняй утверждённые продуктовые требования
-или обязательный технический профиль молча. Выполни все применимые quality,
-visual, platform, CI и release gates; недоступные внешние проверки явно отметь.
+<target-repository>/app-spec в <target-repository>.
+Требуй AppSpec 1.4, создай delivery ledger до первой правки, реализуй вертикальными
+AC-slices и не объявляй completion без fresh $vibe-acceptance-auditor PASS и финальной
+ledger validation. Не меняй утверждённые product decisions молча.
 ```
 
-`$vibe-developer` выбирает только затронутые стадии и передаёт каждую границу одному владельцу. Типичная полная последовательность:
-
-```text
-AppSpec validation -> repository preflight -> architecture
--> product/design evidence -> icon and asset gate
--> domain -> persistence/network/sync/platform
--> Decompose -> MVIKotlin -> Compose -> monetization
--> non-visual tests -> previews -> Paparazzi/scanner -> approved goldens
--> full-UI Lazyweb review -> approved fixes and golden re-verification
--> Detekt/Kover/build readiness -> CI/release baseline
--> quality/platform/release checks
-```
-
-Для узкой задачи вызывайте профильный skill напрямую, пользуясь [`routing-matrix.md`](../vibe-developer/references/routing-matrix.md). Не запускайте полный application workflow ради одного SQLDelight query, Store transition или preview fix.
-
-## Когда работа считается завершённой
-
-Финальный отчёт должен содержать:
-
-- закрытые requirement и acceptance IDs;
-- изменённые модули и использованные owners;
-- выполненные команды с успешными exit codes;
-- непройденные или недоступные проверки и точную причину;
-- риски, отклонения и явно согласованные waivers;
-- состояние goldens и полного post-golden Lazyweb review;
-- состояние CI/release automation отдельно от внешней настройки GitHub, Firebase, Google Play и Google Cloud.
-
-Наличие сгенерированного кода само по себе не означает завершение. Применимые component tests, visual matrix, golden verification, platform builds и quality gates являются частью результата.
+Для одного SQLDelight query, Store transition, preview fix или другой узкой задачи вызывайте owning specialist напрямую; полный workflow не нужен и legacy 1.3 сам по себе такую работу не блокирует.
 
 ## Spec Kit и OpenSpec
 
-GitHub Spec Kit и OpenSpec можно использовать как дополнительный discovery/planning слой:
+Их можно использовать как необязательный discovery/planning слой:
 
 ```text
 constitution -> specify -> clarify -> plan -> checklist -> tasks -> analyze
--> conversion to Vibe AppSpec -> validation -> $vibe-developer
+-> conversion to approved Vibe AppSpec 1.4 -> validation -> $vibe-developer
 ```
 
-Они необязательны и не заменяют Vibe AppSpec. Перед реализацией результат всё равно нужно преобразовать в текущий формат AppSpec и проверить локальным валидатором.
+Они не заменяют AppSpec, ledger или независимый closure audit.

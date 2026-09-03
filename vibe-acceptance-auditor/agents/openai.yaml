@@ -1,0 +1,6 @@
+interface:
+  display_name: "Vibe Acceptance Auditor"
+  short_description: "Independently audit AppSpec delivery closure"
+  default_prompt: "Use $vibe-acceptance-auditor in a fresh context to audit this AppSpec implementation and issue an evidence-backed verdict."
+policy:
+  allow_implicit_invocation: true

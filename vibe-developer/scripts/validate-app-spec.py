@@ -3,9 +3,9 @@
 
 from __future__ import annotations
 
+import argparse
 import json
 import re
-import sys
 from pathlib import Path
 
 ID_PATTERNS = {
@@ -13,7 +13,13 @@ ID_PATTERNS = {
     "flow": re.compile(r"\bFLOW-\d{3,}\b"),
     "screen": re.compile(r"\bSCREEN-\d{3,}\b"),
     "acceptance": re.compile(r"\bAC-\d{3,}\b"),
+    "quality_gate": re.compile(r"\bQG-\d{3,}\b"),
 }
+
+CURRENT_MAJOR = 1
+CURRENT_MINOR = 4
+CRUD_OPERATIONS = ("create", "read", "update", "delete")
+QUALITY_CATEGORIES = {"repository", "platform", "external", "release"}
 
 CAPABILITY_TERMS = {
     "network": ("api", "http", "network", "remote"),
@@ -43,11 +49,16 @@ def expect(condition: bool, message: str, errors: list[str]) -> None:
 
 
 def main() -> int:
-    if len(sys.argv) != 2:
-        print("Usage: validate-app-spec.py <app-spec-directory>", file=sys.stderr)
-        return 2
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("app_spec_directory")
+    parser.add_argument(
+        "--require-current",
+        action="store_true",
+        help="reject legacy AppSpec versions that are insufficient for a full delivery cycle",
+    )
+    args = parser.parse_args()
 
-    root = Path(sys.argv[1]).resolve()
+    root = Path(args.app_spec_directory).resolve()
     errors: list[str] = []
     warnings: list[str] = []
     required = ("app-spec.json", "product.md", "domain.md", "data.md", "quality.md")
@@ -79,10 +90,24 @@ def main() -> int:
         version_match = re.fullmatch(r"(\d+)\.(\d+)(?:\.\d+)?", version)
         expect(version_match is not None, f"Invalid schemaVersion: {version}", errors)
         major_text = version.split(".", 1)[0]
-        expect(major_text == "1", f"Unsupported schema major version: {version}", errors)
+        expect(major_text == str(CURRENT_MAJOR), f"Unsupported schema major version: {version}", errors)
         if version_match is not None:
             version_major = int(version_match.group(1))
             version_minor = int(version_match.group(2))
+            if version_major == CURRENT_MAJOR and version_minor > CURRENT_MINOR:
+                errors.append(
+                    f"Unsupported newer schemaVersion {version}; this validator supports through "
+                    f"{CURRENT_MAJOR}.{CURRENT_MINOR}"
+                )
+            elif version_major == CURRENT_MAJOR and version_minor < CURRENT_MINOR:
+                warnings.append(
+                    f"Legacy AppSpec {version} validated for narrow compatibility only; migrate to "
+                    f"{CURRENT_MAJOR}.{CURRENT_MINOR} before a full or cross-cutting $vibe-developer cycle"
+                )
+                if args.require_current:
+                    errors.append(
+                        f"--require-current requires AppSpec {CURRENT_MAJOR}.{CURRENT_MINOR}; found {version}"
+                    )
 
     app = data.get("app")
     requirements = data.get("requirements")
@@ -93,6 +118,9 @@ def main() -> int:
     localization = data.get("localization")
     architecture = data.get("architecture")
     ui_quality = data.get("uiQuality")
+    acceptance_scenarios = data.get("acceptanceScenarios")
+    managed_entities = data.get("managedEntities")
+    quality_gates = data.get("qualityGates")
     for key, value, kind in (
         ("app", app, dict),
         ("requirements", requirements, list),
@@ -125,6 +153,7 @@ def main() -> int:
     requires_ui_contract = version_major == 1 and version_minor >= 1
     requires_localization_contract = version_major == 1 and version_minor >= 2
     requires_architecture_contract = version_major == 1 and version_minor >= 3
+    requires_atomic_contract = version_major == CURRENT_MAJOR and version_minor >= CURRENT_MINOR
     if requires_ui_contract:
         design_path = root / "design.md"
         expect(design_path.is_file(), "Missing required file for AppSpec 1.1+: design.md", errors)
@@ -174,6 +203,23 @@ def main() -> int:
 
     if isinstance(architecture, dict):
         validate_architecture(architecture, errors)
+
+    if requires_atomic_contract:
+        expect(
+            isinstance(acceptance_scenarios, list) and bool(acceptance_scenarios),
+            "acceptanceScenarios must be a non-empty array for AppSpec 1.4",
+            errors,
+        )
+        expect(
+            isinstance(managed_entities, list),
+            "managedEntities must be an array for AppSpec 1.4",
+            errors,
+        )
+        expect(
+            isinstance(quality_gates, list) and bool(quality_gates),
+            "qualityGates must be a non-empty array for AppSpec 1.4",
+            errors,
+        )
 
     open_questions = data.get("openQuestions")
     if isinstance(open_questions, list):
@@ -231,12 +277,16 @@ def main() -> int:
             screen_text[screen_id] = read_utf8(path, errors)
 
     acceptance_locations: dict[str, list[str]] = {}
+    acceptance_sections: dict[str, list[tuple[str, str]]] = {}
     for flow_id, text in flow_text.items():
-        for acceptance_id in set(ID_PATTERNS["acceptance"].findall(text)):
+        sections = extract_acceptance_sections(text)
+        for acceptance_id, body in sections:
             acceptance_locations.setdefault(acceptance_id, []).append(flow_id)
+            acceptance_sections.setdefault(acceptance_id, []).append((flow_id, body))
         expect(flow_id in text, f"{flow_id}.md must contain its stable ID", errors)
-        expect("Given" in text and "When" in text and "Then" in text,
-               f"{flow_id}.md must contain Given/When/Then scenarios", errors)
+        if not requires_atomic_contract:
+            expect("Given" in text and "When" in text and "Then" in text,
+                   f"{flow_id}.md must contain Given/When/Then scenarios", errors)
 
     for screen_id, text in screen_text.items():
         expect(screen_id in text, f"{screen_id}.md must contain its stable ID", errors)
@@ -273,6 +323,158 @@ def main() -> int:
     orphan_acceptance = declared_acceptance - set(all_acceptance_refs)
     if orphan_acceptance:
         warnings.append(f"Acceptance scenarios not referenced by requirements: {sorted(orphan_acceptance)}")
+
+    if requires_atomic_contract:
+        scenario_ids: list[str] = []
+        scenarios_by_id: dict[str, dict[str, object]] = {}
+        if isinstance(acceptance_scenarios, list):
+            for index, scenario in enumerate(acceptance_scenarios):
+                if not isinstance(scenario, dict):
+                    errors.append(f"acceptanceScenarios[{index}] must be an object")
+                    continue
+                for key in (
+                    "id", "title", "requirementId", "flowId", "screenIds", "kind",
+                    "subject", "operation", "verificationSurfaces",
+                ):
+                    expect(key in scenario, f"acceptanceScenarios[{index}].{key} is required", errors)
+                acceptance_id = scenario.get("id")
+                if not isinstance(acceptance_id, str):
+                    continue
+                expect(
+                    bool(ID_PATTERNS["acceptance"].fullmatch(acceptance_id)),
+                    f"Invalid acceptance scenario ID: {acceptance_id}",
+                    errors,
+                )
+                scenario_ids.append(acceptance_id)
+                scenarios_by_id.setdefault(acceptance_id, scenario)
+                for key in ("title", "subject", "operation"):
+                    value = scenario.get(key)
+                    expect(
+                        isinstance(value, str) and bool(value.strip()),
+                        f"{acceptance_id}.{key} must be a non-empty string",
+                        errors,
+                    )
+                expect(
+                    scenario.get("kind") in {"action", "state", "failure"},
+                    f"{acceptance_id}.kind must be action, state, or failure",
+                    errors,
+                )
+                if scenario.get("reviewStatus") == "needs-review":
+                    errors.append(
+                        f"{acceptance_id}.reviewStatus is needs-review; manually approve or revise the migrated scenario"
+                    )
+                elif "reviewStatus" in scenario:
+                    expect(
+                        scenario.get("reviewStatus") == "approved",
+                        f"{acceptance_id}.reviewStatus must be approved or needs-review",
+                        errors,
+                    )
+
+                requirement_id = scenario.get("requirementId")
+                expect(
+                    isinstance(requirement_id, str) and requirement_id in requirement_ids,
+                    f"{acceptance_id}.requirementId must reference a declared requirement; found {requirement_id!r}",
+                    errors,
+                )
+                if isinstance(requirement_id, str) and requirement_id in requirement_acceptance:
+                    expect(
+                        acceptance_id in requirement_acceptance[requirement_id],
+                        f"{acceptance_id} is not listed by its requirement {requirement_id}",
+                        errors,
+                    )
+
+                flow_id = scenario.get("flowId")
+                expect(
+                    isinstance(flow_id, str) and flow_id in flow_ids,
+                    f"{acceptance_id}.flowId must reference a declared flow; found {flow_id!r}",
+                    errors,
+                )
+                linked_screens = scenario.get("screenIds")
+                expect(
+                    isinstance(linked_screens, list) and bool(linked_screens),
+                    f"{acceptance_id}.screenIds must be a non-empty array",
+                    errors,
+                )
+                if isinstance(linked_screens, list):
+                    valid_linked_screens = [item for item in linked_screens if isinstance(item, str)]
+                    expect(
+                        len(valid_linked_screens) == len(linked_screens),
+                        f"{acceptance_id}.screenIds must contain strings only",
+                        errors,
+                    )
+                    check_unique(f"{acceptance_id}.screen", valid_linked_screens, errors)
+                    for screen_id in valid_linked_screens:
+                        expect(
+                            screen_id in screen_ids,
+                            f"{acceptance_id}.screenIds references undeclared screen {screen_id}",
+                            errors,
+                        )
+
+                surfaces = scenario.get("verificationSurfaces")
+                expect(
+                    isinstance(surfaces, list) and bool(surfaces),
+                    f"{acceptance_id}.verificationSurfaces must be a non-empty array",
+                    errors,
+                )
+                if isinstance(surfaces, list):
+                    valid_surfaces = [item for item in surfaces if isinstance(item, str) and item.strip()]
+                    expect(
+                        len(valid_surfaces) == len(surfaces),
+                        f"{acceptance_id}.verificationSurfaces must contain non-empty strings only",
+                        errors,
+                    )
+                    check_unique(f"{acceptance_id}.verification surface", valid_surfaces, errors)
+
+                sections = acceptance_sections.get(acceptance_id, [])
+                expect(
+                    len(sections) == 1,
+                    f"{acceptance_id} must have exactly one dedicated Markdown section; found "
+                    f"{[item[0] for item in sections]}",
+                    errors,
+                )
+                if len(sections) == 1:
+                    section_flow_id, section_body = sections[0]
+                    expect(
+                        section_flow_id == flow_id,
+                        f"{acceptance_id}.flowId is {flow_id!r} but its section is in {section_flow_id}",
+                        errors,
+                    )
+                    expect(
+                        has_own_given_when_then(section_body),
+                        f"{acceptance_id} section must contain its own ordered Given/When/Then",
+                        errors,
+                    )
+                    flow_document = flow_text.get(section_flow_id, "")
+                    if isinstance(requirement_id, str):
+                        expect(
+                            requirement_id in flow_document,
+                            f"{acceptance_id} flow {section_flow_id} does not link requirement {requirement_id}",
+                            errors,
+                        )
+                    if isinstance(linked_screens, list):
+                        for screen_id in linked_screens:
+                            if isinstance(screen_id, str):
+                                expect(
+                                    screen_id in flow_document,
+                                    f"{acceptance_id} flow {section_flow_id} does not link screen {screen_id}",
+                                    errors,
+                                )
+
+        check_unique("acceptance scenario", scenario_ids, errors)
+        requirement_ref_set = set(all_acceptance_refs)
+        scenario_id_set = set(scenario_ids)
+        missing_scenarios = requirement_ref_set - scenario_id_set
+        unreferenced_scenarios = scenario_id_set - requirement_ref_set
+        expect(
+            not missing_scenarios and not unreferenced_scenarios,
+            "requirements acceptanceScenarioIds and acceptanceScenarios IDs must be equal; "
+            f"missing definitions={sorted(missing_scenarios)}, unreferenced definitions={sorted(unreferenced_scenarios)}",
+            errors,
+        )
+
+        validate_managed_entities(managed_entities, scenarios_by_id, errors)
+        targets = app.get("targets", []) if isinstance(app, dict) else []
+        validate_quality_gates(root, quality_gates, targets, errors)
 
     corpus_lines = "\n".join(
         [read_utf8(root / "data.md", errors), *flow_text.values()]
@@ -340,6 +542,216 @@ def main() -> int:
         warnings.append("openQuestions is not empty; resolve material product decisions before implementation")
 
     return report(errors, warnings)
+
+
+def extract_acceptance_sections(text: str) -> list[tuple[str, str]]:
+    """Return dedicated AC headings and their bodies, preserving duplicates."""
+    heading = re.compile(r"(?m)^#{2,6}\s+(AC-\d{3,})\b[^\n]*$")
+    any_heading = re.compile(r"(?m)^#{1,6}\s+")
+    matches = list(heading.finditer(text))
+    result: list[tuple[str, str]] = []
+    for match in matches:
+        next_heading = any_heading.search(text, match.end())
+        end = next_heading.start() if next_heading is not None else len(text)
+        result.append((match.group(1), text[match.end():end]))
+    return result
+
+
+def has_own_given_when_then(section: str) -> bool:
+    positions: list[int] = []
+    for keyword in ("Given", "When", "Then"):
+        match = re.search(rf"(?im)^\s*(?:[-*]\s*)?{keyword}\b", section)
+        if match is None:
+            return False
+        positions.append(match.start())
+    return positions == sorted(positions) and len(set(positions)) == 3
+
+
+def validate_managed_entities(
+    managed_entities: object,
+    scenarios_by_id: dict[str, dict[str, object]],
+    errors: list[str],
+) -> None:
+    if not isinstance(managed_entities, list):
+        return
+    names: list[str] = []
+    for index, entity in enumerate(managed_entities):
+        if not isinstance(entity, dict):
+            errors.append(f"managedEntities[{index}] must be an object")
+            continue
+        name = entity.get("entity")
+        expect(
+            isinstance(name, str) and bool(name.strip()),
+            f"managedEntities[{index}].entity must be a non-empty string",
+            errors,
+        )
+        if isinstance(name, str):
+            names.append(name)
+        operations = entity.get("operations")
+        expect(
+            isinstance(operations, dict),
+            f"managedEntities[{index}].operations must be an object",
+            errors,
+        )
+        if not isinstance(operations, dict):
+            continue
+        for operation in CRUD_OPERATIONS:
+            expect(
+                operation in operations,
+                f"managedEntities[{index}].operations.{operation} must explicitly decide required or not-applicable",
+                errors,
+            )
+        for operation, decision in operations.items():
+            expect(
+                isinstance(operation, str) and bool(operation.strip()),
+                f"managedEntities[{index}] operation names must be non-empty strings",
+                errors,
+            )
+            if not isinstance(decision, dict):
+                errors.append(f"managedEntities[{index}].operations.{operation} must be an object")
+                continue
+            status = decision.get("status")
+            expect(
+                status in {"required", "not-applicable"},
+                f"managedEntities[{index}].operations.{operation}.status must be required or not-applicable",
+                errors,
+            )
+            if status == "required":
+                refs = decision.get("acceptanceScenarioIds")
+                expect(
+                    isinstance(refs, list) and bool(refs),
+                    f"managedEntities[{index}].operations.{operation} requires acceptanceScenarioIds",
+                    errors,
+                )
+                if isinstance(refs, list):
+                    valid_refs = [item for item in refs if isinstance(item, str)]
+                    expect(
+                        len(valid_refs) == len(refs),
+                        f"managedEntities[{index}].operations.{operation}.acceptanceScenarioIds must contain strings only",
+                        errors,
+                    )
+                    check_unique(
+                        f"managedEntities[{index}].operations.{operation} acceptance reference",
+                        valid_refs,
+                        errors,
+                    )
+                    for acceptance_id in valid_refs:
+                        scenario = scenarios_by_id.get(acceptance_id)
+                        expect(
+                            scenario is not None,
+                            f"managedEntities[{index}].operations.{operation} references unknown {acceptance_id}",
+                            errors,
+                        )
+                        if scenario is not None and isinstance(name, str):
+                            expect(
+                                str(scenario.get("subject", "")).casefold() == name.casefold(),
+                                f"{acceptance_id}.subject must match managed entity {name!r}",
+                                errors,
+                            )
+                            expect(
+                                str(scenario.get("operation", "")).casefold() == operation.casefold(),
+                                f"{acceptance_id}.operation must match managed operation {operation!r}",
+                                errors,
+                            )
+            elif status == "not-applicable":
+                reason = decision.get("reason")
+                expect(
+                    isinstance(reason, str) and bool(reason.strip()),
+                    f"managedEntities[{index}].operations.{operation}.reason is required for not-applicable",
+                    errors,
+                )
+    duplicates = sorted({value for value in names if names.count(value) > 1})
+    if duplicates:
+        errors.append(f"Duplicate managed entity names: {duplicates}")
+
+
+def validate_quality_gates(
+    root: Path,
+    quality_gates: object,
+    targets: object,
+    errors: list[str],
+) -> None:
+    if not isinstance(quality_gates, list):
+        return
+    gate_ids: list[str] = []
+    valid_gates: list[dict[str, object]] = []
+    target_values = [item for item in targets if isinstance(item, str)] if isinstance(targets, list) else []
+    for index, gate in enumerate(quality_gates):
+        if not isinstance(gate, dict):
+            errors.append(f"qualityGates[{index}] must be an object")
+            continue
+        valid_gates.append(gate)
+        for key in ("id", "title", "category", "platform", "requirement", "verificationMethod", "contractSource"):
+            expect(key in gate, f"qualityGates[{index}].{key} is required", errors)
+        gate_id = gate.get("id")
+        if isinstance(gate_id, str):
+            gate_ids.append(gate_id)
+            expect(
+                bool(ID_PATTERNS["quality_gate"].fullmatch(gate_id)),
+                f"Invalid quality gate ID: {gate_id}",
+                errors,
+            )
+        label = gate_id if isinstance(gate_id, str) else f"qualityGates[{index}]"
+        for key in ("title", "platform", "verificationMethod", "contractSource"):
+            value = gate.get(key)
+            expect(
+                isinstance(value, str) and bool(value.strip()),
+                f"{label}.{key} must be a non-empty string",
+                errors,
+            )
+        category = gate.get("category")
+        expect(category in QUALITY_CATEGORIES, f"{label}.category is invalid: {category!r}", errors)
+        requirement = gate.get("requirement")
+        expect(
+            requirement in {"required", "conditional"},
+            f"{label}.requirement must be required or conditional",
+            errors,
+        )
+        if requirement == "conditional":
+            condition = gate.get("condition")
+            expect(
+                isinstance(condition, str) and bool(condition.strip()),
+                f"{label}.condition is required for a conditional quality gate",
+                errors,
+            )
+        platform = gate.get("platform")
+        if isinstance(platform, str):
+            expect(
+                platform == "all" or platform in target_values,
+                f"{label}.platform must be all or one of app.targets; found {platform!r}",
+                errors,
+            )
+        source = gate.get("contractSource")
+        if isinstance(source, str) and source.strip():
+            source_path = source.split("#", 1)[0]
+            expect(
+                bool(source_path) and (root / source_path).is_file(),
+                f"{label}.contractSource must name an existing AppSpec file; found {source!r}",
+                errors,
+            )
+
+    check_unique("quality gate", gate_ids, errors)
+    expect(
+        any(gate.get("category") == "repository" and gate.get("requirement") == "required" for gate in valid_gates),
+        "qualityGates must contain at least one required repository gate",
+        errors,
+    )
+    expect(
+        any(gate.get("category") == "release" and gate.get("requirement") == "required" for gate in valid_gates),
+        "qualityGates must contain at least one required release gate",
+        errors,
+    )
+    for target in target_values:
+        expect(
+            any(
+                gate.get("category") == "platform"
+                and gate.get("requirement") == "required"
+                and gate.get("platform") == target
+                for gate in valid_gates
+            ),
+            f"qualityGates must contain a required platform gate for target {target}",
+            errors,
+        )
 
 
 def check_unique(label: str, values: list[str], errors: list[str]) -> None:

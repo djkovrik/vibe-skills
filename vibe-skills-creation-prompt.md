@@ -22,7 +22,7 @@
 
 ## Что не нужно делать
 
-- Не создавай отдельные subagents или agent personas. Здесь нужны именно skills, загружаемые по контексту. Делегирование в будущих задачах может выполнять оркестратор, если среда его поддерживает, но оно не является частью формата пакета.
+- Не создавай постоянные agent personas: здесь нужны skills, загружаемые по контексту. Оркестратор обязан использовать fresh-context sub-agent для closure audit и независимых behavioral forward tests, когда среда поддерживает делегирование; без него completion остаётся заблокированным до отдельной чистой auditor-сессии.
 - Не копируй Blinkly целиком и не превращай skills в документацию одного приложения.
 - Не фиксируй версии библиотек как вечные истины. Сначала считывай версии и плагины из целевого проекта, а для новых интеграций проверяй актуальную официальную документацию.
 - Не переноси проектные идентификаторы, bundle IDs, ad unit IDs, Firebase-файлы, signing secrets и другие значения Blinkly/Tackle.
@@ -75,7 +75,7 @@ LAZYWEB_SKILL = C:\Users\Sergey\.codex\skills\lazyweb\SKILL.md
 
 ## Архитектурное решение по пакету
 
-Создай 13 skills:
+Создай 14 skills:
 
 1. `vibe-developer`
 2. `vibe-project-architect`
@@ -90,6 +90,7 @@ LAZYWEB_SKILL = C:\Users\Sergey\.codex\skills\lazyweb\SKILL.md
 11. `vibe-visual-testing`
 12. `vibe-monetization-engineer`
 13. `vibe-test-engineer`
+14. `vibe-acceptance-auditor`
 
 Это skills, а не постоянно работающие агенты. Причина: их знания нужны по этапам, и progressive disclosure позволяет не загружать весь корпус в каждую задачу.
 
@@ -119,6 +120,7 @@ vibe-product-designer/
 vibe-visual-testing/
 vibe-monetization-engineer/
 vibe-test-engineer/
+vibe-acceptance-auditor/
 ```
 
 Каждый skill обязан иметь:
@@ -185,14 +187,18 @@ python "C:\Users\Sergey\.codex\skills\.system\skill-creator\scripts\generate_ope
 Он должен:
 
 - принять путь к AppSpec или структурированное описание задачи;
+- для полного/cross-cutting цикла требовать вручную утверждённый AppSpec 1.4 через `validate-app-spec.py --require-current`; legacy 1.0–1.3 разрешать только для узких прямых specialist-задач;
+- до первой production-правки создать `.vibe/delivery-ledger.json` и независимо сверить behavior/entity/quality inventory;
 - провести preflight целевого репозитория;
 - прочитать инструкции и обнаружить стек, версии, модули, source sets, платформы и доступные skills/tools;
 - составить dependency-aware план;
 - вызвать только нужные specialist skills;
 - предотвращать конфликтующие изменения нескольких специалистов;
-- управлять проверками, Gradle-командами и итоговой приёмкой;
+- быть единственным writer delivery ledger и единственным Gradle owner; specialists возвращают evidence packages;
+- управлять проверками, сериализованными Gradle-командами и итоговой приёмкой;
 - сообщать допущения и блокеры;
-- не считать задачу завершённой, пока код, тесты, UI golden verification и требуемые platform builds не согласованы;
+- реализовывать вертикальными acceptance-scenario slices и после каждого milestone перечитывать AppSpec/ledger;
+- не считать задачу завершённой без fresh-context `$vibe-acceptance-auditor` `PASS`, актуальных fingerprints и финальной ledger validation;
 - предлагать сохранить действительно повторно используемые новые паттерны.
 
 ### Preflight оркестратора
@@ -213,20 +219,15 @@ python "C:\Users\Sergey\.codex\skills\.system\skill-creator\scripts\generate_ope
 Используй эту последовательность как default, но пропускай ненужные этапы:
 
 ```text
-AppSpec validation
-  -> repository preflight
-  -> architecture/module plan
-  -> product/design research
-  -> domain contracts and invariants
-  -> persistence/network/sync/platform capabilities
-  -> Decompose component tree
-  -> MVIKotlin stores and managers
-  -> Compose UI and theme
-  -> monetization integration where requested
-  -> unit/component/integration tests
-  -> previews and Paparazzi goldens
-  -> Detekt/coverage/build/platform/release checks
-  -> spec-to-implementation convergence report
+approved AppSpec 1.4 validation --require-current
+  -> repository preflight and delivery-ledger initialization
+  -> independent behavior/entity/gate inventory
+  -> architecture scaffolding
+  -> vertical AC slices (contract -> data/state -> UI/platform -> tests -> receipt)
+  -> repository quality gates
+  -> fresh-context acceptance audit
+  -> full build/platform/release gates
+  -> final ledger validation and separate verdicts
 ```
 
 Для изменения существующего приложения сначала выделяй минимальный affected subgraph, а не прогоняй весь pipeline без необходимости.
@@ -819,7 +820,7 @@ Atomic cross-entity replacement?
 - устаревшие Ktor engine/plugin APIs;
 - exact test source-set/package names; при этом отдельный root component module остаётся предпочтительным местом для основного component-test suite, если dependency direction это допускает.
 
-## Стандартизованный вход: Vibe AppSpec v1.3
+## Стандартизованный вход: Vibe AppSpec v1.4
 
 Создай в `vibe-developer/assets/app-spec-template/` шаблон hand-off спецификации:
 
@@ -827,6 +828,7 @@ Atomic cross-entity replacement?
 app-spec/
   app-spec.json
   product.md
+  design.md
   domain.md
   data.md
   quality.md
@@ -853,7 +855,7 @@ app-spec/
 
 ```json
 {
-  "schemaVersion": "1.3",
+  "schemaVersion": "1.4",
   "app": {
     "name": "",
     "summary": "",
@@ -867,6 +869,42 @@ app-spec/
       "priority": "must",
       "status": "approved",
       "acceptanceScenarioIds": ["AC-001"]
+    }
+  ],
+  "acceptanceScenarios": [
+    {
+      "id": "AC-001",
+      "title": "",
+      "requirementId": "REQ-001",
+      "flowId": "FLOW-001",
+      "screenIds": ["SCREEN-001"],
+      "kind": "success",
+      "subject": "user",
+      "operation": "create",
+      "verificationSurfaces": ["component-test"]
+    }
+  ],
+  "managedEntities": [
+    {
+      "id": "ENTITY-001",
+      "name": "",
+      "operations": {
+        "create": {"status": "required", "acceptanceScenarioIds": ["AC-001"]},
+        "read": {"status": "not-applicable", "reason": ""},
+        "update": {"status": "not-applicable", "reason": ""},
+        "delete": {"status": "not-applicable", "reason": ""}
+      }
+    }
+  ],
+  "qualityGates": [
+    {
+      "id": "QG-001",
+      "title": "",
+      "category": "repository",
+      "platform": "common",
+      "requirement": "required",
+      "verificationMethod": "",
+      "contractSource": "quality.md"
     }
   ],
   "flows": ["FLOW-001"],
@@ -913,7 +951,7 @@ app-spec/
 }
 ```
 
-Разреши дополнительные поля для расширения, но отклоняй неизвестную major schema version.
+Разреши дополнительные managed operations (`rename`, `reuse`, `restore`, `delete-all`) и прочие поля для расширения, но отклоняй неизвестную major schema version. Для каждой entity требуй явное решение по всем create/read/update/delete: `required` со ссылками на AC или `not-applicable` с содержательной причиной.
 
 ### Markdown-части
 
@@ -956,7 +994,7 @@ app-spec/
 - ordered steps;
 - branches;
 - interrupted/resume behavior;
-- Given/When/Then acceptance scenarios с stable IDs.
+- отдельная секция для каждого AC с собственными Given/When/Then; один AC — один наблюдаемый outcome и один основной action/state/failure.
 
 Каждый `SCREEN-*.md`:
 
@@ -981,6 +1019,11 @@ Validator должен:
 - проверять обязательные файлы;
 - проверять уникальность IDs;
 - проверять ссылки requirements -> acceptance scenarios -> flows/screens;
+- проверять set equality между requirements и `acceptanceScenarios`, уникальность и связи AC -> requirement/flow/screens;
+- проверять отдельную AC-секцию и собственный Given/When/Then в flow prose;
+- проверять все четыре CRUD-ячейки managed entity, AC-ссылки required операций и причины `not-applicable`;
+- проверять обязательные и conditional quality gates;
+- поддерживать `--require-current`: AppSpec 1.0–1.3 валидировать как legacy, но блокировать для полного цикла;
 - проверять, что capability согласована с data/flow sections;
 - для AppSpec 1.2+ проверять обязательный localization contract и соответствующие `data.md`/`quality.md` sections;
 - для AppSpec 1.3+ проверять обязательный architecture contract для Kotlin Result, Store-backed component models, Manager/unwrap, Preview implementations, component module strategy и screenshot-test host;
@@ -988,7 +1031,33 @@ Validator должен:
 - выдавать errors и warnings раздельно;
 - не генерировать spec и не исправлять её молча.
 
+Добавь безопасный `migrate-app-spec.py`: источник и destination обязаны различаться, существующий destination не перезаписывается, 1.3 Markdown/JSON сохраняются, новая 1.4-структура получает `needs-review` и blocking questions, а автоматически извлечённые сценарии никогда не становятся approved без ручного решения.
+
 Skill отвечает за чтение и validation hand-off, но не за продуктовое интервью и генерацию исходной спецификации.
+
+## Durable delivery ledger и verification tooling
+
+Добавь stdlib-only scripts в `vibe-developer/scripts/`:
+
+- `compute-workspace-fingerprint.py` — Git HEAD, hash binary diff и hashes неигнорируемых untracked files;
+- `init-delivery-ledger.py` — создаёт `.vibe/delivery-ledger.json` до первой правки и не перезаписывает существующий;
+- `validate-delivery-ledger.py` — проверяет evidence, receipts, fingerprints, generated report и fresh audit;
+- `render-delivery-report.py` — детерминированно создаёт `docs/requirement-traceability.generated.md` и поддерживает `--check`;
+- `run-gradle.ps1` — единственная точка Gradle для orchestrator.
+
+Ledger 1.0 хранит fingerprint всех normative AppSpec JSON/Markdown, workspace fingerprint, отдельные AC/gate entries, статусы `not-started`, `implemented-unverified`, `verified`, `blocked-external`, `waived`, production/test evidence, verification receipts и blocker/waiver metadata. Waiver требует ссылки на явно записанное пользовательское решение.
+
+Определи два verdict: `implementation-complete` закрывает mandatory AC и repository gates и требует fresh audit `PASS`; `release-ready` дополнительно закрывает platform/external/release gates и запрещает `blocked-external`. Не используй `implemented baseline`, `mostly complete` или group-level `partial` вместо отдельных незакрытых entries.
+
+`run-gradle.ps1` сериализует процессы именованным mutex по canonical project path, имеет lock/command timeout, гарантированно освобождает mutex, принимает AC/gate IDs и receipt path. Receipt пишется только после фактического завершения и сохраняет реальный exit code, включая failure. Specialist agents не запускают Gradle.
+
+## Независимый acceptance auditor
+
+`vibe-acceptance-auditor` автоматически применим для проверки полноты AppSpec-реализации. Он запускается без implementation conversation, строит shadow inventory из JSON и flow/screen prose и не доверяет ledger/implementer report. Запрещено менять AppSpec, production code, tests или ledger; разрешены только `.vibe/closure-audit.json`, `docs/closure-audit.generated.md` и build caches.
+
+Auditor проверяет каждый обязательный contract через public API, data/state layers, UI/platform wiring и требуемые test surfaces. Его единственный verdict — `PASS`, `GAPS` или `BLOCKED`, с fingerprints, checks и доказанными findings. Любое изменение AppSpec/workspace инвалидирует `PASS`. Если isolated sub-agent недоступен, `$vibe-developer` не объявляет completion и требует отдельную чистую auditor-сессию.
+
+Каждый specialist skill содержит общий orchestrated hand-off contract: принять AC/gate IDs и file boundaries, менять только непересекающийся slice, вернуть evidence package, не менять ledger и не запускать Gradle. Параллелить только slices без пересекающихся файлов и контрактов.
 
 ### Связь со Spec Kit
 
@@ -1071,7 +1140,7 @@ Supersedes:
 - package name;
 - package version;
 - schema version;
-- exact список 13 skill directories;
+- exact список skill directories только из manifest, включая `vibe-acceptance-auditor`;
 - expected relative shared registry path;
 - install mode defaults.
 
@@ -1120,7 +1189,7 @@ Supersedes:
 
 Создай `validate-vibe-skills.ps1`, который:
 
-1. Проверяет manifest и exact список directories.
+1. Проверяет manifest и exact список directories, не дублируя в коде количество или список skills.
 2. Проверяет отсутствие незаполненных placeholders.
 3. Проверяет frontmatter каждого `SKILL.md`.
 4. Проверяет, что name совпадает с directory.
@@ -1134,10 +1203,11 @@ python "C:\Users\Sergey\.codex\skills\.system\skill-creator\scripts\quick_valida
   "D:\Sources\vibe-skills\<skill-name>"
 ```
 
-9. Запускает AppSpec validator на bundled valid fixture.
-10. Убеждается, что bundled invalid fixtures отклоняются.
-11. Проверяет installer в `-WhatIf`.
-12. Возвращает non-zero exit code при любой ошибке.
+9. Запускает AppSpec 1.4 validator tests: valid, legacy warning/`--require-current`, missing/duplicate/mislinked AC, GWT, CRUD decisions и quality gates.
+10. Запускает migration, ledger/report/fingerprint/audit freshness и Gradle mutex/timeout/receipt tests.
+11. Убеждается, что bundled invalid fixtures отклоняются.
+12. Проверяет installer в `-WhatIf` и post-check каждой manifest entry для Copy/Junction.
+13. Возвращает non-zero exit code при любой ошибке.
 
 На момент подготовки этого промпта `quick_validate.py` в системном Python завершался с `ModuleNotFoundError: yaml`. Не обходи официальный validator. Выполни preflight зависимости и, если `PyYAML` всё ещё отсутствует, запроси разрешение установить его в отдельное локальное virtual environment внутри package tooling или другим безопасным способом. Не устанавливай пакет глобально молча.
 
@@ -1154,6 +1224,10 @@ python "C:\Users\Sergey\.codex\skills\.system\skill-creator\scripts\quick_valida
 
 `vibe-developer/references/routing-matrix.md`
 
+Добавь behavioral eval fixtures: отрицательный DishReady-подобный проект с ложным completion report и пропущенными CRUD/public API/tests, положительный минимальный end-to-end проект, compaction/resume из одних AppSpec+ledger и parallel hand-off с двумя writers/Gradle attempts. Выполни skill-creator forward tests в чистых sub-agent contexts: negative обязан дать `GAPS`, positive — `PASS` только со свежими evidence/fingerprints.
+
+Добавь опциональный read-only external regression runner для `D:\Sources\Android\DishReady`: извлекай commits `f073da6` и `ae94900` через `git archive` во временные каталоги, не меняя checkout. Для `f073da6` требуй `GAPS` как минимум по preset rename/update, history reuse/delete, draft resume/discard, direct quantity/remove и granular draft deletion. `ae94900` получает независимый verdict и не считается автоматически положительным эталоном.
+
 Примеры обязательных distinctions:
 
 - stateless screen component -> Decompose, не MVIKotlin;
@@ -1168,6 +1242,7 @@ python "C:\Users\Sergey\.codex\skills\.system\skill-creator\scripts\quick_valida
 - ad placement -> Monetization + Product Designer;
 - component behavior test -> Test Engineer;
 - Gradle module/convention plugin -> Project Architect.
+- fresh AppSpec implementation completeness -> Acceptance Auditor; он не исправляет найденные gaps.
 
 ## Проверка полноты на эталонном сценарии
 
@@ -1307,6 +1382,7 @@ python "C:\Users\Sergey\.codex\skills\.system\skill-creator\scripts\quick_valida
 - `vibe-product-designer` не дублирует `compose-expert`.
 - `vibe-visual-testing` не принимает product design decisions.
 - `vibe-test-engineer` не обновляет goldens.
+- `vibe-acceptance-auditor` не доверяет ledger и не меняет production/tests/ledger.
 - `vibe-monetization-engineer` не включает tracking/consent без product/legal input.
 - `vibe-network-engineer` и `vibe-sync-engineer` разделены: transport/API против snapshot/auth/conflict coordination.
 - `vibe-domain-engineer` и `vibe-mvikotlin-engineer` разделены: business rules против state-machine orchestration.
@@ -1320,12 +1396,12 @@ python "C:\Users\Sergey\.codex\skills\.system\skill-creator\scripts\quick_valida
 Выполни работу полностью:
 
 1. Покажи короткий план.
-2. Создай все 13 skills через `init_skill.py`.
+2. Создай все 14 skills через `init_skill.py`.
 3. Заполни SKILL/reference/script/asset files.
 4. Сгенерируй `agents/openai.yaml`.
-5. Создай AppSpec template/schema/validator.
+5. Создай AppSpec 1.4 template/schema/validator/migrator и delivery ledger/fingerprint/report/Gradle tooling.
 6. Создай manifest, validator, installer и `INSTALL.md`.
-7. Проведи forward routing tests и desk simulation.
+7. Проведи forward routing tests, behavioral acceptance-auditor evals и desk simulation.
 8. Запусти official validation для каждого skill.
 9. Исправь все ошибки.
 10. Установи или синхронизируй skills глобально в Junction mode, если пользователь не потребовал Copy mode.

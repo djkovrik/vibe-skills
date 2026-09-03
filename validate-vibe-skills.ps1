@@ -28,13 +28,33 @@ $expected = @($manifest.skillDirectories)
 $actual = @(Get-ChildItem -LiteralPath $root -Directory -Force |
     Where-Object Name -Like 'vibe-*' |
     Select-Object -ExpandProperty Name)
-if ($expected.Count -ne 13) {
-    Add-Failure "Manifest lists $($expected.Count) skills instead of 13"
-}
+if ($expected.Count -eq 0) { Add-Failure 'Manifest must list at least one skill' }
+$invalidManifestNames = @($expected | Where-Object { $_ -notmatch '^vibe-[a-z0-9-]+$' })
+$duplicateManifestNames = @($expected | Group-Object | Where-Object Count -gt 1 | Select-Object -ExpandProperty Name)
+if ($invalidManifestNames) { Add-Failure "Invalid skill directory names in manifest: $($invalidManifestNames -join ', ')" }
+if ($duplicateManifestNames) { Add-Failure "Duplicate skill directories in manifest: $($duplicateManifestNames -join ', ')" }
 $missing = @($expected | Where-Object { $_ -notin $actual })
 $extra = @($actual | Where-Object { $_ -notin $expected })
 if ($missing) { Add-Failure "Missing skill directories: $($missing -join ', ')" }
 if ($extra) { Add-Failure "Unexpected skill directories: $($extra -join ', ')" }
+
+$jsonFiles = @(Get-ChildItem -LiteralPath $root -File -Recurse -Filter '*.json' |
+    Where-Object { $_.FullName -notlike "$root\.git\*" -and $_.FullName -notlike "$root\.tooling\*" })
+foreach ($jsonFile in $jsonFiles) {
+    try { $null = Get-Content -LiteralPath $jsonFile.FullName -Raw -Encoding UTF8 | ConvertFrom-Json }
+    catch { Add-Failure "Invalid JSON $($jsonFile.FullName): $($_.Exception.Message)" }
+}
+
+$powerShellFiles = @(Get-ChildItem -LiteralPath $root -File -Recurse -Filter '*.ps1' |
+    Where-Object { $_.FullName -notlike "$root\.git\*" -and $_.FullName -notlike "$root\.tooling\*" })
+foreach ($powerShellFile in $powerShellFiles) {
+    $tokens = $null
+    $parseErrors = $null
+    $null = [System.Management.Automation.Language.Parser]::ParseFile($powerShellFile.FullName, [ref]$tokens, [ref]$parseErrors)
+    foreach ($parseError in @($parseErrors)) {
+        Add-Failure "PowerShell parse error in $($powerShellFile.FullName): $($parseError.Message)"
+    }
+}
 
 $privacyContractFiles = Get-ChildItem -LiteralPath $root -File -Recurse -Force |
     Where-Object {
@@ -126,12 +146,28 @@ $invalidMajor = Join-Path $root 'vibe-developer\assets\app-spec-fixtures\invalid
 $invalidLinks = Join-Path $root 'vibe-developer\assets\app-spec-fixtures\invalid-links'
 $invalidUiContract = Join-Path $root 'vibe-developer\assets\app-spec-fixtures\invalid-ui-contract'
 if ((Test-Path -LiteralPath $localPython) -and (Test-Path -LiteralPath $appValidator)) {
-    & $localPython $appValidator $validFixture
+    & $localPython $appValidator --require-current $validFixture
     if ($LASTEXITCODE -ne 0) { Add-Failure 'Bundled valid AppSpec was rejected' }
     foreach ($invalid in @($invalidMajor, $invalidLinks, $invalidUiContract)) {
         & $localPython $appValidator $invalid
         if ($LASTEXITCODE -eq 0) { Add-Failure "Bundled invalid AppSpec was accepted: $invalid" }
     }
+}
+
+if (Test-Path -LiteralPath $localPython -PathType Leaf) {
+    $pythonTests = @(Get-ChildItem -LiteralPath $root -File -Recurse -Filter 'test_*.py' |
+        Where-Object { $_.FullName -notlike "$root\.tooling\*" })
+    foreach ($test in $pythonTests) {
+        & $localPython -B $test.FullName
+        if ($LASTEXITCODE -ne 0) { Add-Failure "Python test failed: $($test.FullName)" }
+    }
+}
+
+$powerShellTests = @(Get-ChildItem -LiteralPath $root -File -Recurse -Filter 'test-*.ps1' |
+    Where-Object { $_.FullName -notlike "$root\.tooling\*" })
+foreach ($test in $powerShellTests) {
+    & $test.FullName
+    if (-not $?) { Add-Failure "PowerShell test failed: $($test.FullName)" }
 }
 
 if (-not $SkipInstallerWhatIf) {

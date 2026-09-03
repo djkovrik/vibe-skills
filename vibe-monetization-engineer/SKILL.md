@@ -46,6 +46,10 @@ Test disabled/no-ID, load/failure/retry, lifecycle changes, reward exactly once,
 
 Placement hierarchy -> Product Designer/Lazyweb. Legal/privacy choices -> user/product/legal. Native startup/linkage -> Project Architect/Platform. Visual states -> Visual Testing.
 
+## Orchestrated evidence hand-off
+
+When `$vibe-developer` assigns work, accept explicit acceptance-scenario/quality-gate IDs and file boundaries. Change only the assigned, non-overlapping slice. Return an evidence package containing production `path`/`symbol`/`surface`, test `path`/exact test name/surface, commands requested from the Gradle owner, checks actually run, and unresolved blockers. Do not edit `.vibe/delivery-ledger.json` or claim completion; `$vibe-developer` is the only ledger writer and the only Gradle owner. Parallel work is allowed only when files and contracts do not overlap.
+
 ## Reusable learning
 
 Propose durable, policy-approved integration rules for [learned-patterns.md](references/learned-patterns.md); never learn consent or identifiers from a project snapshot.

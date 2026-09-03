@@ -1,4 +1,4 @@
-# Vibe KMP skills
+# Vibe KMP skills 1.5
 
 Run commands from this package root in PowerShell.
 
@@ -30,9 +30,14 @@ Junction keeps this package as the single editable copy. Copy mode creates indep
 
 After first installation or after changing skill metadata, restart the Codex client if the updated skills are not immediately visible.
 
-To implement an application, prepare and validate Vibe AppSpec v1, then start a separate session:
+The manifest currently installs 14 skills, including the independent `$vibe-acceptance-auditor`. The manifest, rather than a hard-coded count in the installer, is the source of truth for Copy/Junction installation and post-install checks.
+
+To implement an application, prepare and approve Vibe AppSpec 1.4, then start a separate session:
 
 ```text
 Use $vibe-developer. Implement the application from D:\Projects\MyApp\app-spec.
-Validate the specification first and do not silently change approved requirements.
+Validate the specification with --require-current, initialize the delivery ledger before code changes,
+and do not silently change approved requirements. Require a fresh acceptance audit before completion.
 ```
+
+AppSpec 1.0–1.3 remains readable as legacy. A full `$vibe-developer` cycle requires migration into a new directory with `migrate-app-spec.py` and explicit review of all `needs-review` scenarios and blocking questions. Narrow specialist work may still target a legacy repository directly.

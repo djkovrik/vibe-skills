@@ -18,35 +18,32 @@ For a narrow task, route directly to the owning specialist using [routing-matrix
 - explicit user decisions and constraints
 - allowed build platforms and credentials
 
-Read [app-spec-contract.md](references/app-spec-contract.md) before consuming an AppSpec. Read [localization-contract.md](references/localization-contract.md) whenever the app has user-visible bundled text or localized local data. Read [ci-release-contract.md](references/ci-release-contract.md) before the late-stage CI/release pass. Read [source-registry.md](references/source-registry.md) only when consulting the local Blinkly/Tackle adaptations. Read [spec-kit-mapping.md](references/spec-kit-mapping.md) only when the upstream artifacts came from Spec Kit or OpenSpec.
+Read [app-spec-contract.md](references/app-spec-contract.md) before consuming an AppSpec and [delivery-ledger-contract.md](references/delivery-ledger-contract.md) before changing the target repository. Read [localization-contract.md](references/localization-contract.md) whenever the app has user-visible bundled text or localized local data. Read [ci-release-contract.md](references/ci-release-contract.md) before the late-stage CI/release pass. Read [source-registry.md](references/source-registry.md) only when consulting the local Blinkly/Tackle adaptations. Read [spec-kit-mapping.md](references/spec-kit-mapping.md) only when the upstream artifacts came from Spec Kit or OpenSpec.
 
 ## Workflow
 
-1. Validate the AppSpec with `scripts/validate-app-spec.py`. Stop on errors and unresolved blocking questions; surface warnings and non-blocking open questions.
+1. For a full application or cross-cutting cycle, validate an approved AppSpec 1.4 with `scripts/validate-app-spec.py --require-current`. Stop on errors, legacy schemas, `needs-review` migrations, and unresolved blocking questions. AppSpec 1.0-1.3 remains valid only for read-only inspection or a directly invoked narrow specialist task.
 2. Find the nearest `AGENTS.md` and other instruction files. Record their scope.
 3. Inspect `git status`; preserve all user changes.
 4. Read settings/root build files, version catalog, convention plugins, platform entry points, module build files, CI, and release configuration.
 5. Map modules, source sets, dependency direction, targets, toolchains, minimum OS/API, variants, package IDs, and composition roots.
 6. Locate domain contracts, Decompose components and their package roles, Stores, Managers, non-Decompose `di/*Module.kt` boundaries, composition roots, persistence, network, sync, platform services, localization resources/key mappings, component-module preview implementations, screenshot host, and tests.
 7. Detect installed `vibe-*`, Compose Expert, and Lazyweb capabilities.
-8. Build a dependency-aware plan from the smallest affected subgraph. Assign one owner per change and explicit hand-offs. Require each screen/flow component module to keep its contract at the feature package root, Default/Preview/mappers in `integration`, Store/provider in `store`, and feature Manager/models in `domain`. For every production component `Value<Model>`, require `Default component -> retained Store -> State-to-Model mapper -> immutable Value<Model>`; data-facing Stores use Managers, standard Kotlin `Result`, and cancellation-aware `unwrap`. Require a component-module-owned `*ComponentPreview` for every Compose-rendered component contract, including stateless screens; only documented navigation-only components may omit one. Require every non-Decompose implementation module that provides constructed dependencies outward to expose a narrow `di/*Module.kt` interface/dependencies/factory boundary with lazy outputs and make platform roots consume those modules rather than concrete constructors. Make Decompose component tests through public contracts the primary application test strategy, centralized in the separate `root` component module when structurally valid. For localized local data, make stable IDs/keys, Compose resource ownership, native fallbacks, and key-completeness checks explicit deliverables. For product UI, make component-module ownership, the Preview implementation, icon/asset decision, preview matrix, Compose-owned golden infrastructure, and post-golden design review explicit deliverables rather than optional polish. For ads, default to Yandex Mobile Ads and require the custom privacy-region endpoint plus app-owned consent gate before SDK initialization/loading: no global consent popup, only a fresh endpoint decision may establish applicability, protected-region acceptance is required, and unresolved/expired/error states fail closed for ads. Pass the current allowed consent state to Yandex before every initialization. Do not treat the endpoint as an IAB TCF CMP or use this lightweight flow with demand/mediation partners that require a certified CMP. Make the adapted baseline workflows and repository setup guide explicit late-stage deliverables owned by Project Architect.
-9. Execute only necessary stages:
+8. Before the first code edit, run `scripts/init-delivery-ledger.py`, then independently compare the behavior, managed-entity operation, and quality-gate inventories from JSON and Markdown. Stop for contradictions or omissions. Build a dependency-aware plan from the smallest affected subgraph as vertical slices by acceptance scenario, not as disconnected layer-completion batches. Assign one owner per non-overlapping change and explicit evidence hand-offs. Require each screen/flow component module to keep its contract at the feature package root, Default/Preview/mappers in `integration`, Store/provider in `store`, and feature Manager/models in `domain`. For every production component `Value<Model>`, require `Default component -> retained Store -> State-to-Model mapper -> immutable Value<Model>`; data-facing Stores use Managers, standard Kotlin `Result`, and cancellation-aware `unwrap`. Require a component-module-owned `*ComponentPreview` for every Compose-rendered component contract, including stateless screens; only documented navigation-only components may omit one. Require every non-Decompose implementation module that provides constructed dependencies outward to expose a narrow `di/*Module.kt` interface/dependencies/factory boundary with lazy outputs and make platform roots consume those modules rather than concrete constructors. Make Decompose component tests through public contracts the primary application test strategy, centralized in the separate `root` component module when structurally valid. For localized local data, make stable IDs/keys, Compose resource ownership, native fallbacks, and key-completeness checks explicit deliverables. For product UI, make component-module ownership, the Preview implementation, icon/asset decision, preview matrix, Compose-owned golden infrastructure, and post-golden design review explicit deliverables rather than optional polish. For ads, default to Yandex Mobile Ads and require the custom privacy-region endpoint plus app-owned consent gate before SDK initialization/loading: no global consent popup, only a fresh endpoint decision may establish applicability, protected-region acceptance is required, and unresolved/expired/error states fail closed for ads. Pass the current allowed consent state to Yandex before every initialization. Do not treat the endpoint as an IAB TCF CMP or use this lightweight flow with demand/mediation partners that require a certified CMP. Make the adapted baseline workflows and repository setup guide explicit late-stage deliverables owned by Project Architect.
+9. Execute only necessary concerns inside each vertical slice. For each assigned AC, complete the production contract, data/domain path, Store/component path, UI/platform wiring, required tests, targeted verification, and evidence package before moving its ledger entry to `verified`:
 
 ```text
-AppSpec validation -> repository preflight -> architecture
--> product/design evidence -> icon and visual-asset gate
--> domain -> persistence/network/sync/platform
--> Decompose -> MVIKotlin -> Compose -> monetization
--> non-visual tests -> previews -> Paparazzi/scanner -> approved goldens
--> full-UI Lazyweb review -> approved fixes and golden re-verification
--> Detekt/Kover/build readiness gate -> baseline CI/release automation
--> quality/platform/release checks
+approved AppSpec 1.4 -> ledger initialization -> independent inventory
+-> architecture scaffolding -> vertical AC slices with targeted receipts
+-> repository quality gates -> fresh closure audit
+-> one full Gradle/quality/release gate -> final ledger validation
 ```
 
 10. Treat the readiness stage as a real quality gate. Require the newest official Detekt release (or a documented newest-compatible toolchain exception), a complete generated `detekt/base-config.yml` with current-schema Blinkly threshold adaptations when available, configuration validation, and strict failure on Warning/Error findings. Require Kover filters limited to the declared domain and production Decompose scope, a recorded first filtered baseline, an immediately committed baseline-derived minimum, XML/numeric output, and passing verification. When those gates and the required debug/platform builds pass, immediately apply [ci-release-contract.md](references/ci-release-contract.md). Create all five adapted baseline workflows under `.github/workflows/` and a project-specific `docs/CI-RELEASE-SETUP.md`; do not wait for external credentials. Leave unavailable external publication truthfully blocked and document the exact setup steps.
-11. Run targeted checks first. Use `scripts/run-gradle.ps1` on Windows.
-12. Reconcile implementation against requirement and acceptance IDs.
-13. Report implementation, owners used, requirement coverage, changed modules, checks, unrun checks, risks, deviations, CI/release readiness, external setup blockers, and reusable-learning candidates.
+11. Run targeted checks first. On Windows, this orchestrator is the only Gradle owner and uses `scripts/run-gradle.ps1` with the relevant AC/gate IDs and receipt path. Specialists return requested commands but never invoke Gradle themselves.
+12. After every milestone, reread AppSpec and `.vibe/delivery-ledger.json`; conversational memory and implementer summaries are not delivery state. Record evidence at individual AC/gate granularity. Never collapse unfinished obligations into a group-level `partial`, `implemented baseline`, or `mostly complete` claim.
+13. When every local entry is closed, stop implementation work and invoke a new `$vibe-acceptance-auditor` context without implementation history. The auditor builds a shadow inventory and writes only closure-audit artifacts. On `GAPS`, assign fixes and use another clean auditor after re-verification. On `BLOCKED`, preserve the exact blocker. If isolated sub-agents are unavailable, do not claim completion; require a separate clean auditor session.
+14. Only after fresh `PASS`, run one full Gradle/quality/release gate, refresh its receipts, render reports with `--check`, and run `validate-delivery-ledger.py`. Report the resulting `implementation-complete` and `release-ready` verdicts separately, plus owners, changed modules, checks, blockers, deviations, and reusable-learning candidates.
 
 ## Decision rules
 
@@ -62,6 +59,8 @@ Apply this trust order:
 Expose conflicts. Request a decision only for materially different outcomes, then add a test or check that fixes the chosen contract.
 
 Prevent overlapping edits by giving each file/change one owner. Let the orchestrator sequence hand-offs; do not ask specialists to independently redesign the same boundary.
+
+Treat `.vibe/delivery-ledger.json` as the only editable delivery-state source. Generated traceability and closure reports are projections. A waiver requires a reference to an explicit recorded user decision; `blocked-external` can coexist with `implementation-complete` only for non-repository gates and never with `release-ready`. Any AppSpec or workspace fingerprint change invalidates prior verification and audit `PASS`.
 
 ## Validation
 
@@ -84,6 +83,7 @@ Prevent overlapping edits by giving each file/change one owner. Let the orchestr
 - Require `en` as the default/base locale and complete fallback key set, with `ru` as the initial additional locale. Derive the active locale from the operating system only; reject an in-app language picker, persisted locale preference, or app-specific locale override. Require every declared locale to cover the shared keys, reject persisted/resolved translations for local catalogs, and scan production source for hardcoded user-visible strings. Native-only text must follow the same system-locale/EN-default contract in Android/iOS localization resources.
 - Treat warnings separately from failures.
 - Reject report-only Detekt integration, stale copied Detekt versions/configs, automatic baseline regeneration, whole-repository Kover denominators, and coverage thresholds chosen before measuring the filtered target repository.
+- Reject completion when AppSpec/ledger fingerprints are stale, an obligation lacks production/test evidence and a successful fresh receipt, generated Markdown drifts, or the closure-audit fingerprint is missing/stale.
 
 ## Escalation/hand-off
 
@@ -99,6 +99,7 @@ Prevent overlapping edits by giving each file/change one owner. Let the orchestr
 - Previews/Paparazzi/goldens: `$vibe-visual-testing`
 - Ads/privacy integration: `$vibe-monetization-engineer`
 - Non-visual tests/coverage: `$vibe-test-engineer`
+- Independent completeness audit: fresh-context `$vibe-acceptance-auditor`
 
 Use Compose Expert through Product Designer for Compose APIs. Use Lazyweb before product UI design or critique.
 
