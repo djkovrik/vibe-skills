@@ -1,5 +1,5 @@
 {
-  "schemaVersion": "1.4",
+  "schemaVersion": "2.0",
   "app": {
     "name": "Ledger Fixture",
     "summary": "A minimal fixture for delivery-ledger verification.",
@@ -26,7 +26,7 @@
       "subject": "Value",
       "operation": "create",
       "verificationSurfaces": ["component-test"],
-      "reviewStatus": "approved"
+      "dependsOnAcceptanceScenarioIds": []
     }
   ],
   "managedEntities": [
@@ -48,7 +48,8 @@
       "platform": "all",
       "requirement": "required",
       "verificationMethod": "Run repository tests.",
-      "contractSource": "quality.md#repository-tests"
+      "contractSource": "quality.md#repository-tests",
+      "verificationSurfaces": ["repository-check"]
     },
     {
       "id": "QG-002",
@@ -57,7 +58,8 @@
       "platform": "android",
       "requirement": "required",
       "verificationMethod": "Build the Android release.",
-      "contractSource": "quality.md#android-release"
+      "contractSource": "quality.md#android-release",
+      "verificationSurfaces": ["android-build"]
     },
     {
       "id": "QG-003",
@@ -66,7 +68,8 @@
       "platform": "all",
       "requirement": "required",
       "verificationMethod": "Verify release acceptance.",
-      "contractSource": "quality.md#release-acceptance"
+      "contractSource": "quality.md#release-acceptance",
+      "verificationSurfaces": ["release-check"]
     }
   ],
   "flows": ["FLOW-001"],

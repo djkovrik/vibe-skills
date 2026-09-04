@@ -1,30 +1,29 @@
 #!/usr/bin/env python3
-"""Validate Vibe delivery-ledger structure, evidence, freshness, and verdicts."""
+"""Final aggregate validator for Vibe Protocol 2.0 delivery state."""
 
 from __future__ import annotations
 
 import argparse
+import hashlib
 import importlib.util
 import json
-import os
-import re
 import sys
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any
 
+SCRIPT_DIR = Path(__file__).resolve().parent
+if str(SCRIPT_DIR) not in sys.path: sys.path.insert(0, str(SCRIPT_DIR))
 
-LEDGER_VERSION = "1.0"
-STATUSES = {
-    "not-started",
-    "implemented-unverified",
-    "verified",
-    "blocked-external",
-    "waived",
-}
-APPLICABILITY = {"applicable", "not-applicable", "needs-review"}
+from vibe_protocol import (
+    ProtocolError, canonical_inventory, compute_app_spec_fingerprint,
+    compute_workspace_fingerprint, discover_scoped_instructions, fingerprint_equal,
+    ledger_digest, read_json, validate_app_spec,
+)
 
+STATUSES = {"not-started", "in-progress", "implemented-unverified", "verified", "blocked-external", "waived"}
+PHASES = {"planning", "implementing", "reconciling", "auditing", "final-verification", "complete", "blocked"}
 
 @dataclass
 class ValidationResult:
@@ -32,620 +31,270 @@ class ValidationResult:
     warnings: list[str] = field(default_factory=list)
     implementation_complete: bool = False
     release_ready: bool = False
-    audit_current_and_passed: bool = False
-
     @property
-    def valid(self) -> bool:
-        return not self.errors
-
+    def valid(self) -> bool: return not self.errors
     def as_dict(self) -> dict[str, Any]:
-        return {
-            "valid": self.valid,
-            "implementationComplete": self.implementation_complete,
-            "releaseReady": self.release_ready,
-            "auditCurrentAndPassed": self.audit_current_and_passed,
-            "errors": self.errors,
-            "warnings": self.warnings,
-        }
+        return {"valid": self.valid, "errors": self.errors, "warnings": self.warnings,
+                "implementationComplete": self.implementation_complete, "releaseReady": self.release_ready}
 
+def timestamp(value: Any) -> bool:
+    if not isinstance(value, str): return False
+    try: datetime.fromisoformat(value.replace("Z", "+00:00")); return True
+    except ValueError: return False
 
-def _load_fingerprint_module() -> Any:
-    path = Path(__file__).with_name("compute-workspace-fingerprint.py")
-    spec = importlib.util.spec_from_file_location("vibe_workspace_fingerprint", path)
-    if spec is None or spec.loader is None:
-        raise RuntimeError(f"cannot load fingerprint implementation: {path}")
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
+def resolve(root: Path, value: Any, label: str) -> Path:
+    if not isinstance(value, str) or not value: raise ProtocolError(f"{label}: expected path")
+    path = Path(value)
+    target = path.resolve() if path.is_absolute() else (root / path).resolve()
+    if not path.is_absolute():
+        try: target.relative_to(root)
+        except ValueError as exc: raise ProtocolError(f"{label}: path escapes repository") from exc
+    return target
 
-
-def _load_audit_validator() -> Any | None:
-    path = (
-        Path(__file__).resolve().parents[2]
-        / "vibe-acceptance-auditor"
-        / "scripts"
-        / "validate-closure-audit.py"
-    )
-    if not path.is_file():
-        return None
-    spec = importlib.util.spec_from_file_location("vibe_closure_audit_validator", path)
-    if spec is None or spec.loader is None:
-        return None
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
-
-
-def _read_json(path: Path) -> dict[str, Any]:
-    try:
-        value = json.loads(path.read_text(encoding="utf-8-sig"))
-    except (OSError, json.JSONDecodeError) as exc:
-        raise RuntimeError(f"cannot read {path}: {exc}") from exc
-    if not isinstance(value, dict):
-        raise RuntimeError(f"expected a JSON object in {path}")
-    return value
-
-
-def _resolve_path(root: Path, value: Any, label: str) -> Path:
-    if not isinstance(value, str) or not value.strip():
-        raise ValueError(f"{label} must be a non-empty path")
-    candidate = Path(value)
-    resolved = candidate.resolve() if candidate.is_absolute() else (root / candidate).resolve()
-    try:
-        resolved.relative_to(root.resolve())
-    except ValueError as exc:
-        raise ValueError(f"{label} escapes the project root: {value}") from exc
-    return resolved
-
-
-def _resolve_app_spec_path(project_root: Path, value: Any) -> Path:
-    if not isinstance(value, str) or not value.strip():
-        raise ValueError("appSpec.root must be a non-empty path")
-    candidate = Path(value)
-    return candidate.resolve() if candidate.is_absolute() else (project_root / candidate).resolve()
-
-
-def _id_map(items: Any, label: str, result: ValidationResult) -> dict[str, dict[str, Any]]:
-    if not isinstance(items, list):
-        result.errors.append(f"{label}: expected an array")
-        return {}
-    mapped: dict[str, dict[str, Any]] = {}
-    for index, item in enumerate(items):
-        if not isinstance(item, dict):
-            result.errors.append(f"{label}[{index}]: expected an object")
-            continue
-        item_id = item.get("id")
-        if not isinstance(item_id, str) or not item_id:
-            result.errors.append(f"{label}[{index}].id: expected a non-empty string")
-            continue
-        if item_id in mapped:
-            result.errors.append(f"{label}: duplicate id {item_id}")
-            continue
-        mapped[item_id] = item
-    return mapped
-
-
-def _fingerprints_equal(left: Any, right: Any) -> bool:
-    return isinstance(left, dict) and isinstance(right, dict) and left == right
-
-
-def _valid_timestamp(value: Any) -> bool:
-    if not isinstance(value, str) or not value:
-        return False
-    try:
-        datetime.fromisoformat(value.replace("Z", "+00:00"))
-    except ValueError:
-        return False
+def durable_reference(root: Path, value: Any) -> bool:
+    if not isinstance(value, str) or not value.strip(): return False
+    path_text, _, anchor = value.partition("#")
+    try: target = resolve(root, path_text, "decisionReference")
+    except ProtocolError: return False
+    if not target.is_file(): return False
+    if anchor:
+        try: return anchor.casefold() in target.read_text(encoding="utf-8-sig").casefold()
+        except (OSError, UnicodeError): return False
     return True
 
-
-def _symbol_exists(path: Path, symbol: str) -> bool:
-    try:
-        content = path.read_text(encoding="utf-8-sig", errors="replace")
-    except OSError:
-        return False
-    if not symbol.strip():
-        return False
-    parts = [part for part in re.split(r"[.#]", symbol) if part]
-    for part in parts:
-        pattern = r"(?<![A-Za-z0-9_])" + re.escape(part) + r"(?![A-Za-z0-9_])"
-        if re.search(pattern, content) is None:
-            return False
-    return True
-
-
-def _validate_evidence(
-    project_root: Path,
-    item: dict[str, Any],
-    item_label: str,
-    result: ValidationResult,
-) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
-    production = item.get("productionEvidence")
-    tests = item.get("testEvidence")
-    if not isinstance(production, list):
-        result.errors.append(f"{item_label}.productionEvidence: expected an array")
-        production = []
-    if not isinstance(tests, list):
-        result.errors.append(f"{item_label}.testEvidence: expected an array")
-        tests = []
-
-    def validate_entries(entries: list[Any], *, test: bool) -> list[dict[str, Any]]:
-        valid_entries: list[dict[str, Any]] = []
-        symbol_field = "testName" if test else "symbol"
-        evidence_label = "testEvidence" if test else "productionEvidence"
-        for index, entry in enumerate(entries):
-            prefix = f"{item_label}.{evidence_label}[{index}]"
-            if not isinstance(entry, dict):
-                result.errors.append(f"{prefix}: expected an object")
-                continue
-            surface = entry.get("surface")
-            symbol = entry.get(symbol_field)
-            if not isinstance(surface, str) or not surface.strip():
-                result.errors.append(f"{prefix}.surface: expected a non-empty string")
-            if not isinstance(symbol, str) or not symbol.strip():
-                result.errors.append(f"{prefix}.{symbol_field}: expected an exact non-empty name")
+def evidence_ok(root: Path, evidence: Any, label: str, result: ValidationResult) -> list[dict]:
+    if not isinstance(evidence, list): result.errors.append(f"{label}: expected array"); return []
+    valid = []
+    for index, item in enumerate(evidence):
+        prefix = f"{label}[{index}]"
+        if not isinstance(item, dict) or not isinstance(item.get("path"), str) or not isinstance(item.get("surface"), str):
+            result.errors.append(f"{prefix}: requires path and surface"); continue
+        try: target = resolve(root, item["path"], prefix)
+        except ProtocolError as exc: result.errors.append(str(exc)); continue
+        if not target.is_file(): result.errors.append(f"{prefix}: file does not exist"); continue
+        symbol = item.get("symbol") or item.get("testName")
+        if symbol:
             try:
-                path = _resolve_path(project_root, entry.get("path"), f"{prefix}.path")
-            except ValueError as exc:
-                result.errors.append(str(exc))
-                continue
-            if not path.is_file():
-                result.errors.append(f"{prefix}.path: file does not exist: {entry.get('path')}")
-                continue
-            if isinstance(symbol, str) and symbol.strip() and not _symbol_exists(path, symbol):
-                result.errors.append(
-                    f"{prefix}.{symbol_field}: {symbol!r} was not found in {entry.get('path')}"
-                )
-                continue
-            valid_entries.append(entry)
-        return valid_entries
+                if symbol not in target.read_text(encoding="utf-8-sig"): result.errors.append(f"{prefix}: symbol/testName not found: {symbol}")
+            except (OSError, UnicodeError): result.errors.append(f"{prefix}: cannot inspect text")
+        valid.append(item)
+    return valid
 
-    return validate_entries(production, test=False), validate_entries(tests, test=True)
+def load_receipts(root: Path, refs: set[str], current: dict, result: ValidationResult) -> dict[str, dict]:
+    loaded: dict[str, dict] = {}
+    for ref in sorted(refs):
+        if not isinstance(ref, str) or not ref.startswith(".vibe/receipts/") or not ref.endswith(".json"):
+            result.errors.append(f"receipt ref must point to .vibe/receipts/*.json: {ref!r}"); continue
+        try:
+            path = resolve(root, ref, "receipt")
+            receipt = read_json(path)
+        except ProtocolError as exc: result.errors.append(str(exc)); continue
+        label = f"receipt[{ref}]"
+        if receipt.get("schemaVersion") != "2.0": result.errors.append(f"{label}: unsupported protocol")
+        for field in ("receiptId", "kind", "argv", "tasks", "coveredObligations", "startedAt", "completedAt", "workspaceFingerprint", "exitCode", "log"):
+            if field not in receipt: result.errors.append(f"{label}.{field}: required")
+        if receipt.get("kind") not in {"targeted", "final"}: result.errors.append(f"{label}.kind: expected targeted or final")
+        if not isinstance(receipt.get("argv"), list) or not receipt.get("argv") or any(not isinstance(v, str) for v in receipt.get("argv", [])): result.errors.append(f"{label}.argv: expected non-empty string array")
+        if not isinstance(receipt.get("tasks"), list): result.errors.append(f"{label}.tasks: expected array")
+        if not timestamp(receipt.get("startedAt")) or not timestamp(receipt.get("completedAt")): result.errors.append(f"{label}: invalid timestamps")
+        elif receipt["startedAt"] > receipt["completedAt"]: result.errors.append(f"{label}: completedAt precedes startedAt")
+        if not isinstance(receipt.get("exitCode"), int): result.errors.append(f"{label}.exitCode: expected integer")
+        if not fingerprint_equal(receipt.get("workspaceFingerprint"), current): result.warnings.append(f"{label}: stale workspace fingerprint")
+        log = receipt.get("log")
+        if isinstance(log, dict) and isinstance(log.get("path"), str) and isinstance(log.get("sha256"), str):
+            try:
+                log_path = resolve(root, log["path"], f"{label}.log")
+                if not log_path.is_file() or hashlib.sha256(log_path.read_bytes()).hexdigest() != log["sha256"]: result.errors.append(f"{label}.log: missing or hash mismatch")
+            except ProtocolError as exc: result.errors.append(str(exc))
+        else: result.errors.append(f"{label}.log: requires repository-relative path and sha256")
+        coverage = receipt.get("coveredObligations")
+        if not isinstance(coverage, list): result.errors.append(f"{label}.coveredObligations: expected array")
+        loaded[ref] = receipt
+    return loaded
 
-
-def _load_receipt(
-    project_root: Path, raw: Any, label: str, result: ValidationResult
-) -> dict[str, Any] | None:
-    if isinstance(raw, str):
-        path_value = raw
-    elif isinstance(raw, dict) and set(raw) == {"path"}:
-        path_value = raw["path"]
-    elif isinstance(raw, dict):
-        return raw
-    else:
-        result.errors.append(f"{label}: expected a receipt path or object")
-        return None
-    try:
-        path = _resolve_path(project_root, path_value, f"{label}.path")
-    except ValueError as exc:
-        result.errors.append(str(exc))
-        return None
-    if not path.is_file():
-        result.errors.append(f"{label}.path: receipt does not exist: {path_value}")
-        return None
-    try:
-        return _read_json(path)
-    except RuntimeError as exc:
-        result.errors.append(f"{label}: {exc}")
-        return None
-
-
-def _validate_receipts(
-    project_root: Path,
-    item: dict[str, Any],
-    item_id: str,
-    item_kind: str,
-    current_workspace: dict[str, Any],
-    result: ValidationResult,
-) -> list[dict[str, Any]]:
-    raw_receipts = item.get("verificationReceipts")
-    label = f"{item_kind}.{item_id}.verificationReceipts"
-    if not isinstance(raw_receipts, list):
-        result.errors.append(f"{label}: expected an array")
-        return []
-    receipts: list[dict[str, Any]] = []
-    owner_field = "acceptanceScenarioIds" if item_kind == "acceptanceScenarios" else "qualityGateIds"
-    for index, raw in enumerate(raw_receipts):
-        receipt_label = f"{label}[{index}]"
-        receipt = _load_receipt(project_root, raw, receipt_label, result)
-        if receipt is None:
-            continue
-        for field_name in (
-            "schemaVersion",
-            "command",
-            "exitCode",
-            "completedAt",
-            "workspaceFingerprint",
-            "acceptanceScenarioIds",
-            "qualityGateIds",
-        ):
-            if field_name not in receipt:
-                result.errors.append(f"{receipt_label}.{field_name}: required field is missing")
-        if receipt.get("schemaVersion") != "1.0":
-            result.errors.append(f"{receipt_label}.schemaVersion: expected '1.0'")
-        if not isinstance(receipt.get("command"), str) or not receipt.get("command", "").strip():
-            result.errors.append(f"{receipt_label}.command: expected a non-empty string")
-        if not isinstance(receipt.get("exitCode"), int) or isinstance(receipt.get("exitCode"), bool):
-            result.errors.append(f"{receipt_label}.exitCode: expected an integer")
-        if not _valid_timestamp(receipt.get("completedAt")):
-            result.errors.append(f"{receipt_label}.completedAt: expected an RFC3339 timestamp")
-        for id_field in ("acceptanceScenarioIds", "qualityGateIds"):
-            ids = receipt.get(id_field)
-            if not isinstance(ids, list) or any(not isinstance(value, str) for value in ids):
-                result.errors.append(f"{receipt_label}.{id_field}: expected an array of IDs")
-        owner_ids = receipt.get(owner_field)
-        if isinstance(owner_ids, list) and item_id not in owner_ids:
-            result.errors.append(f"{receipt_label}.{owner_field}: does not include owner {item_id}")
-        if item.get("status") == "verified" and not _fingerprints_equal(
-            receipt.get("workspaceFingerprint"), current_workspace
-        ):
-            result.errors.append(f"{receipt_label}.workspaceFingerprint: receipt is stale")
-        elif not _fingerprints_equal(receipt.get("workspaceFingerprint"), current_workspace):
-            result.warnings.append(f"{receipt_label}.workspaceFingerprint: historical receipt is stale")
-        receipts.append(receipt)
-    return receipts
-
-
-def _validate_status_metadata(item: dict[str, Any], label: str, result: ValidationResult) -> None:
-    status = item.get("status")
-    if status not in STATUSES:
-        result.errors.append(f"{label}.status: unsupported value {status!r}")
-        return
-    blocker = item.get("blocker")
-    waiver = item.get("waiver")
-    if status == "blocked-external":
-        if not isinstance(blocker, dict) or not isinstance(blocker.get("reason"), str) or not blocker["reason"].strip():
-            result.errors.append(f"{label}.blocker.reason: required for blocked-external")
-    elif blocker is not None:
-        result.errors.append(f"{label}.blocker: only blocked-external entries may carry a blocker")
-    if status == "waived":
-        if not isinstance(waiver, dict):
-            result.errors.append(f"{label}.waiver: required for waived")
-        else:
-            for field_name in ("reason", "userDecisionRef"):
-                if not isinstance(waiver.get(field_name), str) or not waiver[field_name].strip():
-                    result.errors.append(f"{label}.waiver.{field_name}: required for waived")
-    elif waiver is not None:
-        result.errors.append(f"{label}.waiver: only waived entries may carry a waiver")
-
-
-def _validate_item_evidence(
-    project_root: Path,
-    item: dict[str, Any],
-    item_id: str,
-    item_kind: str,
-    current_workspace: dict[str, Any],
-    result: ValidationResult,
-) -> None:
-    label = f"{item_kind}.{item_id}"
-    _validate_status_metadata(item, label, result)
-    production, tests = _validate_evidence(project_root, item, label, result)
-    receipts = _validate_receipts(
-        project_root, item, item_id, item_kind, current_workspace, result
-    )
-    if item.get("status") != "verified":
-        return
-    if not production:
-        result.errors.append(f"{label}: verified entry requires production evidence")
-    if not tests:
-        result.errors.append(f"{label}: verified entry requires test evidence")
-    successful = [receipt for receipt in receipts if receipt.get("exitCode") == 0]
-    if not successful:
-        result.errors.append(f"{label}: verified entry requires a current zero-exit verification receipt")
-    if item_kind == "acceptanceScenarios":
-        required_surfaces = item.get("requiredTestSurfaces")
-        if not isinstance(required_surfaces, list) or any(
-            not isinstance(surface, str) or not surface for surface in required_surfaces
-        ):
-            result.errors.append(f"{label}.requiredTestSurfaces: expected an array of surface names")
-        else:
-            actual_surfaces = {entry.get("surface") for entry in tests}
-            for surface in required_surfaces:
-                if surface not in actual_surfaces:
-                    result.errors.append(f"{label}: missing required test surface {surface!r}")
-
-
-def _validate_audit(
-    project_root: Path,
-    ledger: dict[str, Any],
-    app_spec: dict[str, Any],
-    current_app_spec: dict[str, Any],
-    current_workspace: dict[str, Any],
-    expected_implementation_complete: bool,
-    expected_release_ready: bool,
-    result: ValidationResult,
-) -> None:
-    audit_ref = ledger.get("closureAudit")
-    if not isinstance(audit_ref, dict):
-        result.errors.append("closureAudit: expected an object with path")
-        return
-    try:
-        audit_path = _resolve_path(project_root, audit_ref.get("path"), "closureAudit.path")
-    except ValueError as exc:
-        result.errors.append(str(exc))
-        return
-    if not audit_path.is_file():
-        result.errors.append(f"closure-audit.missing: {audit_ref.get('path')}")
-        return
-    try:
-        audit = _read_json(audit_path)
-    except RuntimeError as exc:
-        result.errors.append(f"closureAudit: {exc}")
-        return
-    audit_validator = _load_audit_validator()
-    if audit_validator is None:
-        result.errors.append(
-            "closureAudit.validator.missing: vibe-acceptance-auditor validator is required"
-        )
-    else:
-        audit_for_contract = audit
-        if "completedAt" not in audit and "auditedAt" in audit:
-            audit_for_contract = dict(audit)
-            audit_for_contract["completedAt"] = audit["auditedAt"]
-        for error in audit_validator.validate(
-            audit_for_contract, current_app_spec, current_workspace, project_root
-        ):
-            result.errors.append(f"closureAudit.contract: {error}")
-
-    if audit.get("schemaVersion") != "1.0":
-        result.errors.append("closureAudit.schemaVersion: expected '1.0'")
-    verdict = audit.get("verdict")
-    if verdict not in {"PASS", "GAPS", "BLOCKED"}:
-        result.errors.append("closureAudit.verdict: expected PASS, GAPS, or BLOCKED")
-    audit_timestamp = audit.get("completedAt", audit.get("auditedAt"))
-    if not _valid_timestamp(audit_timestamp):
-        result.errors.append("closureAudit.completedAt: expected an RFC3339 timestamp")
-    if not isinstance(audit.get("checks"), list):
-        result.errors.append("closureAudit.checks: expected an array")
-    if not isinstance(audit.get("findings"), list):
-        result.errors.append("closureAudit.findings: expected an array")
-
-    inventory = audit.get("shadowInventory")
-    if isinstance(inventory, dict):
-        expected_requirements = {
-            item.get("id")
-            for item in app_spec.get("requirements", [])
-            if isinstance(item, dict) and isinstance(item.get("id"), str)
-        }
-        expected_scenarios = {
-            item.get("id")
-            for item in app_spec.get("acceptanceScenarios", [])
-            if isinstance(item, dict) and isinstance(item.get("id"), str)
-        }
-        expected_gates = {
-            item.get("id")
-            for item in app_spec.get("qualityGates", [])
-            if isinstance(item, dict) and isinstance(item.get("id"), str)
-        }
-        expected_operations: set[str] = set()
-        for entity in app_spec.get("managedEntities", []):
-            if not isinstance(entity, dict):
-                continue
-            entity_id = entity.get("entity", entity.get("id"))
-            operations = entity.get("operations")
-            if not isinstance(entity_id, str) or not isinstance(operations, dict):
-                continue
-            for operation, decision in operations.items():
-                if isinstance(decision, dict) and decision.get("status") == "required":
-                    expected_operations.add(f"{entity_id}:{operation}")
-        expected_inventory = {
-            "requirementIds": expected_requirements,
-            "acceptanceScenarioIds": expected_scenarios,
-            "managedOperationIds": expected_operations,
-            "qualityGateIds": expected_gates,
-        }
-        for field_name, expected_ids in expected_inventory.items():
-            values = inventory.get(field_name)
-            if isinstance(values, list) and set(values) != expected_ids:
-                result.errors.append(
-                    f"closureAudit.shadowInventory.{field_name}: does not match AppSpec"
-                )
-    completion = audit.get("completion")
-    if isinstance(completion, dict):
-        if completion.get("implementationComplete") is not expected_implementation_complete:
-            result.errors.append(
-                "closureAudit.completion.implementationComplete: conflicts with ledger obligations"
-            )
-        if completion.get("releaseReady") is not expected_release_ready:
-            result.errors.append(
-                "closureAudit.completion.releaseReady: conflicts with ledger obligations"
-            )
-    app_current = _fingerprints_equal(audit.get("appSpecFingerprint"), current_app_spec)
-    workspace_current = _fingerprints_equal(audit.get("workspaceFingerprint"), current_workspace)
-    if not app_current:
-        result.errors.append("closure-audit.stale-app-spec: fingerprint does not match current AppSpec")
-    if not workspace_current:
-        result.errors.append("closure-audit.stale-workspace: fingerprint does not match current workspace")
-    if verdict != "PASS":
-        result.errors.append(f"closure-audit.verdict: completion requires PASS, found {verdict!r}")
-    result.audit_current_and_passed = verdict == "PASS" and app_current and workspace_current
-
-
-def _resolved_gate(gate: dict[str, Any]) -> bool:
-    applicability = gate.get("applicability")
-    if applicability == "not-applicable":
-        return isinstance(gate.get("applicabilityReason"), str) and bool(
-            gate["applicabilityReason"].strip()
-        )
-    return applicability == "applicable" and gate.get("status") in {"verified", "waived"}
-
+def _load_module(path: Path, name: str) -> Any:
+    spec = importlib.util.spec_from_file_location(name, path)
+    if spec is None or spec.loader is None: raise ProtocolError(f"cannot load {path}")
+    module = importlib.util.module_from_spec(spec); sys.modules[name] = module; spec.loader.exec_module(module); return module
 
 def validate_ledger(project_root: Path, ledger_path: Path) -> ValidationResult:
-    result = ValidationResult()
-    project_root = project_root.resolve()
-    fingerprint = _load_fingerprint_module()
-    ledger = _read_json(ledger_path)
-    if ledger.get("schemaVersion") != LEDGER_VERSION:
-        result.errors.append(f"schemaVersion: expected {LEDGER_VERSION!r}")
-
-    app_spec_ref = ledger.get("appSpec")
-    if not isinstance(app_spec_ref, dict):
-        result.errors.append("appSpec: expected an object")
-        return result
+    result = ValidationResult(); root = project_root.resolve()
+    try: ledger = read_json(ledger_path)
+    except ProtocolError as exc: result.errors.append(str(exc)); return result
+    if ledger.get("schemaVersion") != "2.0": result.errors.append(f"unsupported protocol: delivery ledger {ledger.get('schemaVersion')!r}")
+    if ledger.get("ledgerDigest") != ledger_digest(ledger): result.errors.append("ledgerDigest does not match canonical ledger content")
+    app_ref = ledger.get("appSpec") if isinstance(ledger.get("appSpec"), dict) else {}
     try:
-        app_spec_root = _resolve_app_spec_path(project_root, app_spec_ref.get("root"))
-        app_spec = _read_json(app_spec_root / "app-spec.json")
-        current_app_spec = fingerprint.compute_app_spec_fingerprint(app_spec_root)
-        current_workspace = fingerprint.compute_workspace_fingerprint(project_root)
-    except (RuntimeError, ValueError, OSError) as exc:
-        result.errors.append(str(exc))
-        return result
+        app_root = resolve(root, app_ref.get("root"), "appSpec.root")
+        app, app_errors, app_warnings = validate_app_spec(app_root)
+        result.errors.extend(f"AppSpec: {v}" for v in app_errors); result.warnings.extend(f"AppSpec: {v}" for v in app_warnings)
+        current_app = compute_app_spec_fingerprint(app_root); current_workspace = compute_workspace_fingerprint(root)
+    except (ProtocolError, OSError, ValueError) as exc: result.errors.append(str(exc)); return result
+    if app is None: return result
+    if not fingerprint_equal(app_ref.get("fingerprint"), current_app): result.errors.append("app-spec.fingerprint.stale")
+    if not fingerprint_equal(ledger.get("workspaceFingerprint"), current_workspace): result.errors.append("workspace.fingerprint.stale")
+    inventory = canonical_inventory(app)
+    if ledger.get("canonicalInventory") != inventory: result.errors.append("canonical inventory mismatch")
+    execution = ledger.get("execution") if isinstance(ledger.get("execution"), dict) else {}
+    if execution.get("phase") not in PHASES: result.errors.append("execution.phase is invalid")
+    if not isinstance(execution.get("nextAction"), str) or not execution.get("nextAction").strip(): result.errors.append("execution.nextAction is required")
+    if execution.get("scopedInstructions") != discover_scoped_instructions(root): result.errors.append("execution.scopedInstructions is stale")
+    checkpoint = execution.get("checkpoint")
+    if not isinstance(checkpoint, dict) or not timestamp(checkpoint.get("createdAt")) or not isinstance(checkpoint.get("workspaceFingerprint"), dict): result.errors.append("execution.checkpoint is invalid")
 
-    if app_spec.get("schemaVersion") != "1.4":
-        result.errors.append("appSpec: full delivery ledger requires AppSpec 1.4")
-    if not _fingerprints_equal(app_spec_ref.get("fingerprint"), current_app_spec):
-        result.errors.append("app-spec.fingerprint.stale: ledger does not match normative AppSpec files")
-    if not _fingerprints_equal(ledger.get("workspaceFingerprint"), current_workspace):
-        result.errors.append("workspace.fingerprint.stale: ledger does not match the current workspace")
+    spec_acs = {item["id"]: item for item in app["acceptanceScenarios"]}
+    reqs = {item["id"]: item for item in app["requirements"] if item.get("status") == "approved"}
+    spec_gates = {item["id"]: item for item in app["qualityGates"]}
+    ledger_acs = {item.get("id"): item for item in ledger.get("acceptanceScenarios", []) if isinstance(item, dict)}
+    ledger_gates = {item.get("id"): item for item in ledger.get("qualityGates", []) if isinstance(item, dict)}
+    if set(ledger_acs) != set(spec_acs): result.errors.append("acceptanceScenarios inventory mismatch")
+    if set(ledger_gates) != set(spec_gates): result.errors.append("qualityGates inventory mismatch")
+    for index, handoff in enumerate(ledger.get("ingestedHandoffs", [])):
+        label = f"ingestedHandoffs[{index}]"
+        if not isinstance(handoff, dict) or not isinstance(handoff.get("path"), str) or not isinstance(handoff.get("sha256"), str):
+            result.errors.append(f"{label}: requires path and sha256"); continue
+        try:
+            handoff_path = resolve(root, handoff["path"], label)
+            if not handoff["path"].startswith(".vibe/handoffs/") or not handoff_path.is_file() or hashlib.sha256(handoff_path.read_bytes()).hexdigest() != handoff["sha256"]:
+                result.errors.append(f"{label}: immutable hand-off is missing or hash-mismatched")
+            elif read_json(handoff_path).get("schemaVersion") != "2.0": result.errors.append(f"{label}: unsupported hand-off protocol")
+        except ProtocolError as exc: result.errors.append(str(exc))
+    refs: set[str] = set()
+    for item in [*ledger_acs.values(), *ledger_gates.values()]:
+        item_refs = item.get("receiptRefs")
+        if isinstance(item_refs, list) and all(isinstance(ref, str) for ref in item_refs): refs.update(item_refs)
+        else: result.errors.append(f"{item.get('id')}.receiptRefs must be an array of file paths; inline receipts are forbidden")
+    if ledger.get("finalReceiptRef") is not None: refs.add(ledger["finalReceiptRef"])
+    receipts = load_receipts(root, refs, current_workspace, result)
+    receipt_ids = [receipt.get("receiptId") for receipt in receipts.values() if isinstance(receipt.get("receiptId"), str)]
+    if len(receipt_ids) != len(set(receipt_ids)): result.errors.append("receiptId values must be unique")
+    declared_surfaces = {item_id: item["verificationSurfaces"] for item_id, item in {**spec_acs, **spec_gates}.items()}
+    for ref, receipt in receipts.items():
+        for index, coverage in enumerate(receipt.get("coveredObligations", []) if isinstance(receipt.get("coveredObligations"), list) else []):
+            if not isinstance(coverage, dict) or coverage.get("obligationId") not in declared_surfaces:
+                result.errors.append(f"receipt[{ref}].coveredObligations[{index}]: unknown obligation"); continue
+            surfaces_value = coverage.get("surfaces")
+            if not isinstance(surfaces_value, list) or any(surface not in declared_surfaces[coverage["obligationId"]] for surface in surfaces_value):
+                result.errors.append(f"receipt[{ref}].coveredObligations[{index}]: incompatible surface")
+    latest: dict[tuple[str, str], tuple[str, int]] = {}
+    for receipt in receipts.values():
+        if not fingerprint_equal(receipt.get("workspaceFingerprint"), current_workspace): continue
+        completed = receipt.get("completedAt", "")
+        for coverage in receipt.get("coveredObligations", []) if isinstance(receipt.get("coveredObligations"), list) else []:
+            if not isinstance(coverage, dict): continue
+            obligation_id = coverage.get("obligationId")
+            for surface in coverage.get("surfaces", []) if isinstance(coverage.get("surfaces"), list) else []:
+                key = (obligation_id, surface)
+                if key not in latest or completed > latest[key][0]: latest[key] = (completed, receipt.get("exitCode"))
 
-    spec_scenarios = _id_map(app_spec.get("acceptanceScenarios"), "appSpec.acceptanceScenarios", result)
-    ledger_scenarios = _id_map(ledger.get("acceptanceScenarios"), "acceptanceScenarios", result)
-    spec_gates = _id_map(app_spec.get("qualityGates"), "appSpec.qualityGates", result)
-    ledger_gates = _id_map(ledger.get("qualityGates"), "qualityGates", result)
-    if set(spec_scenarios) != set(ledger_scenarios):
-        missing = sorted(set(spec_scenarios) - set(ledger_scenarios))
-        extra = sorted(set(ledger_scenarios) - set(spec_scenarios))
-        result.errors.append(f"acceptanceScenarios inventory mismatch; missing={missing}, extra={extra}")
-    if set(spec_gates) != set(ledger_gates):
-        missing = sorted(set(spec_gates) - set(ledger_gates))
-        extra = sorted(set(ledger_gates) - set(spec_gates))
-        result.errors.append(f"qualityGates inventory mismatch; missing={missing}, extra={extra}")
+    def validate_item(item_id: str, item: dict, required_surfaces: list[str], *, gate: dict | None = None) -> None:
+        status = item.get("status")
+        if status not in STATUSES: result.errors.append(f"{item_id}.status is invalid"); return
+        if gate is None and status == "blocked-external": result.errors.append(f"{item_id}: acceptance scenarios cannot be blocked-external")
+        if gate is not None and status == "blocked-external" and gate.get("category") not in {"platform", "external", "release"}: result.errors.append(f"{item_id}: blocked-external is limited to platform/external/release gates")
+        if status == "blocked-external" and not isinstance(item.get("blocker"), dict): result.errors.append(f"{item_id}: blocked-external requires blocker metadata")
+        if status == "in-progress":
+            for field_name in ("owner", "fileBoundaries", "baselineFingerprint", "checkpointFingerprint", "changedFiles", "pendingChecks", "handoffRefs", "blockers", "startedAt", "updatedAt"):
+                if field_name not in item: result.errors.append(f"{item_id}.{field_name} is required while in-progress")
+            if not item.get("fileBoundaries"): result.errors.append(f"{item_id}.fileBoundaries must be non-empty while in-progress")
+        if status == "waived" and not durable_reference(root, item.get("decisionReference") or item.get("waiver", {}).get("decisionReference")): result.errors.append(f"{item_id}: waiver lacks an existing durable decision")
+        production = evidence_ok(root, item.get("productionEvidence"), f"{item_id}.productionEvidence", result)
+        tests = evidence_ok(root, item.get("testEvidence"), f"{item_id}.testEvidence", result)
+        if item.get("requiredVerificationSurfaces") != required_surfaces: result.errors.append(f"{item_id}.requiredVerificationSurfaces does not match AppSpec")
+        if status == "verified":
+            if not production: result.errors.append(f"{item_id}: verified without production evidence")
+            if not tests: result.errors.append(f"{item_id}: verified without test evidence")
+            test_surfaces = {entry.get("surface") for entry in tests}
+            for surface in required_surfaces:
+                if surface not in test_surfaces: result.errors.append(f"{item_id}: missing test evidence for surface {surface}")
+                if latest.get((item_id, surface), ("", 1))[1] != 0: result.errors.append(f"{item_id}: latest current receipt for surface {surface} is absent or failed")
 
-    for item_id, item in ledger_scenarios.items():
-        spec_item = spec_scenarios.get(item_id)
-        if spec_item is not None:
-            expected = {
-                "requirementId": spec_item.get("requirementId"),
-                "flowId": spec_item.get("flowId"),
-                "screenIds": spec_item.get("screenIds", []),
-                "requiredTestSurfaces": spec_item.get("verificationSurfaces", []),
-            }
-            for field_name, value in expected.items():
-                if item.get(field_name) != value:
-                    result.errors.append(
-                        f"acceptanceScenarios.{item_id}.{field_name}: does not match AppSpec"
-                    )
-        _validate_item_evidence(
-            project_root, item, item_id, "acceptanceScenarios", current_workspace, result
-        )
+    for ac_id, spec_item in spec_acs.items():
+        item = ledger_acs.get(ac_id)
+        if not item: continue
+        expected = {"requirementId": spec_item["requirementId"], "priority": reqs[spec_item["requirementId"]]["priority"], "flowId": spec_item["flowId"], "screenIds": spec_item["screenIds"], "dependsOnAcceptanceScenarioIds": spec_item["dependsOnAcceptanceScenarioIds"]}
+        for key, value in expected.items():
+            if item.get(key) != value: result.errors.append(f"{ac_id}.{key} does not match AppSpec")
+        validate_item(ac_id, item, spec_item["verificationSurfaces"])
+    for gate_id, spec_item in spec_gates.items():
+        item = ledger_gates.get(gate_id)
+        if not item: continue
+        for key in ("category", "platform", "requirement", "verificationMethod", "contractSource"):
+            if item.get(key) != spec_item.get(key): result.errors.append(f"{gate_id}.{key} does not match AppSpec")
+        if spec_item["requirement"] == "required" and item.get("applicability") != "applicable": result.errors.append(f"{gate_id}: required gate must be applicable")
+        if item.get("applicability") == "not-applicable" and not str(item.get("applicabilityReason", "")).strip(): result.errors.append(f"{gate_id}.applicabilityReason is required")
+        validate_item(gate_id, item, spec_item["verificationSurfaces"], gate=spec_item)
 
-    for item_id, item in ledger_gates.items():
-        spec_item = spec_gates.get(item_id)
-        if spec_item is not None:
-            expected = {
-                "category": spec_item.get("category"),
-                "platform": spec_item.get("platform"),
-                "requirement": spec_item.get("requirement"),
-                "verificationMethod": spec_item.get("verificationMethod"),
-                "contractSource": spec_item.get("contractSource"),
-            }
-            for field_name, value in expected.items():
-                if item.get(field_name) != value:
-                    result.errors.append(f"qualityGates.{item_id}.{field_name}: does not match AppSpec")
-        applicability = item.get("applicability")
-        if applicability not in APPLICABILITY:
-            result.errors.append(f"qualityGates.{item_id}.applicability: unsupported value {applicability!r}")
-        if item.get("requirement") == "required" and applicability != "applicable":
-            result.errors.append(f"qualityGates.{item_id}: required gate must be applicable")
-        if applicability == "needs-review":
-            result.errors.append(f"qualityGates.{item_id}: conditional applicability still needs review")
-        if applicability == "not-applicable" and (
-            not isinstance(item.get("applicabilityReason"), str)
-            or not item["applicabilityReason"].strip()
-        ):
-            result.errors.append(f"qualityGates.{item_id}.applicabilityReason: required")
-        if item.get("readinessScope") not in {"implementation", "release"}:
-            result.errors.append(f"qualityGates.{item_id}.readinessScope: expected implementation or release")
-        _validate_item_evidence(project_root, item, item_id, "qualityGates", current_workspace, result)
+    applicable_ids = set(spec_acs) | {gid for gid, item in ledger_gates.items() if item.get("applicability") == "applicable"}
+    applicable_pairs = {(item_id, surface) for item_id in applicable_ids for surface in (spec_acs.get(item_id) or spec_gates[item_id])["verificationSurfaces"]}
+    final_ref = ledger.get("finalReceiptRef")
+    final_receipt = receipts.get(final_ref) if isinstance(final_ref, str) else None
+    final_ok = False
+    if final_receipt:
+        covered = {(c.get("obligationId"), s) for c in final_receipt.get("coveredObligations", []) if isinstance(c, dict) for s in c.get("surfaces", []) if isinstance(s, str)}
+        final_ok = final_receipt.get("kind") == "final" and final_receipt.get("exitCode") == 0 and fingerprint_equal(final_receipt.get("workspaceFingerprint"), current_workspace) and applicable_pairs <= covered
+        if not final_ok: result.errors.append("final receipt failed, is stale, or does not cover every applicable obligation/surface")
+    current_finals = [receipt for receipt in receipts.values() if receipt.get("kind") == "final" and fingerprint_equal(receipt.get("workspaceFingerprint"), current_workspace)]
+    if len(current_finals) > 1: result.errors.append("exactly one current final receipt is allowed")
+    all_ac_closed = all(item.get("status") in {"verified", "waived"} for item in ledger_acs.values())
+    implementation_gates = [item for item in ledger_gates.values() if item.get("readinessScope") == "implementation"]
+    implementation_closed = all_ac_closed and all(item.get("applicability") == "not-applicable" or (item.get("applicability") == "applicable" and item.get("status") in {"verified", "waived"}) for item in implementation_gates)
+    all_gates_closed = all(item.get("applicability") == "not-applicable" or item.get("status") in {"verified", "waived"} for item in ledger_gates.values())
+    if implementation_closed and not final_ok: result.errors.append("completion requires one successful current final receipt")
 
-    required_scenarios_complete = all(
-        not bool(item.get("required", True)) or item.get("status") in {"verified", "waived"}
-        for item in ledger_scenarios.values()
-    )
-    implementation_gates_complete = all(
-        _resolved_gate(item)
-        for item in ledger_gates.values()
-        if item.get("readinessScope") == "implementation"
-    )
-    all_gates_complete = all(_resolved_gate(item) for item in ledger_gates.values())
-    no_external_blockers = all(
-        item.get("status") != "blocked-external"
-        for item in [*ledger_scenarios.values(), *ledger_gates.values()]
-    )
-    ledger_implementation_complete = (
-        required_scenarios_complete and implementation_gates_complete
-    )
-    ledger_release_ready = (
-        ledger_implementation_complete and all_gates_complete and no_external_blockers
-    )
-    _validate_audit(
-        project_root,
-        ledger,
-        app_spec,
-        current_app_spec,
-        current_workspace,
-        ledger_implementation_complete,
-        ledger_release_ready,
-        result,
-    )
+    audit_ok = False
+    audit_ref = ledger.get("closureAudit", {}).get("auditPath") if isinstance(ledger.get("closureAudit"), dict) else None
+    if implementation_closed:
+        if not audit_ref: result.errors.append("completion requires a closure audit")
+        else:
+            try:
+                audit_path = resolve(root, audit_ref, "closureAudit.auditPath")
+                auditor_script = Path(__file__).resolve().parents[2] / "vibe-acceptance-auditor" / "scripts" / "validate-closure-audit.py"
+                auditor = _load_module(auditor_script, "vibe_protocol_audit_validator")
+                audit_data = read_json(audit_path)
+                request_path = resolve(root, ledger["closureAudit"].get("requestPath"), "closureAudit.requestPath")
+                if hashlib.sha256(request_path.read_bytes()).hexdigest() != ledger["closureAudit"].get("requestSha256"):
+                    result.errors.append("closureAudit.requestSha256 does not match immutable request")
+                audit_errors = auditor.validate(audit_data, app_root, root, request_path)
+                result.errors.extend(f"closureAudit: {error}" for error in audit_errors)
+                audit_ok = not audit_errors and audit_data.get("verdict") == "PASS"
+            except (ProtocolError, OSError, ValueError, KeyError) as exc: result.errors.append(f"closureAudit: {exc}")
 
-    fingerprints_current = (
-        _fingerprints_equal(app_spec_ref.get("fingerprint"), current_app_spec)
-        and _fingerprints_equal(ledger.get("workspaceFingerprint"), current_workspace)
-    )
-    result.implementation_complete = (
-        required_scenarios_complete
-        and implementation_gates_complete
-        and result.audit_current_and_passed
-        and fingerprints_current
-        and not result.errors
-    )
-    result.release_ready = (
-        result.implementation_complete and all_gates_complete and no_external_blockers
-    )
+    final_phase = execution.get("phase") in {"final-verification", "complete"} or implementation_closed
+    if final_phase:
+        try:
+            delivery_renderer = _load_module(Path(__file__).with_name("render-delivery-report.py"), "vibe_delivery_renderer")
+            expected_delivery = delivery_renderer.render_report(ledger)
+            delivery_path = root / "docs" / "requirement-traceability.generated.md"
+            if not delivery_path.is_file() or delivery_path.read_text(encoding="utf-8-sig") != expected_delivery: result.errors.append("generated delivery report is missing or stale")
+            if audit_ref:
+                audit_renderer = _load_module(Path(__file__).resolve().parents[2] / "vibe-acceptance-auditor" / "scripts" / "render-closure-audit.py", "vibe_audit_renderer")
+                audit_data = read_json(resolve(root, audit_ref, "closureAudit.auditPath"))
+                expected_audit = audit_renderer.render(audit_data)
+                audit_report = root / "docs" / "closure-audit.generated.md"
+                if not audit_report.is_file() or audit_report.read_text(encoding="utf-8-sig") != expected_audit: result.errors.append("generated closure report is missing or stale")
+        except (ProtocolError, OSError, ValueError, KeyError, TypeError) as exc: result.errors.append(f"generated report validation failed: {exc}")
+
+    result.implementation_complete = implementation_closed and final_ok and audit_ok and fingerprint_equal(app_ref.get("fingerprint"), current_app) and fingerprint_equal(ledger.get("workspaceFingerprint"), current_workspace) and not result.errors
+    result.release_ready = result.implementation_complete and all_gates_closed and all(item.get("status") != "blocked-external" for item in ledger_gates.values())
     return result
 
-
-def build_parser() -> argparse.ArgumentParser:
+def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("project_root", nargs="?", type=Path, default=Path.cwd())
-    parser.add_argument("--ledger", type=Path, help="Ledger path")
-    parser.add_argument("--json", action="store_true", help="Emit a machine-readable result")
-    parser.add_argument(
-        "--require",
-        choices=("implementation-complete", "release-ready"),
-        help="Fail unless the selected verdict is true",
-    )
-    return parser
-
-
-def main(argv: Iterable[str] | None = None) -> int:
-    args = build_parser().parse_args(argv)
-    project_root = args.project_root.resolve()
-    ledger_path = (args.ledger or project_root / ".vibe" / "delivery-ledger.json").resolve()
-    try:
-        result = validate_ledger(project_root, ledger_path)
-    except (RuntimeError, OSError, ValueError) as exc:
-        print(f"ERROR: {exc}", file=sys.stderr)
-        return 2
-    if args.json:
-        print(json.dumps(result.as_dict(), ensure_ascii=False, indent=2, sort_keys=True))
+    parser.add_argument("--ledger", type=Path)
+    parser.add_argument("--json", action="store_true")
+    parser.add_argument("--require", choices=("implementation-complete", "release-ready"))
+    args = parser.parse_args(); root = args.project_root.resolve(); ledger = (args.ledger or root / ".vibe" / "delivery-ledger.json").resolve()
+    try: result = validate_ledger(root, ledger)
+    except Exception as exc: result = ValidationResult(errors=[f"aggregate validator failure: {exc}"])
+    if args.json: print(json.dumps(result.as_dict(), ensure_ascii=False, indent=2, sort_keys=True))
     else:
-        for warning in result.warnings:
-            print(f"WARNING: {warning}")
-        for error in result.errors:
-            print(f"ERROR: {error}")
+        for warning in result.warnings: print(f"WARNING: {warning}")
+        for error in result.errors: print(f"ERROR: {error}")
         print(f"implementation-complete: {'YES' if result.implementation_complete else 'NO'}")
         print(f"release-ready: {'YES' if result.release_ready else 'NO'}")
-    required_verdict = (
-        result.implementation_complete
-        if args.require == "implementation-complete"
-        else result.release_ready
-        if args.require == "release-ready"
-        else True
-    )
-    return 0 if result.valid and required_verdict else 1
+    required = result.implementation_complete if args.require == "implementation-complete" else result.release_ready if args.require == "release-ready" else True
+    return 0 if result.valid and required else 1
 
-
-if __name__ == "__main__":
-    raise SystemExit(main())
+if __name__ == "__main__": raise SystemExit(main())

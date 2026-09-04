@@ -1,5 +1,10 @@
 # Промпт для создания пакета `vibe-*` skills
 
+
+## Protocol 2.0 override
+
+Этот раздел имеет приоритет над любыми оставшимися историческими формулировками ниже. Пакет имеет version 2.0.0 и принимает только AppSpec, ledger, hand-off, receipt, audit request и closure audit Protocol 2.0. AppSpec fingerprint включает все regular files и assets. Обязательны shared canonical inventory, dependency DAG, atomic digest-checked ledger writes, read-only resume classification, immutable specialist hand-offs, latest-receipt ordering, covering final receipt, request-bound fresh audit, final report parity validation и optional isolated codex exec evals. Migration и compatibility с 1.x отсутствуют.
+
 ## Роль и конечная цель
 
 Ты работаешь в новой сессии Codex в каталоге `D:\Sources\vibe-skills`.
@@ -187,14 +192,14 @@ python "C:\Users\Sergey\.codex\skills\.system\skill-creator\scripts\generate_ope
 Он должен:
 
 - принять путь к AppSpec или структурированное описание задачи;
-- для полного/cross-cutting цикла требовать вручную утверждённый AppSpec 1.4 через `validate-app-spec.py --require-current`; legacy 1.0–1.3 разрешать только для узких прямых specialist-задач;
+- для полного/cross-cutting цикла требовать вручную утверждённый AppSpec 2.0 через `validate-app-spec.py --require-current`; любой Protocol 1.x считать несовместимым;
 - до первой production-правки создать `.vibe/delivery-ledger.json` и независимо сверить behavior/entity/quality inventory;
 - провести preflight целевого репозитория;
 - прочитать инструкции и обнаружить стек, версии, модули, source sets, платформы и доступные skills/tools;
 - составить dependency-aware план;
 - вызвать только нужные specialist skills;
 - предотвращать конфликтующие изменения нескольких специалистов;
-- быть единственным writer delivery ledger и единственным Gradle owner; specialists возвращают evidence packages;
+- быть единственным atomic writer delivery ledger и единственным Gradle owner; specialists записывают immutable Protocol 2.0 hand-offs;
 - управлять проверками, сериализованными Gradle-командами и итоговой приёмкой;
 - сообщать допущения и блокеры;
 - реализовывать вертикальными acceptance-scenario slices и после каждого milestone перечитывать AppSpec/ledger;
@@ -219,7 +224,7 @@ python "C:\Users\Sergey\.codex\skills\.system\skill-creator\scripts\generate_ope
 Используй эту последовательность как default, но пропускай ненужные этапы:
 
 ```text
-approved AppSpec 1.4 validation --require-current
+approved AppSpec 2.0 validation --require-current
   -> repository preflight and delivery-ledger initialization
   -> independent behavior/entity/gate inventory
   -> architecture scaffolding
@@ -820,7 +825,7 @@ Atomic cross-entity replacement?
 - устаревшие Ktor engine/plugin APIs;
 - exact test source-set/package names; при этом отдельный root component module остаётся предпочтительным местом для основного component-test suite, если dependency direction это допускает.
 
-## Стандартизованный вход: Vibe AppSpec v1.4
+## Стандартизованный вход: Vibe AppSpec v2.0.4
 
 Создай в `vibe-developer/assets/app-spec-template/` шаблон hand-off спецификации:
 
@@ -855,7 +860,7 @@ app-spec/
 
 ```json
 {
-  "schemaVersion": "1.4",
+  "schemaVersion": "2.0",
   "app": {
     "name": "",
     "summary": "",
@@ -1023,15 +1028,15 @@ Validator должен:
 - проверять отдельную AC-секцию и собственный Given/When/Then в flow prose;
 - проверять все четыре CRUD-ячейки managed entity, AC-ссылки required операций и причины `not-applicable`;
 - проверять обязательные и conditional quality gates;
-- поддерживать `--require-current`: AppSpec 1.0–1.3 валидировать как legacy, но блокировать для полного цикла;
+- `--require-current` всегда строго требует AppSpec 2.0; любой artifact 1.x возвращает `unsupported protocol`.
 - проверять, что capability согласована с data/flow sections;
-- для AppSpec 1.2+ проверять обязательный localization contract и соответствующие `data.md`/`quality.md` sections;
-- для AppSpec 1.3+ проверять обязательный architecture contract для Kotlin Result, Store-backed component models, Manager/unwrap, Preview implementations, component module strategy и screenshot-test host;
-- для AppSpec 1.3+ требовать `quality.md` section `## Architecture checks`;
+- для AppSpec 2.0 проверять обязательный localization contract и соответствующие `data.md`/`quality.md` sections;
+- для AppSpec 2.0 проверять обязательный architecture contract для Kotlin Result, Store-backed component models, Manager/unwrap, Preview implementations, component module strategy и screenshot-test host;
+- для AppSpec 2.0 требовать `quality.md` section `## Architecture checks`;
 - выдавать errors и warnings раздельно;
 - не генерировать spec и не исправлять её молча.
 
-Добавь безопасный `migrate-app-spec.py`: источник и destination обязаны различаться, существующий destination не перезаписывается, 1.3 Markdown/JSON сохраняются, новая 1.4-структура получает `needs-review` и blocking questions, а автоматически извлечённые сценарии никогда не становятся approved без ручного решения.
+- не реализовывать migration/backward compatibility для 1.x и не удалять старые artifacts автоматически;
 
 Skill отвечает за чтение и validation hand-off, но не за продуктовое интервью и генерацию исходной спецификации.
 
@@ -1045,7 +1050,7 @@ Skill отвечает за чтение и validation hand-off, но не за 
 - `render-delivery-report.py` — детерминированно создаёт `docs/requirement-traceability.generated.md` и поддерживает `--check`;
 - `run-gradle.ps1` — единственная точка Gradle для orchestrator.
 
-Ledger 1.0 хранит fingerprint всех normative AppSpec JSON/Markdown, workspace fingerprint, отдельные AC/gate entries, статусы `not-started`, `implemented-unverified`, `verified`, `blocked-external`, `waived`, production/test evidence, verification receipts и blocker/waiver metadata. Waiver требует ссылки на явно записанное пользовательское решение.
+Ledger 2.0 хранит fingerprint всех normative AppSpec JSON/Markdown, workspace fingerprint, отдельные AC/gate entries, статусы `not-started`, `implemented-unverified`, `verified`, `blocked-external`, `waived`, production/test evidence, verification receipts и blocker/waiver metadata. Waiver требует ссылки на явно записанное пользовательское решение.
 
 Определи два verdict: `implementation-complete` закрывает mandatory AC и repository gates и требует fresh audit `PASS`; `release-ready` дополнительно закрывает platform/external/release gates и запрещает `blocked-external`. Не используй `implemented baseline`, `mostly complete` или group-level `partial` вместо отдельных незакрытых entries.
 
@@ -1065,7 +1070,7 @@ Auditor проверяет каждый обязательный contract чер
 
 ```text
 constitution -> specify -> clarify -> plan -> checklist -> tasks -> analyze
-  -> export/map into Vibe AppSpec v1
+  -> export/map into Vibe AppSpec v2.0
   -> separate implementation session with $vibe-developer
 ```
 
@@ -1203,8 +1208,8 @@ python "C:\Users\Sergey\.codex\skills\.system\skill-creator\scripts\quick_valida
   "D:\Sources\vibe-skills\<skill-name>"
 ```
 
-9. Запускает AppSpec 1.4 validator tests: valid, legacy warning/`--require-current`, missing/duplicate/mislinked AC, GWT, CRUD decisions и quality gates.
-10. Запускает migration, ledger/report/fingerprint/audit freshness и Gradle mutex/timeout/receipt tests.
+9. Запускает AppSpec 2.0 validator tests: valid, unsupported 1.x, approved/excluded requirements, dependency cycles, GWT, CRUD decisions и quality gates.
+10. Запускает resume/drift, hand-off, receipt ordering/final receipt, ledger/report/fingerprint/audit freshness и Gradle mutex/timeout tests.
 11. Убеждается, что bundled invalid fixtures отклоняются.
 12. Проверяет installer в `-WhatIf` и post-check каждой manifest entry для Copy/Junction.
 13. Возвращает non-zero exit code при любой ошибке.
@@ -1399,7 +1404,7 @@ python "C:\Users\Sergey\.codex\skills\.system\skill-creator\scripts\quick_valida
 2. Создай все 14 skills через `init_skill.py`.
 3. Заполни SKILL/reference/script/asset files.
 4. Сгенерируй `agents/openai.yaml`.
-5. Создай AppSpec 1.4 template/schema/validator/migrator и delivery ledger/fingerprint/report/Gradle tooling.
+5. Создай AppSpec 2.0 template/schema/strict validator и Protocol 2.0 delivery/resume/checkpoint/hand-off/receipt/audit tooling без migrator.
 6. Создай manifest, validator, installer и `INSTALL.md`.
 7. Проведи forward routing tests, behavioral acceptance-auditor evals и desk simulation.
 8. Запусти official validation для каждого skill.

@@ -1,66 +1,93 @@
 {
-  "schemaVersion": "1.1",
-  "app": {
-    "name": "Invalid UI Contract",
-    "summary": "Fixture with unresolved icon assets.",
-    "targets": ["android", "ios"],
-    "locales": ["en"]
-  },
-  "requirements": [
-    {
-      "id": "REQ-001",
-      "title": "Show the main screen",
-      "priority": "must",
-      "status": "approved",
-      "acceptanceScenarioIds": ["AC-001"]
-    }
-  ],
-  "flows": ["FLOW-001"],
-  "screens": ["SCREEN-001"],
-  "capabilities": {
-    "network": false,
-    "database": false,
-    "settings": false,
-    "sync": false,
-    "authentication": false,
-    "notifications": false,
-    "exactAlarms": false,
-    "ads": false
-  },
-  "constraints": {
-    "offlineMode": "No remote data.",
-    "privacy": [],
-    "accessibility": ["Support font scaling."],
-    "performance": []
-  },
-  "uiQuality": {
-    "previewThemes": ["light", "dark"],
-    "fontScales": [1.0, 2.0],
-    "localeCoverage": "all",
-    "goldenTesting": {
-      "required": true,
-      "engine": "paparazzi",
-      "previewDiscovery": "ComposablePreviewScanner"
-    },
-    "designReview": {
-      "required": true,
-      "provider": "lazyweb",
-      "trigger": "after-goldens",
-      "standards": ["material3"]
-    },
-    "iconography": {
-      "inventoryStatus": "open",
-      "standardIconSource": "Material Symbols",
-      "customAssetsStatus": "open"
-    }
-  },
-  "openQuestions": [
-    {
-      "id": "OQ-001",
-      "question": "Provide or waive the required custom action icon.",
-      "blocking": true,
-      "status": "open",
-      "relatedScreens": ["SCREEN-001"]
-    }
-  ]
+    "schemaVersion":  "2.0",
+    "app":  {
+                "name":  "Invalid UI Contract",
+                "summary":  "Fixture with unresolved icon assets.",
+                "targets":  [
+                                "android",
+                                "ios"
+                            ],
+                "locales":  [
+                                "en"
+                            ]
+            },
+    "requirements":  [
+                         {
+                             "id":  "REQ-001",
+                             "title":  "Show the main screen",
+                             "priority":  "must",
+                             "status":  "approved",
+                             "acceptanceScenarioIds":  [
+                                                           "AC-001"
+                                                       ]
+                         }
+                     ],
+    "flows":  [
+                  "FLOW-001"
+              ],
+    "screens":  [
+                    "SCREEN-001"
+                ],
+    "capabilities":  {
+                         "network":  false,
+                         "database":  false,
+                         "settings":  false,
+                         "sync":  false,
+                         "authentication":  false,
+                         "notifications":  false,
+                         "exactAlarms":  false,
+                         "ads":  false
+                     },
+    "constraints":  {
+                        "offlineMode":  "No remote data.",
+                        "privacy":  [
+
+                                    ],
+                        "accessibility":  [
+                                              "Support font scaling."
+                                          ],
+                        "performance":  [
+
+                                        ]
+                    },
+    "uiQuality":  {
+                      "previewThemes":  [
+                                            "light",
+                                            "dark"
+                                        ],
+                      "fontScales":  [
+                                         1.0,
+                                         2.0
+                                     ],
+                      "localeCoverage":  "all",
+                      "goldenTesting":  {
+                                            "required":  true,
+                                            "engine":  "paparazzi",
+                                            "previewDiscovery":  "ComposablePreviewScanner"
+                                        },
+                      "designReview":  {
+                                           "required":  true,
+                                           "provider":  "lazyweb",
+                                           "trigger":  "after-goldens",
+                                           "standards":  [
+                                                             "material3"
+                                                         ]
+                                       },
+                      "iconography":  {
+                                          "inventoryStatus":  "open",
+                                          "standardIconSource":  "Material Symbols",
+                                          "customAssetsStatus":  "open"
+                                      }
+                  },
+    "openQuestions":  [
+                          {
+                              "id":  "OQ-001",
+                              "question":  "Provide or waive the required custom action icon.",
+                              "blocking":  true,
+                              "status":  "open",
+                              "relatedScreens":  [
+                                                     "SCREEN-001"
+                                                 ]
+                          }
+                      ]
 }

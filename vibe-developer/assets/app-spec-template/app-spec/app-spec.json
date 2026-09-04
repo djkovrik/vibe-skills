@@ -1,5 +1,5 @@
 {
-  "schemaVersion": "1.4",
+  "schemaVersion": "2.0",
   "app": {
     "name": "Example App",
     "summary": "A validated hand-off example.",
@@ -26,7 +26,7 @@
       "subject": "PreferenceSelection",
       "operation": "create",
       "verificationSurfaces": ["component-test", "settings-integration-test"],
-      "reviewStatus": "approved"
+      "dependsOnAcceptanceScenarioIds": []
     },
     {
       "id": "AC-002",
@@ -38,7 +38,7 @@
       "subject": "PreferenceSelection",
       "operation": "read",
       "verificationSurfaces": ["component-test", "settings-integration-test"],
-      "reviewStatus": "approved"
+      "dependsOnAcceptanceScenarioIds": ["AC-001"]
     },
     {
       "id": "AC-003",
@@ -50,7 +50,7 @@
       "subject": "PreferenceSelection",
       "operation": "update",
       "verificationSurfaces": ["component-test", "settings-integration-test"],
-      "reviewStatus": "approved"
+      "dependsOnAcceptanceScenarioIds": ["AC-001"]
     }
   ],
   "managedEntities": [
@@ -72,7 +72,8 @@
       "platform": "all",
       "requirement": "required",
       "verificationMethod": "Run the focused test, Detekt, Kover, and build tasks declared in quality.md.",
-      "contractSource": "quality.md#test-matrix"
+      "contractSource": "quality.md#test-matrix",
+      "verificationSurfaces": ["repository-check"]
     },
     {
       "id": "QG-002",
@@ -81,7 +82,8 @@
       "platform": "android",
       "requirement": "required",
       "verificationMethod": "Run the declared Android build and platform test tasks.",
-      "contractSource": "quality.md#release-acceptance"
+      "contractSource": "quality.md#release-acceptance",
+      "verificationSurfaces": ["android-build"]
     },
     {
       "id": "QG-003",
@@ -90,7 +92,8 @@
       "platform": "ios",
       "requirement": "required",
       "verificationMethod": "Run the declared iOS compilation and platform test tasks.",
-      "contractSource": "quality.md#release-acceptance"
+      "contractSource": "quality.md#release-acceptance",
+      "verificationSurfaces": ["ios-build"]
     },
     {
       "id": "QG-004",
@@ -99,7 +102,8 @@
       "platform": "all",
       "requirement": "required",
       "verificationMethod": "Verify every release acceptance item and its current evidence.",
-      "contractSource": "quality.md#release-acceptance"
+      "contractSource": "quality.md#release-acceptance",
+      "verificationSurfaces": ["release-check"]
     },
     {
       "id": "QG-005",
@@ -109,7 +113,8 @@
       "requirement": "conditional",
       "condition": "A distribution build is being published to an external store or service.",
       "verificationMethod": "Verify the configured external account, credentials, and publication result.",
-      "contractSource": "quality.md#release-acceptance"
+      "contractSource": "quality.md#release-acceptance",
+      "verificationSurfaces": ["publication-check"]
     }
   ],
   "flows": ["FLOW-001"],

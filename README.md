@@ -1,18 +1,18 @@
 # Vibe KMP Skills
 
-Локальный пакет из 14 Agent Skills для разработки Kotlin Multiplatform приложений под Android и iOS. Пакет принимает утверждённый Vibe AppSpec 1.4, ведёт долговечный delivery ledger, реализует требования вертикальными slices и допускает итоговый статус только после независимого fresh-context аудита.
+Локальный пакет из 14 Agent Skills для разработки Kotlin Multiplatform приложений под Android и iOS. Protocol 2.0 принимает только утверждённый Vibe AppSpec 2.0, восстанавливает работу из репозитория и `.vibe`, реализует требования вертикальными slices и допускает итоговый статус только после request-bound fresh-context аудита.
 
 Основной пользовательский процесс описан в [VIBE-DEVELOPMENT-WORKFLOW.md](docs/VIBE-DEVELOPMENT-WORKFLOW.md). Установку и режимы Copy/Junction объясняет [INSTALL.md](INSTALL.md).
 
 ## Основной цикл
 
 ```text
-discovery -> approved AppSpec 1.4 -> validation --require-current
--> delivery-ledger initialization -> vertical AC slices
--> fresh acceptance audit -> full quality/release gates -> final ledger validation
+discovery -> approved AppSpec 2.0 -> strict validation
+-> ledger checkpoint -> vertical AC slices and immutable hand-offs
+-> targeted receipts -> audit request -> fresh audit -> final receipt -> aggregate validation
 ```
 
-AppSpec 1.0–1.3 валидируются как legacy, но не запускают полный или cross-cutting `$vibe-developer`-цикл. Их нужно безопасно перенести `migrate-app-spec.py` в новый каталог и вручную утвердить. Узкие прямые задачи specialist skills в legacy-проектах остаются допустимыми.
+AppSpec и delivery artifacts 1.x являются несовместимыми: инструменты возвращают `unsupported protocol`, не мигрируют, не удаляют и не переинициализируют их автоматически.
 
 ## Skills
 
@@ -31,7 +31,7 @@ AppSpec 1.0–1.3 валидируются как legacy, но не запуск
 - [vibe-monetization-engineer](vibe-monetization-engineer/SKILL.md) — Yandex Ads и privacy gate;
 - [vibe-test-engineer](vibe-test-engineer/SKILL.md) — non-visual test pyramid.
 
-Каждый specialist можно вызывать напрямую для узкой задачи. При orchestration он получает AC/gate IDs и непересекающиеся file boundaries, возвращает evidence package и не меняет ledger. Только `$vibe-developer` пишет ledger и запускает Gradle.
+Каждый specialist можно вызывать напрямую для узкой задачи. При orchestration он получает assignment/AC/gate IDs и непересекающиеся boundaries, записывает immutable `.vibe/handoffs/<id>.json` и не меняет ledger. Только `$vibe-developer` инспектирует/импортирует hand-off, атомарно пишет ledger и запускает Gradle.
 
 ## Проверка AppSpec
 
@@ -39,23 +39,16 @@ AppSpec 1.0–1.3 валидируются как legacy, но не запуск
 python .\vibe-developer\scripts\validate-app-spec.py D:\Projects\MyApp\app-spec --require-current
 ```
 
-Legacy migration всегда пишет в новый каталог:
-
-```powershell
-python .\vibe-developer\scripts\migrate-app-spec.py D:\Projects\MyApp\app-spec D:\Projects\MyApp\app-spec-1.4-review
-```
-
-Автоматически извлечённые AC остаются `needs-review`; unresolved ambiguity блокирует разработку до ручного утверждения.
-
 ## Delivery state
 
 В целевом проекте отслеживаются:
 
 - `.vibe/delivery-ledger.json` — единственный редактируемый источник состояния;
-- `docs/requirement-traceability.generated.md` — детерминированный отчёт;
-- `.vibe/closure-audit.json` и `docs/closure-audit.generated.md` — последний независимый аудит.
+- `.vibe/handoffs/*.json` и `.vibe/receipts/*.json` — immutable evidence;
+- `.vibe/audit-request.json` и `.vibe/closure-audit.json` — request-bound независимый аудит;
+- оба файла `docs/*.generated.md` — проверяемые детерминированные проекции.
 
-`implementation-complete` означает, что все обязательные AC и repository gates проверены или явно waived, fingerprints актуальны и fresh auditor выдал `PASS`. `release-ready` дополнительно требует закрыть platform/external/release gates; `blocked-external` с ним несовместим.
+`implementation-complete` требует закрыть все AC и repository gates, последний успешный receipt для каждой surface, единый final receipt, свежий audit `PASS` и parity отчётов. `release-ready` дополнительно требует закрыть platform/external/release gates; `blocked-external` с ним несовместим.
 
 ## Проверка и установка пакета
 

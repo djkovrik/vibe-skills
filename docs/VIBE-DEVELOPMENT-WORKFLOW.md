@@ -1,160 +1,51 @@
-# Vibe development workflow
+# Vibe Development Workflow 2.0
 
-Этот документ описывает пользовательский путь от продуктовой идеи до проверенной реализации. Нормативные технические правила находятся в самих `vibe-*` skills и их contracts; этот workflow определяет порядок и условия перехода между этапами.
-
-## Источники правды
-
-При конфликте применяйте порядок:
-
-1. явные решения пользователя и утверждённый AppSpec;
-2. инструкции, код, тесты и build logic целевого репозитория;
-3. актуальная официальная документация;
-4. принятые reusable patterns пакета;
-5. помеченные Blinkly/Tackle adaptations;
-6. общие инженерные эвристики.
-
-После начала реализации текущими источниками состояния являются AppSpec и `.vibe/delivery-ledger.json`, а не память разговора или итог специалиста.
+Нормативные источники после начала реализации — утверждённый AppSpec 2.0, репозиторий и каталог .vibe. Память разговора и текстовые отчёты специалистов состоянием delivery не являются.
 
 ## Сквозной процесс
 
-```text
-discovery
-  -> approved Vibe AppSpec 1.4
-  -> validate --require-current
-  -> delivery ledger initialization
-  -> independent inventory check
-  -> architecture scaffolding
-  -> vertical acceptance-scenario slices
-  -> fresh-context closure audit
-  -> full quality/platform/release gates
-  -> final ledger validation
-```
+    approved AppSpec 2.0
+      -> strict validation and canonical inventory
+      -> ledger initialization and pre-edit checkpoint
+      -> dependency-ordered vertical AC slices
+      -> immutable specialist hand-offs
+      -> targeted receipts
+      -> immutable audit request and fresh-context audit
+      -> one covering final receipt
+      -> aggregate validator and two verdicts
 
-## 1. Подготовить и утвердить AppSpec 1.4
+Protocol 1.x несовместим. Инструменты отвечают unsupported protocol и не мигрируют, не удаляют и не переинициализируют старые artifacts.
 
-Продуктовое интервью проходит до `$vibe-developer`. Используйте [актуальный шаблон](../vibe-developer/assets/app-spec-template/app-spec) и [контракт](../vibe-developer/references/app-spec-contract.md). Не переносите нерешённые продуктовые вопросы в реализацию.
+## Начало и восстановление turn
 
-`app-spec.json` содержит:
+Если ledger отсутствует, проверьте AppSpec и инициализируйте его:
 
-- requirements и отдельную запись `acceptanceScenarios[]` для каждого наблюдаемого outcome;
-- `managedEntities[]` с явным решением для каждой CRUD-операции и дополнительных операций;
-- `qualityGates[]` со стабильными ID, category/platform, способом проверки и источником контракта;
-- flows, screens, capabilities, localization, architecture, UI quality и open questions.
+    python <skills>\vibe-developer\scripts\validate-app-spec.py --require-current <app-spec>
+    python <skills>\vibe-developer\scripts\init-delivery-ledger.py <app-spec> --project-root <repo>
 
-Подробные Given/When/Then остаются в `flows/FLOW-*.md`. Каждый AC имеет собственную секцию и описывает один основной action/state/failure и один наблюдаемый outcome. JSON-ссылка AC на requirement, flow и screens должна совпадать с prose.
+Если ledger существует, первым действием каждого turn запускайте:
 
-Проверка полного цикла:
+    python <skills>\vibe-developer\scripts\resume-delivery.py <repo>
 
-```powershell
-python <vibe-skills>\vibe-developer\scripts\validate-app-spec.py <project>\app-spec --require-current
-```
+Resume заново обнаруживает AGENTS.md, валидирует AppSpec, canonical inventory, ledger digest, fingerprints, dependencies и pending hand-offs. clean разрешает продолжение; expected-drift требует инспекции активного slice; unexpected-drift запрещает новые правки до явного reconciliation; stale-evidence требует повторных checks и audit.
 
-Валидатор проверяет равенство множеств AC в requirements и inventory, собственный Given/When/Then каждого AC, ссылки на flows/screens, все CRUD-ячейки managed entities и обязательные/условные quality gates.
+## Checkpoints и slices
 
-### Legacy AppSpec 1.0–1.3
+Перед первой правкой AC укажите owner и непересекающиеся file boundaries через checkpoint-delivery.py. Checkpoint также обязателен перед расширением границ, после specialist hand-off, до и после долгой проверки и перед завершением turn. Каждая атомарная команда принимает предыдущий ledgerDigest.
 
-Legacy specification по-прежнему валидируется с предупреждением без `--require-current`, поэтому узкий specialist может безопасно выполнить локальную задачу. Полный или cross-cutting `$vibe-developer`-цикл legacy не запускает.
+AC выполняются в порядке dependsOnAcceptanceScenarioIds. Статус in-progress хранит owner, boundaries, baseline/checkpoint fingerprints, dependencies, changed files, pending checks, hand-off refs, blockers и timestamps. blocked-external допустим только для platform, external и release gates.
 
-Миграция всегда пишет в новый каталог и не перезаписывает исходник:
+Specialist пишет один immutable .vibe/handoffs/<id>.json по [контракту](../vibe-developer/references/specialist-handoff-contract.md). Orchestrator проверяет diff и границы, затем импортирует SHA-256 через ingest-handoff.py. Conversation summary не заменяет hand-off.
 
-```powershell
-python <vibe-skills>\vibe-developer\scripts\migrate-app-spec.py <legacy-app-spec> <new-review-directory>
-```
+## Receipts и audit
 
-Перенесённый 1.3-контент сохраняется, но автоматически извлечённые сценарии отмечаются `needs-review`, а неоднозначности становятся blocking questions. Разработка начинается только после ручной проверки, явного approval и успешного `--require-current`.
+Receipts существуют только как JSON-файлы под .vibe/receipts. Они содержат kind targeted или final, exact argv/tasks, covered obligation/surface pairs, timestamps, текущий fingerprint, exit code и hash лога. Для каждой пары учитывается последний receipt на текущем fingerprint: PASS→FAIL не закрывает пару, FAIL→PASS закрывает только новым успехом.
 
-## 2. Инициализировать delivery ledger
+После закрытия local obligations orchestrator создаёт immutable .vibe/audit-request.json и запускает vibe-acceptance-auditor в указанном fresh context. Audit обязан ссылаться на exact request hash, иметь implementationContextAvailable false, самостоятельно построить canonical shadow inventory и доказать каждую declared surface audit-time check.
 
-До первой production-правки `$vibe-developer` создаёт:
+После audit PASS выполняется один final receipt, покрывающий все применимые obligation/surface pairs. Затем генерируются оба Markdown report и запускается один validate-delivery-ledger.py. Он сам проверяет AppSpec, inventory, receipt ordering, audit и report parity и всегда печатает:
 
-```powershell
-python <vibe-skills>\vibe-developer\scripts\init-delivery-ledger.py <app-spec-directory> --project-root <project-root>
-```
+- implementation-complete;
+- release-ready.
 
-Tracked artifacts:
-
-- `.vibe/delivery-ledger.json` — единственный редактируемый источник delivery state;
-- `docs/requirement-traceability.generated.md` — детерминированное представление ledger;
-- `.vibe/closure-audit.json` и `docs/closure-audit.generated.md` — последний независимый аудит.
-
-Ledger хранит fingerprints всех нормативных AppSpec JSON/Markdown, Git HEAD, binary diff hash и hashes неигнорируемых untracked-файлов. Отдельные AC/gate entries имеют статусы `not-started`, `implemented-unverified`, `verified`, `blocked-external`, `waived`, production/test evidence и verification receipts.
-
-Waiver допустим только со ссылкой на явно зафиксированное решение пользователя. `blocked-external` не заменяет незавершённый repository contract.
-
-Подробности и команды находятся в [delivery-ledger-contract.md](../vibe-developer/references/delivery-ledger-contract.md).
-
-## 3. Проверить inventory до реализации
-
-Оркестратор независимо сопоставляет:
-
-- requirement ↔ AC ↔ flow/screen prose;
-- managed entity ↔ create/read/update/delete/additional operations ↔ AC;
-- required/conditional gate ↔ verification method ↔ platform/category.
-
-Противоречия и пробелы блокируют coding. Ledger не считается доказательством корректности AppSpec.
-
-## 4. Реализовать вертикальными slices
-
-После минимального architecture scaffolding планируйте работу по AC. Каждый slice проходит полностью:
-
-```text
-public production contract
-  -> data/domain behavior
-  -> Store/component state
-  -> UI/platform wiring
-  -> required tests
-  -> targeted verification receipt
-  -> ledger evidence
-```
-
-Specialist получает AC/gate IDs и допустимые file boundaries. Он возвращает evidence package: production path/symbol/surface, test path/exact name/surface, нужные команды, выполненные non-Gradle checks и blockers. Specialist не пишет ledger и не заявляет completion.
-
-Параллелить можно только slices без общих файлов и контрактов. Только `$vibe-developer` владеет ledger и запускает Gradle. `run-gradle.ps1` сериализует процессы по canonical project path, ограничивает ожидание/выполнение и записывает receipt с реальным exit code только после завершения команды.
-
-После milestone оркестратор перечитывает AppSpec и ledger. Незакрытый AC/gate остаётся отдельной записью; формулировки `implemented baseline`, `mostly complete` или общий `partial` не заменяют item-level состояние.
-
-## 5. Выполнить fresh closure audit
-
-После закрытия всех локальных entries implementers останавливаются. Новый `$vibe-acceptance-auditor` запускается в изолированном контексте без implementation history. Он:
-
-- самостоятельно строит shadow inventory из JSON и flow/screen prose;
-- не доверяет ledger или implementer report;
-- проходит каждый contract через public API, data/state, UI/platform wiring и требуемые тестовые surfaces;
-- не меняет AppSpec, production code, tests или ledger;
-- пишет только closure audit artifacts и выдаёт `PASS`, `GAPS` или `BLOCKED`.
-
-При `GAPS` оркестратор назначает исправления и после свежих evidence запускает другого чистого auditor. Любое изменение AppSpec/workspace делает прежний `PASS` недействительным.
-
-Если isolated sub-agent недоступен, `$vibe-developer` не объявляет completion. Пользователь запускает отдельную чистую сессию `$vibe-acceptance-auditor`, затем возвращает свежие audit artifacts.
-
-## 6. Финальные gates и verdicts
-
-После audit `PASS` оркестратор выполняет единый полный Gradle/quality/release gate, обновляет receipts, проверяет generated-report drift и запускает финальную ledger validation.
-
-- `implementation-complete`: все обязательные AC и repository gates `verified` или явно `waived`, fingerprints актуальны, audit свежий и имеет `PASS`.
-- `release-ready`: дополнительно закрыты platform, external и release gates; `blocked-external` не допускается.
-
-Committed CI/release automation и реально настроенные GitHub/Firebase/Google Play/Google Cloud prerequisites сообщаются отдельно. Отсутствующие credentials могут сохранить `implementation-complete`, но не `release-ready`, если соответствующие gates не waived явным решением.
-
-## Пример запуска
-
-```text
-Используй $vibe-developer. Реализуй приложение по утверждённой спецификации
-<target-repository>/app-spec в <target-repository>.
-Требуй AppSpec 1.4, создай delivery ledger до первой правки, реализуй вертикальными
-AC-slices и не объявляй completion без fresh $vibe-acceptance-auditor PASS и финальной
-ledger validation. Не меняй утверждённые product decisions молча.
-```
-
-Для одного SQLDelight query, Store transition, preview fix или другой узкой задачи вызывайте owning specialist напрямую; полный workflow не нужен и legacy 1.3 сам по себе такую работу не блокирует.
-
-## Spec Kit и OpenSpec
-
-Их можно использовать как необязательный discovery/planning слой:
-
-```text
-constitution -> specify -> clarify -> plan -> checklist -> tasks -> analyze
--> conversion to approved Vibe AppSpec 1.4 -> validation -> $vibe-developer
-```
-
-Они не заменяют AppSpec, ledger или независимый closure audit.
+Первый verdict допускает незакрытые внешние platform/external/release gates; второй — нет. Waiver действителен только со ссылкой на существующее долговечное решение.

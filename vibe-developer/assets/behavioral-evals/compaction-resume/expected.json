@@ -1,7 +1,1 @@
-{
-  "stateSources": ["app-spec", ".vibe/delivery-ledger.json", "repository"],
-  "mustRecomputeFingerprints": true,
-  "mustRefuseLedgerOverwrite": true,
-  "mustNotUseConversationAsState": true,
-  "staleStateBlocksCompletion": true
-}
+{"verdict":"CONTINUE","completionClaim":false,"requiredActionTerms":["resume","reconcil"]}

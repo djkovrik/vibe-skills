@@ -1,6 +1,7 @@
 [CmdletBinding()]
 param(
-    [switch]$SkipInstallerWhatIf
+    [switch]$SkipInstallerWhatIf,
+    [switch]$IncludeAgentEvals
 )
 
 $ErrorActionPreference = 'Continue'
@@ -21,7 +22,7 @@ try {
     $manifest = Get-Content -LiteralPath $manifestPath -Raw -Encoding UTF8 | ConvertFrom-Json
 } catch {
     Add-Failure "Invalid manifest: $($_.Exception.Message)"
-    exit 1
+    $manifest = [pscustomobject]@{ skillDirectories = @(); sharedRegistryRelativePath = '' }
 }
 
 $expected = @($manifest.skillDirectories)
@@ -166,8 +167,54 @@ if (Test-Path -LiteralPath $localPython -PathType Leaf) {
 $powerShellTests = @(Get-ChildItem -LiteralPath $root -File -Recurse -Filter 'test-*.ps1' |
     Where-Object { $_.FullName -notlike "$root\.tooling\*" })
 foreach ($test in $powerShellTests) {
-    & $test.FullName
-    if (-not $?) { Add-Failure "PowerShell test failed: $($test.FullName)" }
+    try {
+        $startInfo = [System.Diagnostics.ProcessStartInfo]::new()
+        $startInfo.FileName = (Get-Process -Id $PID).Path
+        $startInfo.Arguments = '-NoProfile -ExecutionPolicy Bypass -File "' + $test.FullName + '"'
+        $startInfo.WorkingDirectory = $root
+        $startInfo.UseShellExecute = $false
+        $startInfo.CreateNoWindow = $true
+        $startInfo.RedirectStandardOutput = $true
+        $startInfo.RedirectStandardError = $true
+        $process = [System.Diagnostics.Process]::new()
+        $process.StartInfo = $startInfo
+        if (-not $process.Start()) { throw 'process did not start' }
+        $stdout = $process.StandardOutput.ReadToEndAsync()
+        $stderr = $process.StandardError.ReadToEndAsync()
+        $process.WaitForExit()
+        $outText = $stdout.GetAwaiter().GetResult()
+        $errText = $stderr.GetAwaiter().GetResult()
+        if ($outText) { Write-Host $outText.TrimEnd() }
+        if ($errText) { [Console]::Error.WriteLine($errText.TrimEnd()) }
+        if ($process.ExitCode -ne 0) { Add-Failure "PowerShell test failed ($($process.ExitCode)): $($test.FullName)" }
+        $process.Dispose()
+    } catch {
+        Add-Failure "PowerShell test crashed: $($test.FullName): $($_.Exception.Message)"
+    }
+}
+
+if ($IncludeAgentEvals) {
+    $agentRunner = Join-Path $root 'vibe-developer\tests\run-agent-evals.ps1'
+    try {
+        $agentStart = [System.Diagnostics.ProcessStartInfo]::new()
+        $agentStart.FileName = (Get-Process -Id $PID).Path
+        $agentStart.Arguments = '-NoProfile -ExecutionPolicy Bypass -File "' + $agentRunner + '"'
+        $agentStart.WorkingDirectory = $root
+        $agentStart.UseShellExecute = $false
+        $agentStart.CreateNoWindow = $true
+        $agentStart.RedirectStandardOutput = $true
+        $agentStart.RedirectStandardError = $true
+        $agentProcess = [System.Diagnostics.Process]::new(); $agentProcess.StartInfo = $agentStart
+        if (-not $agentProcess.Start()) { throw 'agent eval process did not start' }
+        $agentOut = $agentProcess.StandardOutput.ReadToEndAsync(); $agentErr = $agentProcess.StandardError.ReadToEndAsync(); $agentProcess.WaitForExit()
+        $agentOutText = $agentOut.GetAwaiter().GetResult(); $agentErrText = $agentErr.GetAwaiter().GetResult()
+        if ($agentOutText) { Write-Host $agentOutText.TrimEnd() }
+        if ($agentErrText) { [Console]::Error.WriteLine($agentErrText.TrimEnd()) }
+        if ($agentProcess.ExitCode -ne 0) { Add-Failure "Agent evals failed with exit code $($agentProcess.ExitCode)" }
+        $agentProcess.Dispose()
+    } catch {
+        Add-Failure "Agent evals crashed: $($_.Exception.Message)"
+    }
 }
 
 if (-not $SkipInstallerWhatIf) {

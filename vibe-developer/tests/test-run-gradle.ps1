@@ -36,15 +36,24 @@ function Start-Runner {
     )
     if ($ReceiptName) {
         $arguments += @(
-            '-ReceiptPath', (Quote-Argument (Join-Path $testRoot ".vibe\$ReceiptName")),
+            '-ReceiptPath', (Quote-Argument (Join-Path $testRoot ".vibe\receipts\$ReceiptName")),
             '-AcceptanceScenarioIds', 'AC-001',
             '-QualityGateIds', 'QG-001'
         )
     }
-    return Start-Process -FilePath $shell -ArgumentList ($arguments -join ' ') -NoNewWindow -PassThru
+    $startInfo = [System.Diagnostics.ProcessStartInfo]::new()
+    $startInfo.FileName = $shell
+    $startInfo.Arguments = $arguments -join ' '
+    $startInfo.WorkingDirectory = $testRoot
+    $startInfo.UseShellExecute = $false
+    $startInfo.CreateNoWindow = $true
+    $process = [System.Diagnostics.Process]::new()
+    $process.StartInfo = $startInfo
+    if (-not $process.Start()) { throw 'failed to start isolated runner process' }
+    return $process
 }
 
-New-Item -ItemType Directory -Path (Join-Path $testRoot '.vibe') -Force | Out-Null
+New-Item -ItemType Directory -Path (Join-Path $testRoot '.vibe\receipts') -Force | Out-Null
 try {
     $batch = @'
 @echo off
@@ -81,22 +90,31 @@ exit /b 0
     $slow.Refresh()
     $fast.Refresh()
     Assert-True ($slow.HasExited -and $fast.HasExited) 'serialized runner processes must finish'
+    Assert-True ($slow.ExitCode -eq 0) "slow runner exit was $($slow.ExitCode)"
+    Assert-True ($fast.ExitCode -eq 0) "fast runner exit was $($fast.ExitCode)"
     $order = @(Get-Content -LiteralPath (Join-Path $testRoot 'order.txt'))
     Assert-True (($order -join ',') -eq 'slow-start,slow-end,fast') 'named mutex must serialize one canonical project path'
 
     $failed = Start-Runner -Task 'fail' -LogName 'fail.log' -ReceiptName 'fail-receipt.json'
     $failed.WaitForExit()
     $failed.Refresh()
-    $failureReceipt = Get-Content -LiteralPath (Join-Path $testRoot '.vibe\fail-receipt.json') -Raw | ConvertFrom-Json
+    $failureReceipt = Get-Content -LiteralPath (Join-Path $testRoot '.vibe\receipts\fail-receipt.json') -Raw | ConvertFrom-Json
     Assert-True ($failureReceipt.exitCode -eq 7) 'completed failure receipt must keep real exit code'
-    Assert-True ('AC-001' -in @($failureReceipt.acceptanceScenarioIds)) 'receipt must name assigned AC'
-    Assert-True ('QG-001' -in @($failureReceipt.qualityGateIds)) 'receipt must name assigned gate'
+    Assert-True ($failureReceipt.schemaVersion -eq '2.0') 'receipt must use Protocol 2.0'
+    Assert-True ($failureReceipt.kind -eq 'targeted') 'receipt kind must be explicit'
+    Assert-True ('AC-001' -in @($failureReceipt.coveredObligations.obligationId)) 'receipt must name assigned AC'
+    Assert-True ($failureReceipt.log.sha256 -match '^[a-f0-9]{64}$') 'receipt must hash its log'
+    $receiptBytes = [System.IO.File]::ReadAllBytes((Join-Path $testRoot '.vibe\receipts\fail-receipt.json'))
+    $overwrite = Start-Runner -Task 'fail' -LogName 'fail-again.log' -ReceiptName 'fail-receipt.json'
+    $overwrite.WaitForExit(); $overwrite.Refresh()
+    Assert-True ($overwrite.ExitCode -ne 0) 'runner must refuse to overwrite an immutable receipt'
+    Assert-True ([Convert]::ToBase64String($receiptBytes) -eq [Convert]::ToBase64String([System.IO.File]::ReadAllBytes((Join-Path $testRoot '.vibe\receipts\fail-receipt.json')))) 'refused overwrite must preserve receipt bytes'
 
     $timedOut = Start-Runner -Task 'hang' -LogName 'timeout.log' -ReceiptName 'timeout-receipt.json' -TimeoutSeconds 1
     $timedOut.WaitForExit()
     $timedOut.Refresh()
     Assert-True ($timedOut.HasExited) 'timed-out runner process must finish'
-    Assert-True (-not (Test-Path -LiteralPath (Join-Path $testRoot '.vibe\timeout-receipt.json'))) 'timeout must not write a completion receipt'
+    Assert-True (-not (Test-Path -LiteralPath (Join-Path $testRoot '.vibe\receipts\timeout-receipt.json'))) 'timeout must not write a completion receipt'
 
     $afterTimeout = Start-Runner -Task 'fast' -LogName 'after-timeout.log' -ReceiptName '' -LockTimeoutSeconds 2
     $afterTimeout.WaitForExit()

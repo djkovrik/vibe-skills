@@ -1,4 +1,4 @@
 interface:
   display_name: "Vibe Developer"
   short_description: "Deliver KMP apps with evidence and audit"
-  default_prompt: "Use $vibe-developer to deliver this approved AppSpec 1.4 through ledger-backed implementation and a fresh acceptance audit."
+  default_prompt: "Use $vibe-developer to resume or deliver this approved AppSpec 2.0 through digest-checked state, immutable evidence, and a request-bound fresh audit."

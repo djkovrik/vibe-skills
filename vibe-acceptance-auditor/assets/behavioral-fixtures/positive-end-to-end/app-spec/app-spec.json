@@ -1,57 +1,266 @@
 {
-  "schemaVersion": "1.4",
-  "app": {
-    "name": "Preference Fixture",
-    "summary": "A positive closure-audit fixture with complete observable preference operations.",
-    "targets": ["android"],
-    "locales": ["en", "ru"]
-  },
-  "requirements": [
-    { "id": "REQ-001", "title": "Manage a preference", "priority": "must", "status": "approved", "acceptanceScenarioIds": ["AC-001", "AC-002", "AC-003", "AC-004"] }
-  ],
-  "acceptanceScenarios": [
-    { "id": "AC-001", "title": "Create preference", "requirementId": "REQ-001", "flowId": "FLOW-001", "screenIds": ["SCREEN-001"], "kind": "action", "subject": "Preference", "operation": "create", "verificationSurfaces": ["component-test"], "reviewStatus": "approved" },
-    { "id": "AC-002", "title": "Read preference", "requirementId": "REQ-001", "flowId": "FLOW-001", "screenIds": ["SCREEN-001"], "kind": "state", "subject": "Preference", "operation": "read", "verificationSurfaces": ["component-test"], "reviewStatus": "approved" },
-    { "id": "AC-003", "title": "Update preference", "requirementId": "REQ-001", "flowId": "FLOW-001", "screenIds": ["SCREEN-001"], "kind": "action", "subject": "Preference", "operation": "update", "verificationSurfaces": ["component-test"], "reviewStatus": "approved" },
-    { "id": "AC-004", "title": "Delete preference", "requirementId": "REQ-001", "flowId": "FLOW-001", "screenIds": ["SCREEN-001"], "kind": "action", "subject": "Preference", "operation": "delete", "verificationSurfaces": ["component-test"], "reviewStatus": "approved" }
-  ],
-  "managedEntities": [
-    {
-      "entity": "Preference",
-      "operations": {
-        "create": { "status": "required", "acceptanceScenarioIds": ["AC-001"] },
-        "read": { "status": "required", "acceptanceScenarioIds": ["AC-002"] },
-        "update": { "status": "required", "acceptanceScenarioIds": ["AC-003"] },
-        "delete": { "status": "required", "acceptanceScenarioIds": ["AC-004"] }
-      }
-    }
-  ],
-  "qualityGates": [
-    { "id": "QG-001", "title": "Repository tests", "category": "repository", "platform": "all", "requirement": "required", "verificationMethod": "Run python verify_fixture.py and require exit code 0.", "contractSource": "quality.md#test-matrix" },
-    { "id": "QG-002", "title": "Android contract fixture", "category": "platform", "platform": "android", "requirement": "required", "verificationMethod": "For this language-neutral forward fixture, run python verify_fixture.py and require exit code 0.", "contractSource": "quality.md#release-acceptance" },
-    { "id": "QG-003", "title": "Fixture release acceptance", "category": "release", "platform": "all", "requirement": "required", "verificationMethod": "For this language-neutral forward fixture, run python verify_fixture.py and require exit code 0.", "contractSource": "quality.md#release-acceptance" },
-    { "id": "QG-004", "title": "External publication", "category": "external", "platform": "all", "requirement": "conditional", "condition": "The fixture is published externally.", "verificationMethod": "Verify external publication state.", "contractSource": "quality.md#release-acceptance" }
-  ],
-  "flows": ["FLOW-001"],
-  "screens": ["SCREEN-001"],
-  "capabilities": { "network": false, "database": false, "settings": true, "sync": false, "authentication": false, "notifications": false, "exactAlarms": false, "ads": false },
-  "constraints": {
-    "offlineMode": "All fixture behavior is local.",
-    "privacy": ["Collect no personal data."],
-    "accessibility": ["Support screen readers and font scaling."],
-    "performance": ["Actions complete without visible delay."]
-  },
-  "localization": {
-    "defaultLocale": "en", "localeSelection": "system-only", "resourceSystem": "compose-multiplatform-resources", "resourceFileFormat": "strings.xml", "keyStrategy": "shared-key-across-locales", "localDataTextStorage": "resource-keys-only", "nativeFallback": "platform-localized-resources", "hardcodedUserFacingStrings": false
-  },
-  "architecture": {
-    "resultType": "kotlin-result", "componentModel": "immutable-value", "stateOwner": "mvikotlin-store", "stateMapping": "store-state-to-component-model", "storeDataAccess": "manager-result-unwrap", "managerResultCapture": "runCatching", "previewComponent": "separate-preview-implementation", "componentModuleStrategy": "screen-or-flow-boundary", "screenshotTestHost": "compose-ui-module", "screenshotTestHostRationale": "The fixture UI module owns previews, resources, and screenshots."
-  },
-  "uiQuality": {
-    "previewThemes": ["light", "dark"], "fontScales": [1.0, 2.0], "localeCoverage": "all",
-    "goldenTesting": { "required": true, "engine": "paparazzi", "previewDiscovery": "ComposablePreviewScanner" },
-    "designReview": { "required": true, "provider": "lazyweb", "trigger": "after-goldens", "standards": ["material3"] },
-    "iconography": { "inventoryStatus": "approved", "standardIconSource": "Material Symbols", "customAssetsStatus": "not-required" }
-  },
-  "openQuestions": []
+    "schemaVersion":  "2.0",
+    "app":  {
+                "name":  "Preference Fixture",
+                "summary":  "A positive closure-audit fixture with complete observable preference operations.",
+                "targets":  [
+                                "android"
+                            ],
+                "locales":  [
+                                "en",
+                                "ru"
+                            ]
+            },
+    "requirements":  [
+                         {
+                             "id":  "REQ-001",
+                             "title":  "Manage a preference",
+                             "priority":  "must",
+                             "status":  "approved",
+                             "acceptanceScenarioIds":  [
+                                                           "AC-001",
+                                                           "AC-002",
+                                                           "AC-003",
+                                                           "AC-004"
+                                                       ]
+                         }
+                     ],
+    "acceptanceScenarios":  [
+                                {
+                                    "id":  "AC-001",
+                                    "title":  "Create preference",
+                                    "requirementId":  "REQ-001",
+                                    "flowId":  "FLOW-001",
+                                    "screenIds":  [
+                                                      "SCREEN-001"
+                                                  ],
+                                    "kind":  "action",
+                                    "subject":  "Preference",
+                                    "operation":  "create",
+                                    "verificationSurfaces":  [
+                                                                 "component-test"
+                                                             ],
+                                    "dependsOnAcceptanceScenarioIds":  [
+
+                                                                       ]
+                                },
+                                {
+                                    "id":  "AC-002",
+                                    "title":  "Read preference",
+                                    "requirementId":  "REQ-001",
+                                    "flowId":  "FLOW-001",
+                                    "screenIds":  [
+                                                      "SCREEN-001"
+                                                  ],
+                                    "kind":  "state",
+                                    "subject":  "Preference",
+                                    "operation":  "read",
+                                    "verificationSurfaces":  [
+                                                                 "component-test"
+                                                             ],
+                                    "dependsOnAcceptanceScenarioIds":  [
+
+                                                                       ]
+                                },
+                                {
+                                    "id":  "AC-003",
+                                    "title":  "Update preference",
+                                    "requirementId":  "REQ-001",
+                                    "flowId":  "FLOW-001",
+                                    "screenIds":  [
+                                                      "SCREEN-001"
+                                                  ],
+                                    "kind":  "action",
+                                    "subject":  "Preference",
+                                    "operation":  "update",
+                                    "verificationSurfaces":  [
+                                                                 "component-test"
+                                                             ],
+                                    "dependsOnAcceptanceScenarioIds":  [
+
+                                                                       ]
+                                },
+                                {
+                                    "id":  "AC-004",
+                                    "title":  "Delete preference",
+                                    "requirementId":  "REQ-001",
+                                    "flowId":  "FLOW-001",
+                                    "screenIds":  [
+                                                      "SCREEN-001"
+                                                  ],
+                                    "kind":  "action",
+                                    "subject":  "Preference",
+                                    "operation":  "delete",
+                                    "verificationSurfaces":  [
+                                                                 "component-test"
+                                                             ],
+                                    "dependsOnAcceptanceScenarioIds":  [
+
+                                                                       ]
+                                }
+                            ],
+    "managedEntities":  [
+                            {
+                                "entity":  "Preference",
+                                "operations":  {
+                                                   "create":  {
+                                                                  "status":  "required",
+                                                                  "acceptanceScenarioIds":  [
+                                                                                                "AC-001"
+                                                                                            ]
+                                                              },
+                                                   "read":  {
+                                                                "status":  "required",
+                                                                "acceptanceScenarioIds":  [
+                                                                                              "AC-002"
+                                                                                          ]
+                                                            },
+                                                   "update":  {
+                                                                  "status":  "required",
+                                                                  "acceptanceScenarioIds":  [
+                                                                                                "AC-003"
+                                                                                            ]
+                                                              },
+                                                   "delete":  {
+                                                                  "status":  "required",
+                                                                  "acceptanceScenarioIds":  [
+                                                                                                "AC-004"
+                                                                                            ]
+                                                              }
+                                               }
+                            }
+                        ],
+    "qualityGates":  [
+                         {
+                             "id":  "QG-001",
+                             "title":  "Repository tests",
+                             "category":  "repository",
+                             "platform":  "all",
+                             "requirement":  "required",
+                             "verificationMethod":  "Run python verify_fixture.py and require exit code 0.",
+                             "contractSource":  "quality.md#test-matrix",
+                             "verificationSurfaces":  [
+                                                          "repository-check"
+                                                      ]
+                         },
+                         {
+                             "id":  "QG-002",
+                             "title":  "Android contract fixture",
+                             "category":  "platform",
+                             "platform":  "android",
+                             "requirement":  "required",
+                             "verificationMethod":  "For this language-neutral forward fixture, run python verify_fixture.py and require exit code 0.",
+                             "contractSource":  "quality.md#release-acceptance",
+                             "verificationSurfaces":  [
+                                                          "platform-check"
+                                                      ]
+                         },
+                         {
+                             "id":  "QG-003",
+                             "title":  "Fixture release acceptance",
+                             "category":  "release",
+                             "platform":  "all",
+                             "requirement":  "required",
+                             "verificationMethod":  "For this language-neutral forward fixture, run python verify_fixture.py and require exit code 0.",
+                             "contractSource":  "quality.md#release-acceptance",
+                             "verificationSurfaces":  [
+                                                          "release-check"
+                                                      ]
+                         },
+                         {
+                             "id":  "QG-004",
+                             "title":  "External publication",
+                             "category":  "external",
+                             "platform":  "all",
+                             "requirement":  "conditional",
+                             "condition":  "The fixture is published externally.",
+                             "verificationMethod":  "Verify external publication state.",
+                             "contractSource":  "quality.md#release-acceptance",
+                             "verificationSurfaces":  [
+                                                          "external-check"
+                                                      ]
+                         }
+                     ],
+    "flows":  [
+                  "FLOW-001"
+              ],
+    "screens":  [
+                    "SCREEN-001"
+                ],
+    "capabilities":  {
+                         "network":  false,
+                         "database":  false,
+                         "settings":  true,
+                         "sync":  false,
+                         "authentication":  false,
+                         "notifications":  false,
+                         "exactAlarms":  false,
+                         "ads":  false
+                     },
+    "constraints":  {
+                        "offlineMode":  "All fixture behavior is local.",
+                        "privacy":  [
+                                        "Collect no personal data."
+                                    ],
+                        "accessibility":  [
+                                              "Support screen readers and font scaling."
+                                          ],
+                        "performance":  [
+                                            "Actions complete without visible delay."
+                                        ]
+                    },
+    "localization":  {
+                         "defaultLocale":  "en",
+                         "localeSelection":  "system-only",
+                         "resourceSystem":  "compose-multiplatform-resources",
+                         "resourceFileFormat":  "strings.xml",
+                         "keyStrategy":  "shared-key-across-locales",
+                         "localDataTextStorage":  "resource-keys-only",
+                         "nativeFallback":  "platform-localized-resources",
+                         "hardcodedUserFacingStrings":  false
+                     },
+    "architecture":  {
+                         "resultType":  "kotlin-result",
+                         "componentModel":  "immutable-value",
+                         "stateOwner":  "mvikotlin-store",
+                         "stateMapping":  "store-state-to-component-model",
+                         "storeDataAccess":  "manager-result-unwrap",
+                         "managerResultCapture":  "runCatching",
+                         "previewComponent":  "separate-preview-implementation",
+                         "componentModuleStrategy":  "screen-or-flow-boundary",
+                         "screenshotTestHost":  "compose-ui-module",
+                         "screenshotTestHostRationale":  "The fixture UI module owns previews, resources, and screenshots."
+                     },
+    "uiQuality":  {
+                      "previewThemes":  [
+                                            "light",
+                                            "dark"
+                                        ],
+                      "fontScales":  [
+                                         1.0,
+                                         2.0
+                                     ],
+                      "localeCoverage":  "all",
+                      "goldenTesting":  {
+                                            "required":  true,
+                                            "engine":  "paparazzi",
+                                            "previewDiscovery":  "ComposablePreviewScanner"
+                                        },
+                      "designReview":  {
+                                           "required":  true,
+                                           "provider":  "lazyweb",
+                                           "trigger":  "after-goldens",
+                                           "standards":  [
+                                                             "material3"
+                                                         ]
+                                       },
+                      "iconography":  {
+                                          "inventoryStatus":  "approved",
+                                          "standardIconSource":  "Material Symbols",
+                                          "customAssetsStatus":  "not-required"
+                                      }
+                  },
+    "openQuestions":  [
+
+                      ]
 }

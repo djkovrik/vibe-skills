@@ -85,8 +85,8 @@ if (-not [string]::IsNullOrWhiteSpace($AuditResultsRoot)) {
         if ([string]::IsNullOrWhiteSpace([string]$audit.appSpecFingerprint.digest) -or [string]::IsNullOrWhiteSpace([string]$audit.workspaceFingerprint.digest)) {
             throw "$($case.commit) audit is missing fingerprints"
         }
-        if ($audit.auditorContext.fresh -ne $true) {
-            throw "$($case.commit) audit was not produced from a fresh context"
+        if ($audit.schemaVersion -ne '2.0' -or $audit.auditorContext.implementationContextAvailable -ne $false -or [string]::IsNullOrWhiteSpace([string]$audit.auditRequest.sha256)) {
+            throw "$($case.commit) audit is not request-bound Protocol 2.0 fresh-context evidence"
         }
         $searchableAudit = $auditText -replace '\s+', ' '
         foreach ($pattern in $case.requiredGapPatterns) {

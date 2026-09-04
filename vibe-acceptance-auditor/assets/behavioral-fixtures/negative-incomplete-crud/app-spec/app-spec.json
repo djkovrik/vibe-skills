@@ -1,97 +1,475 @@
 {
-  "schemaVersion": "1.4",
-  "app": {
-    "name": "Dish Fixture",
-    "summary": "A negative closure-audit fixture whose implementation omits required meal operations.",
-    "targets": ["android", "ios"],
-    "locales": ["en", "ru"]
-  },
-  "requirements": [
-    { "id": "REQ-001", "title": "Manage meal workflows", "priority": "must", "status": "approved", "acceptanceScenarioIds": ["AC-001", "AC-002", "AC-003", "AC-004", "AC-005", "AC-006", "AC-007", "AC-008", "AC-009"] }
-  ],
-  "acceptanceScenarios": [
-    { "id": "AC-001", "title": "Rename preset", "requirementId": "REQ-001", "flowId": "FLOW-001", "screenIds": ["SCREEN-001"], "kind": "action", "subject": "Preset", "operation": "rename", "verificationSurfaces": ["component-test"], "reviewStatus": "approved" },
-    { "id": "AC-002", "title": "Update preset", "requirementId": "REQ-001", "flowId": "FLOW-001", "screenIds": ["SCREEN-001"], "kind": "action", "subject": "Preset", "operation": "update", "verificationSurfaces": ["component-test"], "reviewStatus": "approved" },
-    { "id": "AC-003", "title": "Reuse history", "requirementId": "REQ-001", "flowId": "FLOW-001", "screenIds": ["SCREEN-001"], "kind": "action", "subject": "HistoryEntry", "operation": "reuse", "verificationSurfaces": ["component-test"], "reviewStatus": "approved" },
-    { "id": "AC-004", "title": "Delete history", "requirementId": "REQ-001", "flowId": "FLOW-001", "screenIds": ["SCREEN-001"], "kind": "action", "subject": "HistoryEntry", "operation": "delete", "verificationSurfaces": ["component-test"], "reviewStatus": "approved" },
-    { "id": "AC-005", "title": "Resume draft", "requirementId": "REQ-001", "flowId": "FLOW-001", "screenIds": ["SCREEN-001"], "kind": "action", "subject": "Draft", "operation": "resume", "verificationSurfaces": ["component-test"], "reviewStatus": "approved" },
-    { "id": "AC-006", "title": "Discard draft", "requirementId": "REQ-001", "flowId": "FLOW-001", "screenIds": ["SCREEN-001"], "kind": "action", "subject": "Draft", "operation": "discard", "verificationSurfaces": ["component-test"], "reviewStatus": "approved" },
-    { "id": "AC-007", "title": "Change item quantity", "requirementId": "REQ-001", "flowId": "FLOW-001", "screenIds": ["SCREEN-001"], "kind": "action", "subject": "DraftItem", "operation": "update-quantity", "verificationSurfaces": ["component-test"], "reviewStatus": "approved" },
-    { "id": "AC-008", "title": "Remove item directly", "requirementId": "REQ-001", "flowId": "FLOW-001", "screenIds": ["SCREEN-001"], "kind": "action", "subject": "DraftItem", "operation": "remove", "verificationSurfaces": ["component-test"], "reviewStatus": "approved" },
-    { "id": "AC-009", "title": "Delete one selected draft item", "requirementId": "REQ-001", "flowId": "FLOW-001", "screenIds": ["SCREEN-001"], "kind": "action", "subject": "DraftItem", "operation": "delete-granular", "verificationSurfaces": ["component-test"], "reviewStatus": "approved" }
-  ],
-  "managedEntities": [
-    {
-      "entity": "Preset",
-      "operations": {
-        "create": { "status": "not-applicable", "reason": "Outside this focused regression fixture." },
-        "read": { "status": "not-applicable", "reason": "Outside this focused regression fixture." },
-        "update": { "status": "required", "acceptanceScenarioIds": ["AC-002"] },
-        "delete": { "status": "not-applicable", "reason": "Outside this focused regression fixture." },
-        "rename": { "status": "required", "acceptanceScenarioIds": ["AC-001"] }
-      }
-    },
-    {
-      "entity": "HistoryEntry",
-      "operations": {
-        "create": { "status": "not-applicable", "reason": "History entries are system-created." },
-        "read": { "status": "not-applicable", "reason": "Outside this focused regression fixture." },
-        "update": { "status": "not-applicable", "reason": "History entries are immutable." },
-        "delete": { "status": "required", "acceptanceScenarioIds": ["AC-004"] },
-        "reuse": { "status": "required", "acceptanceScenarioIds": ["AC-003"] }
-      }
-    },
-    {
-      "entity": "Draft",
-      "operations": {
-        "create": { "status": "not-applicable", "reason": "Draft creation is outside this focused regression fixture." },
-        "read": { "status": "not-applicable", "reason": "Resume is the separately specified observable read operation." },
-        "update": { "status": "not-applicable", "reason": "Updates are represented by DraftItem operations." },
-        "delete": { "status": "not-applicable", "reason": "Discard is the separately specified observable delete operation." },
-        "resume": { "status": "required", "acceptanceScenarioIds": ["AC-005"] },
-        "discard": { "status": "required", "acceptanceScenarioIds": ["AC-006"] }
-      }
-    },
-    {
-      "entity": "DraftItem",
-      "operations": {
-        "create": { "status": "not-applicable", "reason": "Outside this focused regression fixture." },
-        "read": { "status": "not-applicable", "reason": "Outside this focused regression fixture." },
-        "update": { "status": "not-applicable", "reason": "Quantity change is the separately specified update operation." },
-        "delete": { "status": "not-applicable", "reason": "Direct and granular removal are separately specified delete operations." },
-        "update-quantity": { "status": "required", "acceptanceScenarioIds": ["AC-007"] },
-        "remove": { "status": "required", "acceptanceScenarioIds": ["AC-008"] },
-        "delete-granular": { "status": "required", "acceptanceScenarioIds": ["AC-009"] }
-      }
-    }
-  ],
-  "qualityGates": [
-    { "id": "QG-001", "title": "Repository tests", "category": "repository", "platform": "all", "requirement": "required", "verificationMethod": "Run public component tests for every managed operation.", "contractSource": "quality.md#test-matrix" },
-    { "id": "QG-002", "title": "Android checks", "category": "platform", "platform": "android", "requirement": "required", "verificationMethod": "Run the Android platform build.", "contractSource": "quality.md#release-acceptance" },
-    { "id": "QG-003", "title": "iOS checks", "category": "platform", "platform": "ios", "requirement": "required", "verificationMethod": "Run the iOS platform build.", "contractSource": "quality.md#release-acceptance" },
-    { "id": "QG-004", "title": "Release acceptance", "category": "release", "platform": "all", "requirement": "required", "verificationMethod": "Verify declared release acceptance checks.", "contractSource": "quality.md#release-acceptance" },
-    { "id": "QG-005", "title": "External publication", "category": "external", "platform": "all", "requirement": "conditional", "condition": "The fixture is published externally.", "verificationMethod": "Verify external publication state.", "contractSource": "quality.md#release-acceptance" }
-  ],
-  "flows": ["FLOW-001"],
-  "screens": ["SCREEN-001"],
-  "capabilities": { "network": false, "database": false, "settings": false, "sync": false, "authentication": false, "notifications": false, "exactAlarms": false, "ads": false },
-  "constraints": {
-    "offlineMode": "All fixture behavior is local.",
-    "privacy": ["Collect no personal data."],
-    "accessibility": ["Support screen readers and font scaling."],
-    "performance": ["Actions complete without visible delay."]
-  },
-  "localization": {
-    "defaultLocale": "en", "localeSelection": "system-only", "resourceSystem": "compose-multiplatform-resources", "resourceFileFormat": "strings.xml", "keyStrategy": "shared-key-across-locales", "localDataTextStorage": "resource-keys-only", "nativeFallback": "platform-localized-resources", "hardcodedUserFacingStrings": false
-  },
-  "architecture": {
-    "resultType": "kotlin-result", "componentModel": "immutable-value", "stateOwner": "mvikotlin-store", "stateMapping": "store-state-to-component-model", "storeDataAccess": "manager-result-unwrap", "managerResultCapture": "runCatching", "previewComponent": "separate-preview-implementation", "componentModuleStrategy": "screen-or-flow-boundary", "screenshotTestHost": "compose-ui-module", "screenshotTestHostRationale": "The fixture UI module owns previews, resources, and screenshots."
-  },
-  "uiQuality": {
-    "previewThemes": ["light", "dark"], "fontScales": [1.0, 2.0], "localeCoverage": "all",
-    "goldenTesting": { "required": true, "engine": "paparazzi", "previewDiscovery": "ComposablePreviewScanner" },
-    "designReview": { "required": true, "provider": "lazyweb", "trigger": "after-goldens", "standards": ["material3"] },
-    "iconography": { "inventoryStatus": "approved", "standardIconSource": "Material Symbols", "customAssetsStatus": "not-required" }
-  },
-  "openQuestions": []
+    "schemaVersion":  "2.0",
+    "app":  {
+                "name":  "Dish Fixture",
+                "summary":  "A negative closure-audit fixture whose implementation omits required meal operations.",
+                "targets":  [
+                                "android",
+                                "ios"
+                            ],
+                "locales":  [
+                                "en",
+                                "ru"
+                            ]
+            },
+    "requirements":  [
+                         {
+                             "id":  "REQ-001",
+                             "title":  "Manage meal workflows",
+                             "priority":  "must",
+                             "status":  "approved",
+                             "acceptanceScenarioIds":  [
+                                                           "AC-001",
+                                                           "AC-002",
+                                                           "AC-003",
+                                                           "AC-004",
+                                                           "AC-005",
+                                                           "AC-006",
+                                                           "AC-007",
+                                                           "AC-008",
+                                                           "AC-009"
+                                                       ]
+                         }
+                     ],
+    "acceptanceScenarios":  [
+                                {
+                                    "id":  "AC-001",
+                                    "title":  "Rename preset",
+                                    "requirementId":  "REQ-001",
+                                    "flowId":  "FLOW-001",
+                                    "screenIds":  [
+                                                      "SCREEN-001"
+                                                  ],
+                                    "kind":  "action",
+                                    "subject":  "Preset",
+                                    "operation":  "rename",
+                                    "verificationSurfaces":  [
+                                                                 "component-test"
+                                                             ],
+                                    "dependsOnAcceptanceScenarioIds":  [
+
+                                                                       ]
+                                },
+                                {
+                                    "id":  "AC-002",
+                                    "title":  "Update preset",
+                                    "requirementId":  "REQ-001",
+                                    "flowId":  "FLOW-001",
+                                    "screenIds":  [
+                                                      "SCREEN-001"
+                                                  ],
+                                    "kind":  "action",
+                                    "subject":  "Preset",
+                                    "operation":  "update",
+                                    "verificationSurfaces":  [
+                                                                 "component-test"
+                                                             ],
+                                    "dependsOnAcceptanceScenarioIds":  [
+
+                                                                       ]
+                                },
+                                {
+                                    "id":  "AC-003",
+                                    "title":  "Reuse history",
+                                    "requirementId":  "REQ-001",
+                                    "flowId":  "FLOW-001",
+                                    "screenIds":  [
+                                                      "SCREEN-001"
+                                                  ],
+                                    "kind":  "action",
+                                    "subject":  "HistoryEntry",
+                                    "operation":  "reuse",
+                                    "verificationSurfaces":  [
+                                                                 "component-test"
+                                                             ],
+                                    "dependsOnAcceptanceScenarioIds":  [
+
+                                                                       ]
+                                },
+                                {
+                                    "id":  "AC-004",
+                                    "title":  "Delete history",
+                                    "requirementId":  "REQ-001",
+                                    "flowId":  "FLOW-001",
+                                    "screenIds":  [
+                                                      "SCREEN-001"
+                                                  ],
+                                    "kind":  "action",
+                                    "subject":  "HistoryEntry",
+                                    "operation":  "delete",
+                                    "verificationSurfaces":  [
+                                                                 "component-test"
+                                                             ],
+                                    "dependsOnAcceptanceScenarioIds":  [
+
+                                                                       ]
+                                },
+                                {
+                                    "id":  "AC-005",
+                                    "title":  "Resume draft",
+                                    "requirementId":  "REQ-001",
+                                    "flowId":  "FLOW-001",
+                                    "screenIds":  [
+                                                      "SCREEN-001"
+                                                  ],
+                                    "kind":  "action",
+                                    "subject":  "Draft",
+                                    "operation":  "resume",
+                                    "verificationSurfaces":  [
+                                                                 "component-test"
+                                                             ],
+                                    "dependsOnAcceptanceScenarioIds":  [
+
+                                                                       ]
+                                },
+                                {
+                                    "id":  "AC-006",
+                                    "title":  "Discard draft",
+                                    "requirementId":  "REQ-001",
+                                    "flowId":  "FLOW-001",
+                                    "screenIds":  [
+                                                      "SCREEN-001"
+                                                  ],
+                                    "kind":  "action",
+                                    "subject":  "Draft",
+                                    "operation":  "discard",
+                                    "verificationSurfaces":  [
+                                                                 "component-test"
+                                                             ],
+                                    "dependsOnAcceptanceScenarioIds":  [
+
+                                                                       ]
+                                },
+                                {
+                                    "id":  "AC-007",
+                                    "title":  "Change item quantity",
+                                    "requirementId":  "REQ-001",
+                                    "flowId":  "FLOW-001",
+                                    "screenIds":  [
+                                                      "SCREEN-001"
+                                                  ],
+                                    "kind":  "action",
+                                    "subject":  "DraftItem",
+                                    "operation":  "update-quantity",
+                                    "verificationSurfaces":  [
+                                                                 "component-test"
+                                                             ],
+                                    "dependsOnAcceptanceScenarioIds":  [
+
+                                                                       ]
+                                },
+                                {
+                                    "id":  "AC-008",
+                                    "title":  "Remove item directly",
+                                    "requirementId":  "REQ-001",
+                                    "flowId":  "FLOW-001",
+                                    "screenIds":  [
+                                                      "SCREEN-001"
+                                                  ],
+                                    "kind":  "action",
+                                    "subject":  "DraftItem",
+                                    "operation":  "remove",
+                                    "verificationSurfaces":  [
+                                                                 "component-test"
+                                                             ],
+                                    "dependsOnAcceptanceScenarioIds":  [
+
+                                                                       ]
+                                },
+                                {
+                                    "id":  "AC-009",
+                                    "title":  "Delete one selected draft item",
+                                    "requirementId":  "REQ-001",
+                                    "flowId":  "FLOW-001",
+                                    "screenIds":  [
+                                                      "SCREEN-001"
+                                                  ],
+                                    "kind":  "action",
+                                    "subject":  "DraftItem",
+                                    "operation":  "delete-granular",
+                                    "verificationSurfaces":  [
+                                                                 "component-test"
+                                                             ],
+                                    "dependsOnAcceptanceScenarioIds":  [
+
+                                                                       ]
+                                }
+                            ],
+    "managedEntities":  [
+                            {
+                                "entity":  "Preset",
+                                "operations":  {
+                                                   "create":  {
+                                                                  "status":  "not-applicable",
+                                                                  "reason":  "Outside this focused regression fixture."
+                                                              },
+                                                   "read":  {
+                                                                "status":  "not-applicable",
+                                                                "reason":  "Outside this focused regression fixture."
+                                                            },
+                                                   "update":  {
+                                                                  "status":  "required",
+                                                                  "acceptanceScenarioIds":  [
+                                                                                                "AC-002"
+                                                                                            ]
+                                                              },
+                                                   "delete":  {
+                                                                  "status":  "not-applicable",
+                                                                  "reason":  "Outside this focused regression fixture."
+                                                              },
+                                                   "rename":  {
+                                                                  "status":  "required",
+                                                                  "acceptanceScenarioIds":  [
+                                                                                                "AC-001"
+                                                                                            ]
+                                                              }
+                                               }
+                            },
+                            {
+                                "entity":  "HistoryEntry",
+                                "operations":  {
+                                                   "create":  {
+                                                                  "status":  "not-applicable",
+                                                                  "reason":  "History entries are system-created."
+                                                              },
+                                                   "read":  {
+                                                                "status":  "not-applicable",
+                                                                "reason":  "Outside this focused regression fixture."
+                                                            },
+                                                   "update":  {
+                                                                  "status":  "not-applicable",
+                                                                  "reason":  "History entries are immutable."
+                                                              },
+                                                   "delete":  {
+                                                                  "status":  "required",
+                                                                  "acceptanceScenarioIds":  [
+                                                                                                "AC-004"
+                                                                                            ]
+                                                              },
+                                                   "reuse":  {
+                                                                 "status":  "required",
+                                                                 "acceptanceScenarioIds":  [
+                                                                                               "AC-003"
+                                                                                           ]
+                                                             }
+                                               }
+                            },
+                            {
+                                "entity":  "Draft",
+                                "operations":  {
+                                                   "create":  {
+                                                                  "status":  "not-applicable",
+                                                                  "reason":  "Draft creation is outside this focused regression fixture."
+                                                              },
+                                                   "read":  {
+                                                                "status":  "not-applicable",
+                                                                "reason":  "Resume is the separately specified observable read operation."
+                                                            },
+                                                   "update":  {
+                                                                  "status":  "not-applicable",
+                                                                  "reason":  "Updates are represented by DraftItem operations."
+                                                              },
+                                                   "delete":  {
+                                                                  "status":  "not-applicable",
+                                                                  "reason":  "Discard is the separately specified observable delete operation."
+                                                              },
+                                                   "resume":  {
+                                                                  "status":  "required",
+                                                                  "acceptanceScenarioIds":  [
+                                                                                                "AC-005"
+                                                                                            ]
+                                                              },
+                                                   "discard":  {
+                                                                   "status":  "required",
+                                                                   "acceptanceScenarioIds":  [
+                                                                                                 "AC-006"
+                                                                                             ]
+                                                               }
+                                               }
+                            },
+                            {
+                                "entity":  "DraftItem",
+                                "operations":  {
+                                                   "create":  {
+                                                                  "status":  "not-applicable",
+                                                                  "reason":  "Outside this focused regression fixture."
+                                                              },
+                                                   "read":  {
+                                                                "status":  "not-applicable",
+                                                                "reason":  "Outside this focused regression fixture."
+                                                            },
+                                                   "update":  {
+                                                                  "status":  "not-applicable",
+                                                                  "reason":  "Quantity change is the separately specified update operation."
+                                                              },
+                                                   "delete":  {
+                                                                  "status":  "not-applicable",
+                                                                  "reason":  "Direct and granular removal are separately specified delete operations."
+                                                              },
+                                                   "update-quantity":  {
+                                                                           "status":  "required",
+                                                                           "acceptanceScenarioIds":  [
+                                                                                                         "AC-007"
+                                                                                                     ]
+                                                                       },
+                                                   "remove":  {
+                                                                  "status":  "required",
+                                                                  "acceptanceScenarioIds":  [
+                                                                                                "AC-008"
+                                                                                            ]
+                                                              },
+                                                   "delete-granular":  {
+                                                                           "status":  "required",
+                                                                           "acceptanceScenarioIds":  [
+                                                                                                         "AC-009"
+                                                                                                     ]
+                                                                       }
+                                               }
+                            }
+                        ],
+    "qualityGates":  [
+                         {
+                             "id":  "QG-001",
+                             "title":  "Repository tests",
+                             "category":  "repository",
+                             "platform":  "all",
+                             "requirement":  "required",
+                             "verificationMethod":  "Run public component tests for every managed operation.",
+                             "contractSource":  "quality.md#test-matrix",
+                             "verificationSurfaces":  [
+                                                          "repository-check"
+                                                      ]
+                         },
+                         {
+                             "id":  "QG-002",
+                             "title":  "Android checks",
+                             "category":  "platform",
+                             "platform":  "android",
+                             "requirement":  "required",
+                             "verificationMethod":  "Run the Android platform build.",
+                             "contractSource":  "quality.md#release-acceptance",
+                             "verificationSurfaces":  [
+                                                          "platform-check"
+                                                      ]
+                         },
+                         {
+                             "id":  "QG-003",
+                             "title":  "iOS checks",
+                             "category":  "platform",
+                             "platform":  "ios",
+                             "requirement":  "required",
+                             "verificationMethod":  "Run the iOS platform build.",
+                             "contractSource":  "quality.md#release-acceptance",
+                             "verificationSurfaces":  [
+                                                          "platform-check"
+                                                      ]
+                         },
+                         {
+                             "id":  "QG-004",
+                             "title":  "Release acceptance",
+                             "category":  "release",
+                             "platform":  "all",
+                             "requirement":  "required",
+                             "verificationMethod":  "Verify declared release acceptance checks.",
+                             "contractSource":  "quality.md#release-acceptance",
+                             "verificationSurfaces":  [
+                                                          "release-check"
+                                                      ]
+                         },
+                         {
+                             "id":  "QG-005",
+                             "title":  "External publication",
+                             "category":  "external",
+                             "platform":  "all",
+                             "requirement":  "conditional",
+                             "condition":  "The fixture is published externally.",
+                             "verificationMethod":  "Verify external publication state.",
+                             "contractSource":  "quality.md#release-acceptance",
+                             "verificationSurfaces":  [
+                                                          "external-check"
+                                                      ]
+                         }
+                     ],
+    "flows":  [
+                  "FLOW-001"
+              ],
+    "screens":  [
+                    "SCREEN-001"
+                ],
+    "capabilities":  {
+                         "network":  false,
+                         "database":  false,
+                         "settings":  false,
+                         "sync":  false,
+                         "authentication":  false,
+                         "notifications":  false,
+                         "exactAlarms":  false,
+                         "ads":  false
+                     },
+    "constraints":  {
+                        "offlineMode":  "All fixture behavior is local.",
+                        "privacy":  [
+                                        "Collect no personal data."
+                                    ],
+                        "accessibility":  [
+                                              "Support screen readers and font scaling."
+                                          ],
+                        "performance":  [
+                                            "Actions complete without visible delay."
+                                        ]
+                    },
+    "localization":  {
+                         "defaultLocale":  "en",
+                         "localeSelection":  "system-only",
+                         "resourceSystem":  "compose-multiplatform-resources",
+                         "resourceFileFormat":  "strings.xml",
+                         "keyStrategy":  "shared-key-across-locales",
+                         "localDataTextStorage":  "resource-keys-only",
+                         "nativeFallback":  "platform-localized-resources",
+                         "hardcodedUserFacingStrings":  false
+                     },
+    "architecture":  {
+                         "resultType":  "kotlin-result",
+                         "componentModel":  "immutable-value",
+                         "stateOwner":  "mvikotlin-store",
+                         "stateMapping":  "store-state-to-component-model",
+                         "storeDataAccess":  "manager-result-unwrap",
+                         "managerResultCapture":  "runCatching",
+                         "previewComponent":  "separate-preview-implementation",
+                         "componentModuleStrategy":  "screen-or-flow-boundary",
+                         "screenshotTestHost":  "compose-ui-module",
+                         "screenshotTestHostRationale":  "The fixture UI module owns previews, resources, and screenshots."
+                     },
+    "uiQuality":  {
+                      "previewThemes":  [
+                                            "light",
+                                            "dark"
+                                        ],
+                      "fontScales":  [
+                                         1.0,
+                                         2.0
+                                     ],
+                      "localeCoverage":  "all",
+                      "goldenTesting":  {
+                                            "required":  true,
+                                            "engine":  "paparazzi",
+                                            "previewDiscovery":  "ComposablePreviewScanner"
+                                        },
+                      "designReview":  {
+                                           "required":  true,
+                                           "provider":  "lazyweb",
+                                           "trigger":  "after-goldens",
+                                           "standards":  [
+                                                             "material3"
+                                                         ]
+                                       },
+                      "iconography":  {
+                                          "inventoryStatus":  "approved",
+                                          "standardIconSource":  "Material Symbols",
+                                          "customAssetsStatus":  "not-required"
+                                      }
+                  },
+    "openQuestions":  [
+
+                      ]
 }

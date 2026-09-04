@@ -1,4 +1,4 @@
-# Vibe KMP skills 1.5
+# Vibe KMP skills 2.0
 
 Run commands from this package root in PowerShell.
 
@@ -32,7 +32,7 @@ After first installation or after changing skill metadata, restart the Codex cli
 
 The manifest currently installs 14 skills, including the independent `$vibe-acceptance-auditor`. The manifest, rather than a hard-coded count in the installer, is the source of truth for Copy/Junction installation and post-install checks.
 
-To implement an application, prepare and approve Vibe AppSpec 1.4, then start a separate session:
+To implement an application, prepare and approve Vibe AppSpec 2.0, then start a separate session:
 
 ```text
 Use $vibe-developer. Implement the application from D:\Projects\MyApp\app-spec.
@@ -40,4 +40,4 @@ Validate the specification with --require-current, initialize the delivery ledge
 and do not silently change approved requirements. Require a fresh acceptance audit before completion.
 ```
 
-AppSpec 1.0–1.3 remains readable as legacy. A full `$vibe-developer` cycle requires migration into a new directory with `migrate-app-spec.py` and explicit review of all `needs-review` scenarios and blocking questions. Narrow specialist work may still target a legacy repository directly.
+Protocol 1.x AppSpecs and delivery artifacts are unsupported. The tools do not migrate, delete, or automatically reinitialize them; prepare a newly approved AppSpec 2.0 instead.

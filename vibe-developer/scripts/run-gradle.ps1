@@ -13,6 +13,11 @@ param(
     [string[]]$QualityGateIds = @(),
     [string]$ReceiptPath,
 
+    [ValidateSet('targeted', 'final')]
+    [string]$ReceiptKind = 'targeted',
+
+    [string]$CoverageJson,
+
     [ValidateRange(1, 86400)]
     [int]$TimeoutSeconds = 1800,
 
@@ -49,29 +54,49 @@ function Write-Receipt {
         [Parameter(Mandatory)][int]$ExitCode,
         [Parameter(Mandatory)][datetime]$CompletedAt,
         [Parameter(Mandatory)][double]$DurationSeconds,
-        [Parameter(Mandatory)][string]$Command,
-        [Parameter(Mandatory)][object]$WorkspaceFingerprint
+        [Parameter(Mandatory)][string[]]$Argv,
+        [Parameter(Mandatory)][object]$WorkspaceFingerprint,
+        [Parameter(Mandatory)][datetime]$StartedAt,
+        [Parameter(Mandatory)][object[]]$CoveredObligations
     )
     $fullPath = [System.IO.Path]::GetFullPath($Path)
+    if (Test-Path -LiteralPath $fullPath) {
+        throw "Refusing to overwrite immutable receipt: $fullPath"
+    }
     $parent = Split-Path -Parent $fullPath
     if (-not (Test-Path -LiteralPath $parent -PathType Container)) {
         throw "Receipt directory does not exist: $parent"
     }
     $receipt = [ordered]@{
-        schemaVersion = '1.0'
-        command = $Command
+        schemaVersion = '2.0'
+        receiptId = "RECEIPT-$([Guid]::NewGuid())"
+        kind = $ReceiptKind
+        argv = @($Argv)
+        tasks = @($Tasks)
+        coveredObligations = @($CoveredObligations)
+        startedAt = $StartedAt.ToUniversalTime().ToString('o')
         exitCode = $ExitCode
         completedAt = $CompletedAt.ToUniversalTime().ToString('o')
         durationSeconds = [Math]::Round($DurationSeconds, 3)
         workspaceFingerprint = $WorkspaceFingerprint
-        acceptanceScenarioIds = @($AcceptanceScenarioIds)
-        qualityGateIds = @($QualityGateIds)
-        logPath = [System.IO.Path]::GetFullPath($LogPath)
+        log = [ordered]@{
+            path = $(
+                $logFull = [System.IO.Path]::GetFullPath($LogPath)
+                $rootPrefix = $root.TrimEnd('\', '/') + [System.IO.Path]::DirectorySeparatorChar
+                if ($logFull.StartsWith($rootPrefix, [System.StringComparison]::OrdinalIgnoreCase)) {
+                    $logFull.Substring($rootPrefix.Length).Replace('\', '/')
+                } else {
+                    $logFull
+                }
+            )
+            sha256 = (Get-FileHash -LiteralPath $LogPath -Algorithm SHA256).Hash.ToLowerInvariant()
+        }
     }
     $temporary = "$fullPath.$([Guid]::NewGuid().ToString('N')).tmp"
     try {
         [System.IO.File]::WriteAllText($temporary, ($receipt | ConvertTo-Json -Depth 12), $utf8)
-        Move-Item -LiteralPath $temporary -Destination $fullPath -Force
+        if (Test-Path -LiteralPath $fullPath) { throw "Refusing to overwrite immutable receipt: $fullPath" }
+        Move-Item -LiteralPath $temporary -Destination $fullPath
     } finally {
         if (Test-Path -LiteralPath $temporary) { Remove-Item -LiteralPath $temporary -Force }
     }
@@ -102,12 +127,20 @@ $fingerprintScript = Join-Path $PSScriptRoot 'compute-workspace-fingerprint.py'
 if ($ReceiptPath -and -not (Test-Path -LiteralPath $fingerprintScript -PathType Leaf)) {
     throw "Workspace fingerprint script not found: $fingerprintScript"
 }
+if ($ReceiptPath) {
+    $receiptFull = [System.IO.Path]::GetFullPath($ReceiptPath)
+    $receiptRoot = [System.IO.Path]::GetFullPath((Join-Path $root '.vibe\receipts')).TrimEnd('\') + '\'
+    if (-not $receiptFull.StartsWith($receiptRoot, [System.StringComparison]::OrdinalIgnoreCase) -or [System.IO.Path]::GetExtension($receiptFull) -ne '.json') {
+        throw 'ReceiptPath must be a JSON file under <project>\.vibe\receipts.'
+    }
+}
 
 $mutexName = "VibeGradle_$((Get-CanonicalPathHash -Path $root).Substring(0, 32))"
 $mutex = [System.Threading.Mutex]::new($false, $mutexName)
 $lockAcquired = $false
 $exitCode = $null
 $completedAt = $null
+$startedAt = $null
 $stopwatch = [System.Diagnostics.Stopwatch]::new()
 $command = ((@($wrapper) + $Tasks) | ForEach-Object { ConvertTo-ProcessArgument -Value $_ }) -join ' '
 
@@ -130,6 +163,7 @@ try {
     $process = [System.Diagnostics.Process]::new()
     $process.StartInfo = $startInfo
     $stopwatch.Start()
+    $startedAt = [DateTime]::UtcNow
     if (-not $process.Start()) { throw 'Failed to start the Gradle wrapper process.' }
     $stdoutTask = $process.StandardOutput.ReadToEndAsync()
     $stderrTask = $process.StandardError.ReadToEndAsync()
@@ -164,8 +198,17 @@ try {
         $fingerprintText = & python $fingerprintScript $root
         if ($LASTEXITCODE -ne 0) { throw "Workspace fingerprint failed with exit code $LASTEXITCODE" }
         $fingerprint = ($fingerprintText -join [Environment]::NewLine) | ConvertFrom-Json
+        if ($CoverageJson) {
+            $coverage = @($CoverageJson | ConvertFrom-Json)
+        } else {
+            $coverage = @()
+            foreach ($id in @($AcceptanceScenarioIds) + @($QualityGateIds)) {
+                $coverage += [ordered]@{ obligationId = $id; surfaces = @() }
+            }
+        }
         Write-Receipt -Path $ReceiptPath -ExitCode $exitCode -CompletedAt $completedAt `
-            -DurationSeconds $stopwatch.Elapsed.TotalSeconds -Command $command -WorkspaceFingerprint $fingerprint
+            -DurationSeconds $stopwatch.Elapsed.TotalSeconds -Argv (@($wrapper) + $Tasks) `
+            -WorkspaceFingerprint $fingerprint -StartedAt $startedAt -CoveredObligations $coverage
     }
 } finally {
     if ($stopwatch.IsRunning) { $stopwatch.Stop() }
