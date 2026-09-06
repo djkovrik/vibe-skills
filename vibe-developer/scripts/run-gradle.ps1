@@ -56,6 +56,8 @@ function Write-Receipt {
         [Parameter(Mandatory)][double]$DurationSeconds,
         [Parameter(Mandatory)][string[]]$Argv,
         [Parameter(Mandatory)][object]$WorkspaceFingerprint,
+        [Parameter(Mandatory)][object]$StartWorkspaceFingerprint,
+        [Parameter(Mandatory)][string]$ExecutionStatus,
         [Parameter(Mandatory)][datetime]$StartedAt,
         [Parameter(Mandatory)][object[]]$CoveredObligations
     )
@@ -79,6 +81,8 @@ function Write-Receipt {
         completedAt = $CompletedAt.ToUniversalTime().ToString('o')
         durationSeconds = [Math]::Round($DurationSeconds, 3)
         workspaceFingerprint = $WorkspaceFingerprint
+        startWorkspaceFingerprint = $StartWorkspaceFingerprint
+        executionStatus = $ExecutionStatus
         log = [ordered]@{
             path = $(
                 $logFull = [System.IO.Path]::GetFullPath($LogPath)
@@ -141,6 +145,8 @@ $lockAcquired = $false
 $exitCode = $null
 $completedAt = $null
 $startedAt = $null
+$beforeFingerprint = $null
+$executionStatus = 'completed'
 $stopwatch = [System.Diagnostics.Stopwatch]::new()
 $command = ((@($wrapper) + $Tasks) | ForEach-Object { ConvertTo-ProcessArgument -Value $_ }) -join ' '
 
@@ -151,6 +157,11 @@ try {
         $lockAcquired = $true
     }
     if (-not $lockAcquired) { throw "Timed out waiting $LockTimeoutSeconds seconds for Gradle owner lock: $mutexName" }
+    if ($ReceiptPath) {
+        $beforeText = & python $fingerprintScript $root
+        if ($LASTEXITCODE -ne 0) { throw 'Pre-command fingerprint failed' }
+        $beforeFingerprint = ($beforeText -join [Environment]::NewLine) | ConvertFrom-Json
+    }
 
     $startInfo = [System.Diagnostics.ProcessStartInfo]::new()
     $startInfo.FileName = $env:ComSpec
@@ -183,7 +194,7 @@ try {
         $stdout = $stdoutTask.GetAwaiter().GetResult()
         $stderr = $stderrTask.GetAwaiter().GetResult()
         [System.IO.File]::WriteAllText($log, ($stdout + $stderr), $utf8)
-        throw "Gradle timed out after $TimeoutSeconds seconds: $($Tasks -join ', ')"
+        $executionStatus = 'interrupted'
     }
     $process.WaitForExit()
     $stopwatch.Stop()
@@ -198,6 +209,7 @@ try {
         $fingerprintText = & python $fingerprintScript $root
         if ($LASTEXITCODE -ne 0) { throw "Workspace fingerprint failed with exit code $LASTEXITCODE" }
         $fingerprint = ($fingerprintText -join [Environment]::NewLine) | ConvertFrom-Json
+        if ($executionStatus -eq 'completed' -and $beforeFingerprint.digest -ne $fingerprint.digest) { $executionStatus = 'workspace-changed' }
         if ($CoverageJson) {
             $coverage = @($CoverageJson | ConvertFrom-Json)
         } else {
@@ -208,7 +220,8 @@ try {
         }
         Write-Receipt -Path $ReceiptPath -ExitCode $exitCode -CompletedAt $completedAt `
             -DurationSeconds $stopwatch.Elapsed.TotalSeconds -Argv (@($wrapper) + $Tasks) `
-            -WorkspaceFingerprint $fingerprint -StartedAt $startedAt -CoveredObligations $coverage
+            -WorkspaceFingerprint $fingerprint -StartedAt $startedAt -CoveredObligations $coverage `
+            -StartWorkspaceFingerprint $beforeFingerprint -ExecutionStatus $executionStatus
     }
 } finally {
     if ($stopwatch.IsRunning) { $stopwatch.Stop() }
@@ -217,11 +230,12 @@ try {
     if ($process) { $process.Dispose() }
 }
 
-if ($exitCode -eq 0) {
+if ($exitCode -eq 0 -and $executionStatus -eq 'completed') {
     Write-Host "Gradle succeeded (exit 0): $($Tasks -join ', ')"
     exit 0
 }
 [Console]::Error.WriteLine("Gradle failed (exit $exitCode): $($Tasks -join ', ')")
 Get-Content -LiteralPath $log -Encoding UTF8 -Tail 200
 Select-String -LiteralPath $log -Encoding UTF8 -Pattern 'FAILED|Exception|error|Task .* failed' -Context 2,4 | Select-Object -First 40
+if ($executionStatus -ne 'completed' -and $exitCode -eq 0) { exit 1 }
 exit $exitCode

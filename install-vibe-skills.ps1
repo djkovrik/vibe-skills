@@ -7,6 +7,8 @@ param(
 
     [switch]$Force,
 
+    [switch]$MissingOnly,
+
     [switch]$SkipValidation
 )
 
@@ -105,6 +107,10 @@ foreach ($skill in $skills) {
     $source = Join-Path $packageRoot $skill
     $target = Join-Path $destinationRoot $skill
     $kind = Get-EntryKind -LiteralPath $target
+    if ($MissingOnly -and $kind -ne 'Missing') {
+        $installed.Add("$skill (preserved existing entry)")
+        continue
+    }
 
     if ($Mode -eq 'Junction' -and $kind -eq 'Junction') {
         $resolvedTarget = [System.IO.Path]::GetFullPath((Get-Item -LiteralPath $target -Force).Target)

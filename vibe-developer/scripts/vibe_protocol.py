@@ -10,6 +10,8 @@ import os
 import re
 import subprocess
 import tempfile
+import time
+from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path, PurePosixPath
 from typing import Any, Iterable
@@ -24,6 +26,10 @@ DELIVERY_ARTIFACT_PATTERNS = (
     ".vibe/closure-audit.json",
     ".vibe/receipts",
     ".vibe/handoffs",
+    ".vibe/audits",
+    ".vibe/recovery",
+    ".vibe/history",
+    ".vibe/delivery-ledger.json.lock",
     "docs/requirement-traceability.generated.md",
     "docs/closure-audit.generated.md",
 )
@@ -85,24 +91,136 @@ def atomic_write_json(path: Path, value: dict[str, Any], *, refuse_existing: boo
             os.fsync(stream.fileno())
         if refuse_existing and path.exists():
             raise ProtocolError(f"refusing to overwrite immutable artifact: {path}")
-        os.replace(temporary, path)
+        if refuse_existing:
+            # A hard link is an atomic create-if-absent, unlike exists + replace.
+            os.link(temporary, path)
+        else:
+            os.replace(temporary, path)
     finally:
         if temporary.exists():
             temporary.unlink()
 
 
+@contextmanager
+def file_lock(path: Path, timeout: float = 15):
+    """OS-owned lock; process death releases it without deleting another writer's lock."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("a+b") as stream:
+        if stream.tell() == 0:
+            stream.write(b"0"); stream.flush()
+        deadline = time.monotonic() + timeout
+        while True:
+            try:
+                stream.seek(0)
+                if os.name == "nt":
+                    import msvcrt
+                    msvcrt.locking(stream.fileno(), msvcrt.LK_NBLCK, 1)
+                else:
+                    import fcntl
+                    fcntl.flock(stream.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+                break
+            except OSError:
+                if time.monotonic() >= deadline: raise ProtocolError(f"timed out locking {path}")
+                time.sleep(.05)
+        try:
+            yield
+        finally:
+            stream.seek(0)
+            if os.name == "nt":
+                import msvcrt
+                msvcrt.locking(stream.fileno(), msvcrt.LK_UNLCK, 1)
+            else:
+                import fcntl
+                fcntl.flock(stream.fileno(), fcntl.LOCK_UN)
+
+
 def update_ledger_atomic(path: Path, expected_digest: str, mutate: Any) -> dict[str, Any]:
-    ledger = read_json(path)
-    actual = ledger_digest(ledger)
-    stored = ledger.get("ledgerDigest")
-    if stored != actual:
-        raise ProtocolError("delivery ledger digest is invalid; reconcile manual or concurrent edits")
-    if expected_digest != actual:
-        raise ProtocolError(f"ledger digest conflict: expected {expected_digest}, current {actual}")
-    mutate(ledger)
-    with_ledger_digest(ledger)
-    atomic_write_json(path, ledger)
-    return ledger
+    with file_lock(path.with_name(path.name + ".lock")):
+        ledger = read_json(path)
+        actual = ledger_digest(ledger)
+        if ledger.get("ledgerDigest") != actual:
+            raise ProtocolError("delivery ledger digest is invalid; reconcile manual or concurrent edits")
+        if expected_digest != actual:
+            raise ProtocolError(f"ledger digest conflict: expected {expected_digest}, current {actual}")
+        mutate(ledger)
+        with_ledger_digest(ledger)
+        atomic_write_json(path, ledger)
+        return ledger
+
+
+def parse_time(value: Any) -> datetime:
+    if not isinstance(value, str): raise ProtocolError("timestamp must be RFC3339")
+    try:
+        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError as exc:
+        raise ProtocolError("timestamp must be RFC3339") from exc
+    if parsed.tzinfo is None: raise ProtocolError("timestamp requires timezone")
+    return parsed.astimezone(timezone.utc)
+
+
+def valid_time(value: Any) -> bool:
+    try: parse_time(value); return True
+    except ProtocolError: return False
+
+
+def repository_path(root: Path, value: Any) -> Path:
+    if not isinstance(value, str) or not value: raise ProtocolError("repository-relative path required")
+    path = Path(value)
+    if path.is_absolute() or ".." in path.parts: raise ProtocolError("path must stay within repository")
+    target = (root / path).resolve()
+    try: target.relative_to(root.resolve())
+    except ValueError as exc: raise ProtocolError("path escapes repository") from exc
+    return target
+
+
+def decision_valid(root: Path, reference: Any, obligation_id: str, kind: str = "waiver") -> bool:
+    """Validate an explicit scoped decision, including its captured user source."""
+    try:
+        path = repository_path(root, reference)
+        path.relative_to((root / "docs" / "decisions").resolve())
+        decision = read_json(path)
+        if decision.get("schemaVersion") != "2.0" or decision.get("kind") != kind or decision.get("status") != "accepted": return False
+        if not re.fullmatch(r"DEC-[A-Za-z0-9-]+", decision.get("decisionId", "")): return False
+        if path.stem != decision["decisionId"] or obligation_id not in decision.get("obligationIds", []): return False
+        if not decision.get("rationale", "").strip() or not valid_time(decision.get("recordedAt")): return False
+        source = decision.get("userApproval", {})
+        if source.get("actor") != "user" or not source.get("messageId", "").strip() or not source.get("quote", "").strip(): return False
+        captured = repository_path(root, source.get("path"))
+        if sha256_bytes(captured.read_bytes()) != source.get("sha256"): return False
+        if source["quote"] not in captured.read_text(encoding="utf-8-sig"): return False
+        for other in path.parent.glob("DEC-*.json"):
+            if other != path and decision["decisionId"] in read_json(other).get("supersedes", []): return False
+        return True
+    except (ProtocolError, OSError, ValueError, TypeError, AttributeError):
+        return False
+
+
+def audit_paths(root: Path, request_path: Path) -> tuple[Path, Path]:
+    request_path = request_path.resolve()
+    parent = (root / ".vibe" / "audits").resolve()
+    if request_path.name != "request.json" or request_path.parent.parent != parent:
+        raise ProtocolError("audit request must be .vibe/audits/<request-id>/request.json")
+    return request_path.with_name("audit.json"), request_path.with_name("launch.json")
+
+
+def execute_process(argv, *, cwd, timeout, input_bytes=None):
+    """Complete a command or terminate its process tree before returning interrupted evidence."""
+    flags = subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0
+    process = subprocess.Popen(argv, cwd=cwd, stdin=subprocess.PIPE if input_bytes is not None else subprocess.DEVNULL,
+        stdout=subprocess.PIPE, stderr=subprocess.PIPE, creationflags=flags, start_new_session=os.name != "nt")
+    status = "completed"
+    try:
+        stdout, stderr = process.communicate(input=input_bytes, timeout=timeout)
+    except subprocess.TimeoutExpired:
+        status = "interrupted"
+        if os.name == "nt":
+            subprocess.run(["taskkill", "/PID", str(process.pid), "/T", "/F"], capture_output=True, check=False)
+        else:
+            import signal
+            try: os.killpg(process.pid, signal.SIGKILL)
+            except ProcessLookupError: pass
+        stdout, stderr = process.communicate()
+    return process.returncode, stdout, stderr, status
 
 
 def _run_git(root: Path, arguments: list[str], *, allow_failure: bool = False) -> bytes:

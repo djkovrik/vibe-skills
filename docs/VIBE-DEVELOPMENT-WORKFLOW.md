@@ -41,11 +41,13 @@ Specialist пишет один immutable .vibe/handoffs/<id>.json по [конт
 
 Receipts существуют только как JSON-файлы под .vibe/receipts. Они содержат kind targeted или final, exact argv/tasks, covered obligation/surface pairs, timestamps, текущий fingerprint, exit code и hash лога. Для каждой пары учитывается последний receipt на текущем fingerprint: PASS→FAIL не закрывает пару, FAIL→PASS закрывает только новым успехом.
 
-После закрытия local obligations orchestrator создаёт immutable .vibe/audit-request.json и запускает vibe-acceptance-auditor в указанном fresh context. Audit обязан ссылаться на exact request hash, иметь implementationContextAvailable false, самостоятельно построить canonical shadow inventory и доказать каждую declared surface audit-time check.
+После закрытия local obligations orchestrator создаёт immutable .vibe/audits/<request-id>/request.json и запускает vibe-acceptance-auditor в указанном fresh context. Audit обязан ссылаться на exact request hash, иметь implementationContextAvailable false, самостоятельно построить canonical shadow inventory и доказать каждую declared surface audit-time check.
 
-После audit PASS выполняется один final receipt, покрывающий все применимые obligation/surface pairs. Затем генерируются оба Markdown report и запускается один validate-delivery-ledger.py. Он сам проверяет AppSpec, inventory, receipt ordering, audit и report parity и всегда печатает:
+После audit PASS выполняется один final receipt, покрывающий все verified obligation/surface pairs. Затем генерируются оба Markdown report и запускается один validate-delivery-ledger.py. Он сам проверяет AppSpec, inventory, receipt ordering, audit и report parity и всегда печатает:
 
 - implementation-complete;
 - release-ready.
 
 Первый verdict допускает незакрытые внешние platform/external/release gates; второй — нет. Waiver действителен только со ссылкой на существующее долговечное решение.
+
+Подробный протокол восстановления после compaction, durable decisions, specialist checkpoints, согласования принятой редакции AppSpec и повторных аудитов: [recovery-contract.md](../vibe-developer/references/recovery-contract.md). Waived/blocked gates требуют реальных решений или блокеров, а не фиктивных успешных команд.

@@ -20,6 +20,7 @@ from vibe_protocol import (
     ProtocolError, canonical_inventory, compute_app_spec_fingerprint,
     compute_workspace_fingerprint, discover_scoped_instructions, fingerprint_equal,
     ledger_digest, read_json, validate_app_spec,
+    decision_valid, valid_time, parse_time, audit_paths,
 )
 
 STATUSES = {"not-started", "in-progress", "implemented-unverified", "verified", "blocked-external", "waived"}
@@ -38,9 +39,7 @@ class ValidationResult:
                 "implementationComplete": self.implementation_complete, "releaseReady": self.release_ready}
 
 def timestamp(value: Any) -> bool:
-    if not isinstance(value, str): return False
-    try: datetime.fromisoformat(value.replace("Z", "+00:00")); return True
-    except ValueError: return False
+    return valid_time(value)
 
 def resolve(root: Path, value: Any, label: str) -> Path:
     if not isinstance(value, str) or not value: raise ProtocolError(f"{label}: expected path")
@@ -50,17 +49,6 @@ def resolve(root: Path, value: Any, label: str) -> Path:
         try: target.relative_to(root)
         except ValueError as exc: raise ProtocolError(f"{label}: path escapes repository") from exc
     return target
-
-def durable_reference(root: Path, value: Any) -> bool:
-    if not isinstance(value, str) or not value.strip(): return False
-    path_text, _, anchor = value.partition("#")
-    try: target = resolve(root, path_text, "decisionReference")
-    except ProtocolError: return False
-    if not target.is_file(): return False
-    if anchor:
-        try: return anchor.casefold() in target.read_text(encoding="utf-8-sig").casefold()
-        except (OSError, UnicodeError): return False
-    return True
 
 def evidence_ok(root: Path, evidence: Any, label: str, result: ValidationResult) -> list[dict]:
     if not isinstance(evidence, list): result.errors.append(f"{label}: expected array"); return []
@@ -90,6 +78,9 @@ def load_receipts(root: Path, refs: set[str], current: dict, result: ValidationR
             receipt = read_json(path)
         except ProtocolError as exc: result.errors.append(str(exc)); continue
         label = f"receipt[{ref}]"
+        if not fingerprint_equal(receipt.get("workspaceFingerprint"), current):
+            result.warnings.append(f"{label}: stale workspace fingerprint; retained only as history")
+            continue
         if receipt.get("schemaVersion") != "2.0": result.errors.append(f"{label}: unsupported protocol")
         for field in ("receiptId", "kind", "argv", "tasks", "coveredObligations", "startedAt", "completedAt", "workspaceFingerprint", "exitCode", "log"):
             if field not in receipt: result.errors.append(f"{label}.{field}: required")
@@ -97,7 +88,9 @@ def load_receipts(root: Path, refs: set[str], current: dict, result: ValidationR
         if not isinstance(receipt.get("argv"), list) or not receipt.get("argv") or any(not isinstance(v, str) for v in receipt.get("argv", [])): result.errors.append(f"{label}.argv: expected non-empty string array")
         if not isinstance(receipt.get("tasks"), list): result.errors.append(f"{label}.tasks: expected array")
         if not timestamp(receipt.get("startedAt")) or not timestamp(receipt.get("completedAt")): result.errors.append(f"{label}: invalid timestamps")
-        elif receipt["startedAt"] > receipt["completedAt"]: result.errors.append(f"{label}: completedAt precedes startedAt")
+        elif parse_time(receipt["startedAt"]) > parse_time(receipt["completedAt"]): result.errors.append(f"{label}: completedAt precedes startedAt")
+        if receipt.get("executionStatus") not in {"completed", "interrupted", "workspace-changed"}: result.warnings.append(f"{label}: executionStatus missing or invalid; cannot prove completion, rerun with the current runner")
+        if not isinstance(receipt.get("startWorkspaceFingerprint"), dict): result.warnings.append(f"{label}: start fingerprint missing; cannot prove completion, rerun with the current runner")
         if not isinstance(receipt.get("exitCode"), int): result.errors.append(f"{label}.exitCode: expected integer")
         if not fingerprint_equal(receipt.get("workspaceFingerprint"), current): result.warnings.append(f"{label}: stale workspace fingerprint")
         log = receipt.get("log")
@@ -117,7 +110,7 @@ def _load_module(path: Path, name: str) -> Any:
     if spec is None or spec.loader is None: raise ProtocolError(f"cannot load {path}")
     module = importlib.util.module_from_spec(spec); sys.modules[name] = module; spec.loader.exec_module(module); return module
 
-def validate_ledger(project_root: Path, ledger_path: Path) -> ValidationResult:
+def validate_ledger(project_root: Path, ledger_path: Path, *, closure: bool = True) -> ValidationResult:
     result = ValidationResult(); root = project_root.resolve()
     try: ledger = read_json(ledger_path)
     except ProtocolError as exc: result.errors.append(str(exc)); return result
@@ -164,7 +157,9 @@ def validate_ledger(project_root: Path, ledger_path: Path) -> ValidationResult:
         item_refs = item.get("receiptRefs")
         if isinstance(item_refs, list) and all(isinstance(ref, str) for ref in item_refs): refs.update(item_refs)
         else: result.errors.append(f"{item.get('id')}.receiptRefs must be an array of file paths; inline receipts are forbidden")
-    if ledger.get("finalReceiptRef") is not None: refs.add(ledger["finalReceiptRef"])
+    if closure and ledger.get("finalReceiptRef") is not None: refs.add(ledger["finalReceiptRef"])
+    # A failed run cannot disappear by omitting its ref from the ledger.
+    refs.update(path.relative_to(root).as_posix() for path in (root / ".vibe" / "receipts").glob("*.json"))
     receipts = load_receipts(root, refs, current_workspace, result)
     receipt_ids = [receipt.get("receiptId") for receipt in receipts.values() if isinstance(receipt.get("receiptId"), str)]
     if len(receipt_ids) != len(set(receipt_ids)): result.errors.append("receiptId values must be unique")
@@ -176,16 +171,19 @@ def validate_ledger(project_root: Path, ledger_path: Path) -> ValidationResult:
             surfaces_value = coverage.get("surfaces")
             if not isinstance(surfaces_value, list) or any(surface not in declared_surfaces[coverage["obligationId"]] for surface in surfaces_value):
                 result.errors.append(f"receipt[{ref}].coveredObligations[{index}]: incompatible surface")
-    latest: dict[tuple[str, str], tuple[str, int]] = {}
+    latest: dict[tuple[str, str], tuple[datetime, int]] = {}
     for receipt in receipts.values():
         if not fingerprint_equal(receipt.get("workspaceFingerprint"), current_workspace): continue
-        completed = receipt.get("completedAt", "")
+        if not timestamp(receipt.get("completedAt")): continue
+        completed = parse_time(receipt["completedAt"])
+        outcome = receipt.get("exitCode") if receipt.get("executionStatus") == "completed" and fingerprint_equal(receipt.get("startWorkspaceFingerprint"), receipt.get("workspaceFingerprint")) else 1
         for coverage in receipt.get("coveredObligations", []) if isinstance(receipt.get("coveredObligations"), list) else []:
             if not isinstance(coverage, dict): continue
             obligation_id = coverage.get("obligationId")
             for surface in coverage.get("surfaces", []) if isinstance(coverage.get("surfaces"), list) else []:
                 key = (obligation_id, surface)
-                if key not in latest or completed > latest[key][0]: latest[key] = (completed, receipt.get("exitCode"))
+                if key not in latest or completed > latest[key][0]: latest[key] = (completed, outcome)
+                elif completed == latest[key][0] and outcome != 0: latest[key] = (completed, outcome)
 
     def validate_item(item_id: str, item: dict, required_surfaces: list[str], *, gate: dict | None = None) -> None:
         status = item.get("status")
@@ -197,7 +195,8 @@ def validate_ledger(project_root: Path, ledger_path: Path) -> ValidationResult:
             for field_name in ("owner", "fileBoundaries", "baselineFingerprint", "checkpointFingerprint", "changedFiles", "pendingChecks", "handoffRefs", "blockers", "startedAt", "updatedAt"):
                 if field_name not in item: result.errors.append(f"{item_id}.{field_name} is required while in-progress")
             if not item.get("fileBoundaries"): result.errors.append(f"{item_id}.fileBoundaries must be non-empty while in-progress")
-        if status == "waived" and not durable_reference(root, item.get("decisionReference") or item.get("waiver", {}).get("decisionReference")): result.errors.append(f"{item_id}: waiver lacks an existing durable decision")
+        if status == "waived" and not decision_valid(root, item.get("decisionReference") or item.get("waiver", {}).get("decisionReference"), item_id): result.errors.append(f"{item_id}: waiver lacks an accepted scoped durable decision with user approval")
+        if status in {"verified", "waived"} and (item.get("blockers") or item.get("blocker") or item.get("pendingChecks")): result.errors.append(f"{item_id}: closed item retains blockers or pending checks")
         production = evidence_ok(root, item.get("productionEvidence"), f"{item_id}.productionEvidence", result)
         tests = evidence_ok(root, item.get("testEvidence"), f"{item_id}.testEvidence", result)
         if item.get("requiredVerificationSurfaces") != required_surfaces: result.errors.append(f"{item_id}.requiredVerificationSurfaces does not match AppSpec")
@@ -225,26 +224,25 @@ def validate_ledger(project_root: Path, ledger_path: Path) -> ValidationResult:
         if item.get("applicability") == "not-applicable" and not str(item.get("applicabilityReason", "")).strip(): result.errors.append(f"{gate_id}.applicabilityReason is required")
         validate_item(gate_id, item, spec_item["verificationSurfaces"], gate=spec_item)
 
-    applicable_ids = set(spec_acs) | {gid for gid, item in ledger_gates.items() if item.get("applicability") == "applicable"}
+    applicable_ids = {aid for aid, item in ledger_acs.items() if item.get("status") == "verified"} | {gid for gid, item in ledger_gates.items() if item.get("applicability") == "applicable" and item.get("status") == "verified"}
     applicable_pairs = {(item_id, surface) for item_id in applicable_ids for surface in (spec_acs.get(item_id) or spec_gates[item_id])["verificationSurfaces"]}
     final_ref = ledger.get("finalReceiptRef")
     final_receipt = receipts.get(final_ref) if isinstance(final_ref, str) else None
     final_ok = False
-    if final_receipt:
+    if closure and final_receipt:
         covered = {(c.get("obligationId"), s) for c in final_receipt.get("coveredObligations", []) if isinstance(c, dict) for s in c.get("surfaces", []) if isinstance(s, str)}
-        final_ok = final_receipt.get("kind") == "final" and final_receipt.get("exitCode") == 0 and fingerprint_equal(final_receipt.get("workspaceFingerprint"), current_workspace) and applicable_pairs <= covered
+        final_ok = final_receipt.get("kind") == "final" and final_receipt.get("exitCode") == 0 and final_receipt.get("executionStatus") == "completed" and fingerprint_equal(final_receipt.get("startWorkspaceFingerprint"), current_workspace) and fingerprint_equal(final_receipt.get("workspaceFingerprint"), current_workspace) and applicable_pairs <= covered
         if not final_ok: result.errors.append("final receipt failed, is stale, or does not cover every applicable obligation/surface")
     current_finals = [receipt for receipt in receipts.values() if receipt.get("kind") == "final" and fingerprint_equal(receipt.get("workspaceFingerprint"), current_workspace)]
-    if len(current_finals) > 1: result.errors.append("exactly one current final receipt is allowed")
     all_ac_closed = all(item.get("status") in {"verified", "waived"} for item in ledger_acs.values())
     implementation_gates = [item for item in ledger_gates.values() if item.get("readinessScope") == "implementation"]
     implementation_closed = all_ac_closed and all(item.get("applicability") == "not-applicable" or (item.get("applicability") == "applicable" and item.get("status") in {"verified", "waived"}) for item in implementation_gates)
     all_gates_closed = all(item.get("applicability") == "not-applicable" or item.get("status") in {"verified", "waived"} for item in ledger_gates.values())
-    if implementation_closed and not final_ok: result.errors.append("completion requires one successful current final receipt")
+    if closure and implementation_closed and not final_ok: result.errors.append("completion requires one successful current final receipt")
 
     audit_ok = False
     audit_ref = ledger.get("closureAudit", {}).get("auditPath") if isinstance(ledger.get("closureAudit"), dict) else None
-    if implementation_closed:
+    if closure and implementation_closed:
         if not audit_ref: result.errors.append("completion requires a closure audit")
         else:
             try:
@@ -253,15 +251,18 @@ def validate_ledger(project_root: Path, ledger_path: Path) -> ValidationResult:
                 auditor = _load_module(auditor_script, "vibe_protocol_audit_validator")
                 audit_data = read_json(audit_path)
                 request_path = resolve(root, ledger["closureAudit"].get("requestPath"), "closureAudit.requestPath")
+                if audit_path != audit_paths(root, request_path)[0]: result.errors.append("audit path does not match current attempt")
                 if hashlib.sha256(request_path.read_bytes()).hexdigest() != ledger["closureAudit"].get("requestSha256"):
                     result.errors.append("closureAudit.requestSha256 does not match immutable request")
                 audit_errors = auditor.validate(audit_data, app_root, root, request_path)
                 result.errors.extend(f"closureAudit: {error}" for error in audit_errors)
                 audit_ok = not audit_errors and audit_data.get("verdict") == "PASS"
+                if final_receipt and timestamp(final_receipt.get("startedAt")) and timestamp(audit_data.get("completedAt")):
+                    if parse_time(final_receipt["startedAt"]) < parse_time(audit_data["completedAt"]): result.errors.append("final receipt must start after audit completion")
             except (ProtocolError, OSError, ValueError, KeyError) as exc: result.errors.append(f"closureAudit: {exc}")
 
     final_phase = execution.get("phase") in {"final-verification", "complete"} or implementation_closed
-    if final_phase:
+    if closure and final_phase:
         try:
             delivery_renderer = _load_module(Path(__file__).with_name("render-delivery-report.py"), "vibe_delivery_renderer")
             expected_delivery = delivery_renderer.render_report(ledger)
@@ -275,7 +276,7 @@ def validate_ledger(project_root: Path, ledger_path: Path) -> ValidationResult:
                 if not audit_report.is_file() or audit_report.read_text(encoding="utf-8-sig") != expected_audit: result.errors.append("generated closure report is missing or stale")
         except (ProtocolError, OSError, ValueError, KeyError, TypeError) as exc: result.errors.append(f"generated report validation failed: {exc}")
 
-    result.implementation_complete = implementation_closed and final_ok and audit_ok and fingerprint_equal(app_ref.get("fingerprint"), current_app) and fingerprint_equal(ledger.get("workspaceFingerprint"), current_workspace) and not result.errors
+    result.implementation_complete = closure and implementation_closed and final_ok and audit_ok and fingerprint_equal(app_ref.get("fingerprint"), current_app) and fingerprint_equal(ledger.get("workspaceFingerprint"), current_workspace) and not result.errors
     result.release_ready = result.implementation_complete and all_gates_closed and all(item.get("status") != "blocked-external" for item in ledger_gates.values())
     return result
 

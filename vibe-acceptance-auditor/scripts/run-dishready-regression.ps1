@@ -70,7 +70,13 @@ $cases | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath $expectationsPath -E
 if (-not [string]::IsNullOrWhiteSpace($AuditResultsRoot)) {
     $resolvedResults = (Resolve-Path -LiteralPath $AuditResultsRoot).Path
     foreach ($case in $cases) {
-        $auditPath = Join-Path $resolvedResults (Join-Path $case.commit '.vibe\closure-audit.json')
+        $caseResults = Join-Path $resolvedResults $case.commit
+        $ledgerPath = Join-Path $caseResults '.vibe\delivery-ledger.json'
+        if (-not (Test-Path -LiteralPath $ledgerPath -PathType Leaf)) { throw "Missing delivery ledger for $($case.commit)" }
+        $ledger = Get-Content -LiteralPath $ledgerPath -Raw -Encoding UTF8 | ConvertFrom-Json
+        $auditRef = [string]$ledger.closureAudit.auditPath
+        if ($auditRef -notmatch '^\.vibe/audits/AUDIT-REQUEST-[A-Za-z0-9-]+/audit\.json$') { throw 'Current audit attempt path is invalid' }
+        $auditPath = Join-Path $caseResults $auditRef
         if (-not (Test-Path -LiteralPath $auditPath -PathType Leaf)) {
             throw "Missing fresh audit result for $($case.commit): $auditPath"
         }

@@ -50,8 +50,12 @@ Hand pure rules to Domain, UI navigation to Decompose, platform services to Plat
 
 ## Orchestrated evidence hand-off
 
-When `$vibe-developer` assigns work, accept explicit acceptance-scenario/quality-gate IDs and file boundaries. Change only the assigned, non-overlapping slice. Return an evidence package containing production `path`/`symbol`/`surface`, test `path`/exact test name/surface, commands requested from the Gradle owner, checks actually run, and unresolved blockers. Do not edit `.vibe/delivery-ledger.json` or claim completion; `$vibe-developer` is the only ledger writer and the only Gradle owner. Parallel work is allowed only when files and contracts do not overlap.
+When `$vibe-developer` assigns work, follow [Specialist hand-off Protocol 2.0](../vibe-developer/references/specialist-handoff-contract.md). Accept assignment, AC/gate IDs, base fingerprint, and non-overlapping file boundaries. Write one immutable `.vibe/handoffs/<id>.json` with base/result fingerprints, allowed/changed files, exact production/test evidence, completed non-Gradle checks, requested Gradle commands and blockers. The orchestrator alone inspects and ingests it, writes the ledger and owns Gradle. Do not claim completion.
 
 ## Reusable learning
 
 Follow the package learning policy. Propose approved architectural rules for [learned-patterns.md](references/learned-patterns.md); never change it automatically.
+
+## Recovery of unfinished work
+
+For multi-step work, including direct specialist requests, follow the shared [recovery contract](../vibe-developer/references/recovery-contract.md). Save the durable assignment before edits, checkpoint unfinished work with `specialist-state.py`, and resume from its packet after compaction or interruption, including inside the same turn. Preserve new user decisions immediately. A final hand-off does not replace intermediate checkpoints.

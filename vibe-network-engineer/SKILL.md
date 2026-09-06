@@ -47,3 +47,7 @@ When `$vibe-developer` assigns work, accept explicit assignment, AC/gate IDs, ba
 ## Reusable learning
 
 Propose approved network contracts for [learned-patterns.md](references/learned-patterns.md); do not auto-promote project quirks.
+
+## Recovery of unfinished work
+
+For multi-step work, including direct specialist requests, follow the shared [recovery contract](../vibe-developer/references/recovery-contract.md). Save the durable assignment before edits, checkpoint unfinished work with `specialist-state.py`, and resume from its packet after compaction or interruption, including inside the same turn. Preserve new user decisions immediately. A final hand-off does not replace intermediate checkpoints.

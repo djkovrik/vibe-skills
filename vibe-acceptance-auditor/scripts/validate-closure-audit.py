@@ -14,27 +14,14 @@ from typing import Any
 
 DEVELOPER_SCRIPTS = Path(__file__).resolve().parents[2] / "vibe-developer" / "scripts"
 if str(DEVELOPER_SCRIPTS) not in sys.path: sys.path.insert(0, str(DEVELOPER_SCRIPTS))
-from vibe_protocol import canonical_inventory, compute_app_spec_fingerprint, compute_workspace_fingerprint, fingerprint_equal, read_json, validate_app_spec
+from vibe_protocol import canonical_inventory, compute_app_spec_fingerprint, compute_workspace_fingerprint, fingerprint_equal, read_json, validate_app_spec, valid_time, parse_time, decision_valid, audit_paths, ProtocolError
+from audit_evidence import validate_launch, validate_source_coverage
 
 def timestamp(value: Any) -> bool:
-    if not isinstance(value, str): return False
-    try: datetime.fromisoformat(value.replace("Z", "+00:00")); return True
-    except ValueError: return False
+    return valid_time(value)
 
 def nonempty(value: Any) -> bool:
     return isinstance(value, str) and bool(value.strip())
-
-def durable_reference(root: Path, value: Any) -> bool:
-    if not nonempty(value): return False
-    path_text, _, anchor = value.partition("#")
-    path = Path(path_text)
-    if path.is_absolute() or ".." in path.parts: return False
-    target = root / path
-    if not target.is_file(): return False
-    if anchor:
-        try: return anchor.casefold() in target.read_text(encoding="utf-8-sig").casefold()
-        except (OSError, UnicodeError): return False
-    return True
 
 def expected_surface_map(app: dict) -> dict[str, list[str]]:
     result = {item["id"]: item["verificationSurfaces"] for item in app["acceptanceScenarios"]}
@@ -49,7 +36,8 @@ def expected_surface_map(app: dict) -> dict[str, list[str]]:
 
 def validate(data: dict[str, Any], app_root: Path, repository: Path, request_path: Path) -> list[str]:
     errors: list[str] = []
-    if request_path.resolve() != (repository / ".vibe" / "audit-request.json").resolve(): errors.append("audit request must be .vibe/audit-request.json")
+    try: audit_paths(repository, request_path)
+    except ProtocolError as exc: errors.append(str(exc))
     app, app_errors, _ = validate_app_spec(app_root)
     errors.extend(f"AppSpec: {error}" for error in app_errors)
     if app is None: return errors
@@ -64,15 +52,17 @@ def validate(data: dict[str, Any], app_root: Path, repository: Path, request_pat
     binding = data.get("auditRequest", {})
     if binding.get("requestId") != request.get("requestId"): errors.append("auditRequest.requestId does not match immutable request")
     if binding.get("sha256") != request_hash: errors.append("auditRequest.sha256 does not match request bytes")
-    if binding.get("path") != ".vibe/audit-request.json": errors.append("auditRequest.path must be .vibe/audit-request.json")
+    if binding.get("path") != request_path.resolve().relative_to(repository.resolve()).as_posix(): errors.append("auditRequest.path must match this attempt")
+    if request.get("requestId") != request_path.parent.name: errors.append("request ID must match attempt directory")
     context = data.get("auditorContext", {})
     if context.get("contextId") != request.get("requiredAuditorContextId"): errors.append("auditorContext.contextId does not match request")
     if context.get("invocationKind") != request.get("invocationKind"): errors.append("auditorContext.invocationKind does not match request")
     if context.get("implementationContextAvailable") is not False or request.get("implementationContextAvailable") is not False:
         errors.append("implementationContextAvailable must be false")
     if not timestamp(data.get("startedAt")) or not timestamp(data.get("completedAt")): errors.append("audit start/completion timestamps must be RFC3339")
-    if timestamp(data.get("startedAt")) and timestamp(data.get("completedAt")) and data["startedAt"] > data["completedAt"]: errors.append("audit completedAt precedes startedAt")
-    if timestamp(data.get("startedAt")) and timestamp(request.get("createdAt")) and data["startedAt"] < request["createdAt"]: errors.append("audit started before its request")
+    if timestamp(data.get("startedAt")) and timestamp(data.get("completedAt")) and parse_time(data["startedAt"]) > parse_time(data["completedAt"]): errors.append("audit completedAt precedes startedAt")
+    if not timestamp(request.get("createdAt")): errors.append("request creation timestamp is invalid")
+    elif timestamp(data.get("startedAt")) and parse_time(data["startedAt"]) < parse_time(request["createdAt"]): errors.append("audit started before its request")
     for label, actual, expected in (("AppSpec", data.get("appSpecFingerprint"), current_app), ("workspace", data.get("workspaceFingerprint"), current_workspace)):
         if not fingerprint_equal(actual, expected): errors.append(f"stale {label} fingerprint")
     if not fingerprint_equal(request.get("appSpecFingerprint"), current_app): errors.append("stale audit request AppSpec fingerprint")
@@ -81,6 +71,8 @@ def validate(data: dict[str, Any], app_root: Path, repository: Path, request_pat
     if data.get("shadowInventory") != inventory: errors.append("shadowInventory does not match independently derived canonical inventory")
     surfaces = expected_surface_map(app)
     expected_ids = set(surfaces)
+    errors.extend(validate_source_coverage(data, app_root, expected_ids))
+    errors.extend(validate_launch(repository, request_path, request, data))
     obligations = data.get("obligations") if isinstance(data.get("obligations"), list) else []
     by_id: dict[str, dict] = {}
     for index, item in enumerate(obligations):
@@ -95,7 +87,11 @@ def validate(data: dict[str, Any], app_root: Path, repository: Path, request_pat
         if not isinstance(check, dict): errors.append(f"{prefix} must be an object"); continue
         if not nonempty(check.get("checkId")) or not isinstance(check.get("argv"), list) or not check.get("argv"): errors.append(f"{prefix} requires checkId and argv")
         if not timestamp(check.get("startedAt")) or not timestamp(check.get("completedAt")): errors.append(f"{prefix} requires timestamps")
+        elif timestamp(data.get("startedAt")) and timestamp(data.get("completedAt")):
+            if not parse_time(data["startedAt"]) <= parse_time(check["startedAt"]) <= parse_time(check["completedAt"]) <= parse_time(data["completedAt"]): errors.append(f"{prefix} must complete inside audit window")
         if not fingerprint_equal(check.get("workspaceFingerprint"), current_workspace): errors.append(f"{prefix} has stale workspace fingerprint")
+        if not fingerprint_equal(check.get("startWorkspaceFingerprint"), current_workspace): errors.append(f"{prefix} missing start fingerprint or workspace changed during check")
+        if check.get("executionStatus") != "completed": errors.append(f"{prefix} was interrupted or did not complete")
         coverage = check.get("coverage") if isinstance(check.get("coverage"), list) else []
         if check.get("exitCode") == 0:
             for pair in coverage:
@@ -110,7 +106,7 @@ def validate(data: dict[str, Any], app_root: Path, repository: Path, request_pat
         result = item.get("result")
         if result not in {"verified", "waived", "blocked-external", "gap"}: errors.append(f"obligation {obligation_id} has invalid result"); continue
         if result == "blocked-external" and gate_categories.get(obligation_id) not in {"platform", "external", "release"}: errors.append(f"obligation {obligation_id} cannot be blocked-external")
-        if result == "waived" and not durable_reference(repository, item.get("decisionReference")): errors.append(f"obligation {obligation_id} waiver lacks an existing durable decision")
+        if result == "waived" and not decision_valid(repository, item.get("decisionReference"), obligation_id): errors.append(f"obligation {obligation_id} waiver lacks an accepted scoped durable decision with user approval")
         if item.get("verificationSurfaces") != required_surfaces: errors.append(f"obligation {obligation_id} verificationSurfaces mismatch")
         evidence = item.get("evidence") if isinstance(item.get("evidence"), list) else []
         if result == "verified":
@@ -130,6 +126,7 @@ def validate(data: dict[str, Any], app_root: Path, repository: Path, request_pat
         if result in {"gap"} or (result == "blocked-external" and gate_categories.get(obligation_id) == "repository"):
             blocking.append(obligation_id)
     verdict = data.get("verdict")
+    if verdict == "PASS" and data.get("findings"): errors.append("PASS requires all findings to be resolved in a new audit")
     if verdict not in {"PASS", "GAPS", "BLOCKED"}: errors.append("verdict must be PASS, GAPS, or BLOCKED")
     if verdict == "PASS" and (blocking or any(isinstance(c, dict) and c.get("exitCode") != 0 for c in checks)): errors.append("PASS conflicts with gaps or failed audit checks")
     if verdict == "GAPS" and not any(i.get("result") == "gap" for i in obligations if isinstance(i, dict)): errors.append("GAPS requires a gap obligation")
@@ -149,7 +146,7 @@ def main() -> int:
     args = parser.parse_args()
     try:
         data = read_json(args.audit)
-        request = (args.audit_request or args.repository / ".vibe" / "audit-request.json").resolve()
+        request = (args.audit_request or args.audit.with_name("request.json")).resolve()
         errors = validate(data, args.app_spec_root.resolve(), args.repository.resolve(), request)
     except (OSError, RuntimeError, ValueError) as exc:
         print(f"ERROR: {exc}", file=sys.stderr); return 2

@@ -1058,11 +1058,13 @@ Ledger 2.0 хранит fingerprint всех normative AppSpec JSON/Markdown, wo
 
 ## Независимый acceptance auditor
 
-`vibe-acceptance-auditor` автоматически применим для проверки полноты AppSpec-реализации. Он запускается без implementation conversation, строит shadow inventory из JSON и flow/screen prose и не доверяет ledger/implementer report. Запрещено менять AppSpec, production code, tests или ledger; разрешены только `.vibe/closure-audit.json`, `docs/closure-audit.generated.md` и build caches.
+`vibe-acceptance-auditor` автоматически применим для проверки полноты AppSpec-реализации. Он запускается без implementation conversation, строит shadow inventory из JSON и flow/screen prose и не доверяет ledger/implementer report. Запрещено менять AppSpec, production code, tests или ledger. Fresh-process launcher сохраняет результат в `.vibe/audits/<request-id>/audit.json`, рядом с immutable request и host launch receipt; отчёт `docs/closure-audit.generated.md` является проекцией.
 
 Auditor проверяет каждый обязательный contract через public API, data/state layers, UI/platform wiring и требуемые test surfaces. Его единственный verdict — `PASS`, `GAPS` или `BLOCKED`, с fingerprints, checks и доказанными findings. Любое изменение AppSpec/workspace инвалидирует `PASS`. Если isolated sub-agent недоступен, `$vibe-developer` не объявляет completion и требует отдельную чистую auditor-сессию.
 
 Каждый specialist skill содержит общий orchestrated hand-off contract: принять AC/gate IDs и file boundaries, менять только непересекающийся slice, вернуть evidence package, не менять ledger и не запускать Gradle. Параллелить только slices без пересекающихся файлов и контрактов.
+
+В пакете 2.1 дополнительно обязательны правила [recovery-contract.md](vibe-developer/references/recovery-contract.md): resume сразу после compaction внутри turn, сохранение решений пользователя и промежуточных specialist checkpoints, отдельные safeToContinue/completionEligible, OS-owned блокировка полного ledger update, повторяемые audit attempts, start/end fingerprints и порядок audit/final timestamps. Принятая редакция AppSpec согласуется через reconcile-spec с сохранением истории. Source coverage связывает все нормативные разделы с obligations. Stateful agent gate проверяет реальные файлы и действия двух независимых запусков, а installation-health сверяет весь manifest с установленным пакетом. Во время остановленной реализации свежий аудитор получает исключительное право запускать проверки через общий Gradle runner; implementation specialists этого права не получают.
 
 ### Связь со Spec Kit
 

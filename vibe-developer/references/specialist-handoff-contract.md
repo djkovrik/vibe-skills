@@ -29,3 +29,5 @@ A specialist assigned by `$vibe-developer` writes exactly one immutable JSON art
 Fingerprints use `compute-workspace-fingerprint.py`. Paths and boundaries are repository-relative POSIX paths; glob boundaries are permitted. Every changed file must be inside `allowedFiles`. Evidence names exact production symbols and tests and identifies the AppSpec verification surface it proves. Record only checks actually completed; requested Gradle commands are requests, not receipts.
 
 Write the final bytes once. If a correction is needed, create a new hand-off ID and file. The orchestrator checkpoints, inspects the diff and boundary match, then imports the SHA-256 with `ingest-handoff.py --expected-ledger-digest ...`. A hand-off whose result fingerprint is stale or whose files escape either assignment or ledger boundaries is rejected.
+
+For unfinished work, use the shared [recovery contract](recovery-contract.md) before waiting, ending a turn or losing context. Gate-only assignments also require an owner, baseline and file boundaries in the ledger. Clear pending checks/blockers only after resolving them; a final hand-off does not erase a durable decision.

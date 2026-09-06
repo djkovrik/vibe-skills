@@ -17,6 +17,19 @@ function Add-Failure {
     Write-Host "ERROR: $Message" -ForegroundColor Red
 }
 
+function Get-PackageFiles {
+    param([string]$Directory = $root)
+    foreach ($entry in Get-ChildItem -LiteralPath $Directory -Force -ErrorAction Stop) {
+        if ($entry.PSIsContainer) {
+            if ($entry.Name -in @('.git', '.tooling', '.test-workspaces', '__pycache__')) { continue }
+            if (($entry.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) { continue }
+            Get-PackageFiles -Directory $entry.FullName
+        } else {
+            $entry
+        }
+    }
+}
+
 $manifestPath = Join-Path $root 'vibe-skills-manifest.json'
 try {
     $manifest = Get-Content -LiteralPath $manifestPath -Raw -Encoding UTF8 | ConvertFrom-Json
@@ -39,14 +52,14 @@ $extra = @($actual | Where-Object { $_ -notin $expected })
 if ($missing) { Add-Failure "Missing skill directories: $($missing -join ', ')" }
 if ($extra) { Add-Failure "Unexpected skill directories: $($extra -join ', ')" }
 
-$jsonFiles = @(Get-ChildItem -LiteralPath $root -File -Recurse -Filter '*.json' |
+$jsonFiles = @(Get-PackageFiles | Where-Object Extension -EQ '.json' |
     Where-Object { $_.FullName -notlike "$root\.git\*" -and $_.FullName -notlike "$root\.tooling\*" })
 foreach ($jsonFile in $jsonFiles) {
     try { $null = Get-Content -LiteralPath $jsonFile.FullName -Raw -Encoding UTF8 | ConvertFrom-Json }
     catch { Add-Failure "Invalid JSON $($jsonFile.FullName): $($_.Exception.Message)" }
 }
 
-$powerShellFiles = @(Get-ChildItem -LiteralPath $root -File -Recurse -Filter '*.ps1' |
+$powerShellFiles = @(Get-PackageFiles | Where-Object Extension -EQ '.ps1' |
     Where-Object { $_.FullName -notlike "$root\.git\*" -and $_.FullName -notlike "$root\.tooling\*" })
 foreach ($powerShellFile in $powerShellFiles) {
     $tokens = $null
@@ -57,7 +70,7 @@ foreach ($powerShellFile in $powerShellFiles) {
     }
 }
 
-$privacyContractFiles = Get-ChildItem -LiteralPath $root -File -Recurse -Force |
+$privacyContractFiles = Get-PackageFiles |
     Where-Object {
         $_.Extension -in @('.md', '.json', '.py', '.ps1', '.yaml', '.yml') -and
         $_.FullName -notlike "$root\.git\*" -and
@@ -92,7 +105,7 @@ foreach ($skill in $expected) {
     }
 
     $content = Get-Content -LiteralPath $skillMd -Raw -Encoding UTF8
-    $textFiles = Get-ChildItem -LiteralPath $skillRoot -File -Recurse |
+    $textFiles = Get-PackageFiles -Directory $skillRoot |
         Where-Object Extension -In @('.md', '.json', '.py', '.ps1', '.yaml', '.yml')
     foreach ($textFile in $textFiles) {
         $text = Get-Content -LiteralPath $textFile.FullName -Raw -Encoding UTF8
@@ -156,7 +169,7 @@ if ((Test-Path -LiteralPath $localPython) -and (Test-Path -LiteralPath $appValid
 }
 
 if (Test-Path -LiteralPath $localPython -PathType Leaf) {
-    $pythonTests = @(Get-ChildItem -LiteralPath $root -File -Recurse -Filter 'test_*.py' |
+    $pythonTests = @(Get-PackageFiles | Where-Object Name -Like 'test_*.py' |
         Where-Object { $_.FullName -notlike "$root\.tooling\*" })
     foreach ($test in $pythonTests) {
         & $localPython -B $test.FullName
@@ -164,7 +177,7 @@ if (Test-Path -LiteralPath $localPython -PathType Leaf) {
     }
 }
 
-$powerShellTests = @(Get-ChildItem -LiteralPath $root -File -Recurse -Filter 'test-*.ps1' |
+$powerShellTests = @(Get-PackageFiles | Where-Object Name -Like 'test-*.ps1' |
     Where-Object { $_.FullName -notlike "$root\.tooling\*" })
 foreach ($test in $powerShellTests) {
     try {

@@ -3,17 +3,163 @@
   "$id": "https://vibe.local/schemas/closure-audit-v2.0.json",
   "title": "Vibe closure audit Protocol 2.0",
   "type": "object",
-  "required": ["schemaVersion", "auditId", "auditRequest", "auditorContext", "startedAt", "completedAt", "verdict", "appSpecFingerprint", "workspaceFingerprint", "shadowInventory", "obligations", "checks", "findings", "completion"],
+  "required": [
+    "schemaVersion",
+    "auditId",
+    "auditRequest",
+    "auditorContext",
+    "startedAt",
+    "completedAt",
+    "verdict",
+    "appSpecFingerprint",
+    "workspaceFingerprint",
+    "shadowInventory",
+    "obligations",
+    "checks",
+    "findings",
+    "completion",
+    "sourceCoverage"
+  ],
   "properties": {
-    "schemaVersion": { "const": "2.0" },
-    "auditId": { "type": "string", "minLength": 1 },
-    "auditRequest": { "type": "object", "required": ["path", "requestId", "sha256"], "properties": { "path": { "const": ".vibe/audit-request.json" }, "requestId": { "type": "string", "minLength": 1 }, "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" } } },
-    "auditorContext": { "type": "object", "required": ["contextId", "invocationKind", "implementationContextAvailable"], "properties": { "contextId": { "type": "string", "minLength": 1 }, "invocationKind": { "enum": ["fresh-context", "isolated-agent"] }, "implementationContextAvailable": { "const": false } } },
-    "startedAt": { "type": "string" }, "completedAt": { "type": "string" },
-    "verdict": { "enum": ["PASS", "GAPS", "BLOCKED"] },
-    "appSpecFingerprint": { "type": "object" }, "workspaceFingerprint": { "type": "object" },
-    "shadowInventory": { "type": "object", "required": ["requirementIds", "excludedRequirementIds", "acceptanceScenarioIds", "managedOperationIds", "qualityGateIds"] },
-    "obligations": { "type": "array" }, "checks": { "type": "array" }, "findings": { "type": "array" },
-    "completion": { "type": "object", "required": ["implementationComplete", "releaseReady"], "properties": { "implementationComplete": { "type": "boolean" }, "releaseReady": { "type": "boolean" } } }
+    "schemaVersion": {
+      "const": "2.0"
+    },
+    "auditId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "auditRequest": {
+      "type": "object",
+      "required": [
+        "path",
+        "requestId",
+        "sha256"
+      ],
+      "properties": {
+        "path": {
+          "type": "string",
+          "pattern": "^\\.vibe/audits/AUDIT-REQUEST-[A-Za-z0-9-]+/request\\.json$"
+        },
+        "requestId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        }
+      }
+    },
+    "auditorContext": {
+      "type": "object",
+      "required": [
+        "contextId",
+        "invocationKind",
+        "implementationContextAvailable"
+      ],
+      "properties": {
+        "contextId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "invocationKind": {
+          "enum": [
+            "fresh-context",
+            "isolated-agent"
+          ]
+        },
+        "implementationContextAvailable": {
+          "const": false
+        }
+      }
+    },
+    "startedAt": {
+      "type": "string"
+    },
+    "completedAt": {
+      "type": "string"
+    },
+    "verdict": {
+      "enum": [
+        "PASS",
+        "GAPS",
+        "BLOCKED"
+      ]
+    },
+    "appSpecFingerprint": {
+      "type": "object"
+    },
+    "workspaceFingerprint": {
+      "type": "object"
+    },
+    "shadowInventory": {
+      "type": "object",
+      "required": [
+        "requirementIds",
+        "excludedRequirementIds",
+        "acceptanceScenarioIds",
+        "managedOperationIds",
+        "qualityGateIds"
+      ]
+    },
+    "obligations": {
+      "type": "array"
+    },
+    "checks": {
+      "type": "array"
+    },
+    "findings": {
+      "type": "array"
+    },
+    "completion": {
+      "type": "object",
+      "required": [
+        "implementationComplete",
+        "releaseReady"
+      ],
+      "properties": {
+        "implementationComplete": {
+          "type": "boolean"
+        },
+        "releaseReady": {
+          "type": "boolean"
+        }
+      }
+    },
+    "sourceCoverage": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "path",
+          "anchor",
+          "classification",
+          "obligationIds"
+        ],
+        "properties": {
+          "path": {
+            "type": "string"
+          },
+          "anchor": {
+            "type": "string"
+          },
+          "classification": {
+            "enum": [
+              "normative",
+              "context"
+            ]
+          },
+          "obligationIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "rationale": {
+            "type": "string"
+          }
+        }
+      }
+    }
   }
 }

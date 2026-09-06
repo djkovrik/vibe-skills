@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+import importlib.util
 from pathlib import Path
 
 SCRIPT_DIR = Path(__file__).resolve().parent
@@ -16,6 +17,7 @@ from vibe_protocol import (
     compute_workspace_fingerprint, discover_scoped_instructions, fingerprint_equal,
     ledger_digest, paths_within_boundaries, read_json, validate_app_spec,
     workspace_drift_paths,
+    audit_paths, parse_time, valid_time,
 )
 
 def resolve(root: Path, value: str) -> Path:
@@ -37,30 +39,49 @@ def build_resume(project_root: Path, ledger_path: Path) -> dict:
     current_workspace = compute_workspace_fingerprint(root)
     if app is not None and ledger.get("canonicalInventory") != canonical_inventory(app):
         errors.append("canonical inventory mismatch")
-    active_id = ledger.get("execution", {}).get("activeAcceptanceScenarioId")
-    active = next((item for item in ledger.get("acceptanceScenarios", []) if item.get("id") == active_id), None)
+    execution = ledger.get("execution", {})
+    items = [*ledger.get("acceptanceScenarios", []), *ledger.get("qualityGates", [])]
+    active_id = execution.get("activeAcceptanceScenarioId") or execution.get("activeQualityGateId")
+    active = next((item for item in items if item.get("id") == active_id), None)
     checkpoint = ledger.get("execution", {}).get("checkpoint", {}).get("workspaceFingerprint")
     drift_paths = workspace_drift_paths(checkpoint or {}, current_workspace)
     if fingerprint_equal(checkpoint, current_workspace):
         classification = "clean"
     elif isinstance(checkpoint, dict) and checkpoint.get("gitHead") != current_workspace.get("gitHead"):
         classification = "unexpected-drift"
-    elif active and active.get("status") == "in-progress" and paths_within_boundaries(drift_paths, active.get("fileBoundaries", [])):
+    elif active and active.get("status") in {"in-progress", "implemented-unverified"} and paths_within_boundaries(drift_paths, active.get("fileBoundaries", [])):
         classification = "expected-drift"
     else:
         classification = "unexpected-drift"
     stale = not fingerprint_equal(ledger.get("appSpec", {}).get("fingerprint"), current_app)
-    for collection in (ledger.get("acceptanceScenarios", []), ledger.get("qualityGates", [])):
-        for item in collection:
-            if item.get("status") == "verified":
-                for ref in item.get("receiptRefs", []):
-                    try:
-                        receipt = read_json(resolve(root, ref))
-                    except ProtocolError:
-                        stale = True
-                        continue
-                    if not fingerprint_equal(receipt.get("workspaceFingerprint"), current_workspace):
-                        stale = True
+    evidence_issues = []
+    receipts = []
+    for path in (root / ".vibe" / "receipts").glob("*.json"):
+        try: receipts.append(read_json(path))
+        except ProtocolError as exc: evidence_issues.append(str(exc))
+    for item in items:
+        if item.get("status") != "verified": continue
+        for surface in item.get("requiredVerificationSurfaces", []):
+            matching = [r for r in receipts if fingerprint_equal(r.get("workspaceFingerprint"), current_workspace)
+                and valid_time(r.get("completedAt")) and any(c.get("obligationId") == item["id"] and surface in c.get("surfaces", []) for c in r.get("coveredObligations", []))]
+            latest = max(matching, key=lambda r: (parse_time(r["completedAt"]), r.get("exitCode") != 0)) if matching else None
+            if latest is None or latest.get("exitCode") != 0 or latest.get("executionStatus") != "completed" or not fingerprint_equal(latest.get("startWorkspaceFingerprint"), current_workspace):
+                evidence_issues.append(f"{item['id']}/{surface}: current successful completed receipt missing")
+    binding = ledger.get("closureAudit", {})
+    if binding.get("requestPath"):
+        try:
+            request_path = resolve(root, binding["requestPath"])
+            request = read_json(request_path)
+            import hashlib
+            if hashlib.sha256(request_path.read_bytes()).hexdigest() != binding.get("requestSha256"): evidence_issues.append("audit request hash mismatch")
+            if not fingerprint_equal(request.get("workspaceFingerprint"), current_workspace) or not fingerprint_equal(request.get("appSpecFingerprint"), current_app): evidence_issues.append("audit request is stale")
+            audit_path, launch_path = audit_paths(root, request_path)
+            if audit_path.exists() and launch_path.exists():
+                audit_module = load_module("resume_audit_validator", SCRIPT_DIR.parent.parent / "vibe-acceptance-auditor" / "scripts" / "validate-closure-audit.py")
+                evidence_issues.extend(audit_module.validate(read_json(audit_path), app_root, root, request_path))
+            elif execution.get("phase") != "auditing": evidence_issues.append("bound audit or launch receipt is missing")
+        except (ProtocolError, OSError, ValueError) as exc: evidence_issues.append(str(exc))
+    stale = stale or bool(evidence_issues)
     if classification == "clean" and stale:
         classification = "stale-evidence"
     handoff_dir = root / ".vibe" / "handoffs"
@@ -100,7 +121,13 @@ def build_resume(project_root: Path, ledger_path: Path) -> dict:
         if classification == "clean":
             classification = "unexpected-drift"
     next_action = ledger.get("execution", {}).get("nextAction")
-    if pending:
+    for handoff in pending:
+        if not handoff["valid"]:
+            errors.append(f"pending hand-off conflict: {handoff['path']}: {', '.join(handoff['issues'])}")
+            classification = "unexpected-drift"
+    if classification == "unexpected-drift" or errors:
+        next_action = "Do not edit; reconcile reported drift or invalid state explicitly."
+    elif pending:
         if pending[0]["valid"]:
             next_action = f"Inspect and ingest pending hand-off {pending[0]['path']}."
         else:
@@ -113,16 +140,58 @@ def build_resume(project_root: Path, ledger_path: Path) -> dict:
         next_action = "Do not edit; reconcile changes outside the active boundaries explicitly."
     elif classification == "stale-evidence":
         next_action = "Rerun affected checks, create a new audit request, and obtain a fresh audit."
+    item_blockers = [{"id": item["id"], "blockers": item.get("blockers", []), "blocker": item.get("blocker")} for item in items if item.get("blockers") or item.get("blocker")]
+    recovery_by_assignment = {}
+    for path in sorted((root / ".vibe" / "recovery").glob("*.json")):
+        try:
+            packet = read_json(path)
+            packet["path"] = path.relative_to(root).as_posix()
+            old = recovery_by_assignment.get(packet.get("assignmentId"))
+            if old is None or packet.get("createdAt", "") > old.get("createdAt", ""):
+                recovery_by_assignment[packet.get("assignmentId")] = packet
+        except ProtocolError as exc: errors.append(str(exc))
+    decisions = []
+    for path in sorted((root / "docs" / "decisions").glob("DEC-*.json")):
+        try:
+            decision = read_json(path); decision["path"] = path.relative_to(root).as_posix(); decisions.append(decision)
+        except ProtocolError as exc: errors.append(str(exc))
+    if active and (active.get("blockers") or active.get("blocker")) and classification != "unexpected-drift":
+        next_action = f"Resolve saved blockers for {active_id}; do not continue dependent implementation."
+    completion_errors = []
+    eligible = False
+    if not errors and not stale and classification == "clean" and not pending and not item_blockers:
+        try:
+            aggregate = load_module("resume_delivery_validator", SCRIPT_DIR / "validate-delivery-ledger.py").validate_ledger(root, ledger_path)
+            eligible = aggregate.implementation_complete
+            completion_errors = aggregate.errors
+        except Exception as exc: completion_errors = [str(exc)]
+    required_reads = [str(app_root / "app-spec.json"), str(ledger_path), *[i["path"] for i in instructions], *execution.get("requiredReads", [])]
+    if active:
+        required_reads += [str(app_root / "flows" / f"{active['flowId']}.md")] if active.get("flowId") else []
+        required_reads += [str(app_root / "screens" / f"{screen}.md") for screen in active.get("screenIds", [])]
+    required_reads += [d["path"] for d in decisions]
     return {
         "schemaVersion": "2.0", "projectRoot": str(root), "ledgerPath": str(ledger_path.resolve()),
-        "activeAcceptanceScenarioId": active_id, "phase": ledger.get("execution", {}).get("phase"),
+        "activeAcceptanceScenarioId": execution.get("activeAcceptanceScenarioId"), "activeQualityGateId": execution.get("activeQualityGateId"), "phase": ledger.get("execution", {}).get("phase"),
         "driftClassification": classification, "driftPaths": drift_paths,
-        "completionEligible": not errors and not stale and classification == "clean",
+        "safeToContinue": not errors and classification != "unexpected-drift" and not (active and (active.get("blockers") or active.get("blocker"))),
+        "completionEligible": eligible, "completionBlockers": completion_errors,
+        "activeSlice": active, "unresolvedObligations": [i for i in items if i.get("status") not in {"verified", "waived"}],
+        "pendingChecks": [{"id":i["id"], "checks":i["pendingChecks"]} for i in items if i.get("pendingChecks")],
+        "itemBlockers": item_blockers, "evidenceIssues": evidence_issues,
+        "recoveryPackets": [p for p in recovery_by_assignment.values() if p.get("status") != "returned"], "decisions": decisions, "requiredReads": sorted(set(required_reads)),
+        "orphanAuditRequests": [p.relative_to(root).as_posix() for p in sorted((root / ".vibe" / "audits").glob("*/request.json")) if p.relative_to(root).as_posix() not in {binding.get("requestPath"), *[h.get("requestPath") for h in ledger.get("auditHistory", [])]}],
         "pendingHandoffs": pending, "dependencyBlockers": dependency_blockers,
-        "blockers": errors, "nextAction": next_action,
+        "blockers": [*errors, *item_blockers], "stateErrors": errors, "nextAction": next_action,
         "currentAppSpecFingerprint": current_app, "currentWorkspaceFingerprint": current_workspace,
         "ledgerDigest": ledger.get("ledgerDigest"),
     }
+
+
+def load_module(name, path):
+    spec = importlib.util.spec_from_file_location(name, path)
+    module = importlib.util.module_from_spec(spec); sys.modules[name] = module; spec.loader.exec_module(module)
+    return module
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)

@@ -7,11 +7,11 @@ description: Independently audit whether an AppSpec implementation is complete a
 
 ## Boundary
 
-Audit only from the fresh context named by immutable `.vibe/audit-request.json`, after implementers have stopped. The implementation conversation must be unavailable and `implementationContextAvailable` must be recorded as `false`. The ledger, generated reports, and implementer summary are claims to test, never inventory sources. If the requested context isolation is unavailable, return `BLOCKED`.
+Audit only from the fresh context named by immutable `.vibe/audits/<request-id>/request.json`, after implementers have stopped. The orchestrator uses `run-acceptance-audit.py`, which records a host-issued `thread.started` event, exact argv, log/prompt hashes, process outcome and start/end fingerprints in this attempt’s `launch.json`. You must not author that receipt. The implementation conversation must be unavailable and `implementationContextAvailable` must be recorded as `false`. The ledger, generated reports, and implementer summary are claims to test, never inventory sources. If the requested context isolation is unavailable, return `BLOCKED`.
 
 This skill is read-only except for:
 
-- `<repo>/.vibe/closure-audit.json` (write once for the current request);
+- `<repo>/.vibe/audits/<request-id>/audit.json` (the launcher writes the final JSON once);
 - `<repo>/docs/closure-audit.generated.md`;
 - build-tool caches produced by completed verification commands.
 
@@ -19,7 +19,7 @@ Never edit the AppSpec, production code, tests, delivery ledger, generated deliv
 
 ## Inputs
 
-Require the target repository, approved AppSpec 2.0 directory, and `.vibe/audit-request.json`. Read the AppSpec contract and [audit-contract.md](references/audit-contract.md). Verify request bytes/hash, current fingerprints, required context ID, invocation kind, and the false implementation-context flag before auditing. Inspect repository instructions and `git status` without changing either.
+Require the target repository, approved AppSpec 2.0 directory, and `.vibe/audits/<request-id>/request.json`. Read the AppSpec contract and [audit-contract.md](references/audit-contract.md). Verify request bytes/hash, current fingerprints, required context ID, invocation kind, and the false implementation-context flag before auditing. Inspect repository instructions and `git status` without changing either.
 
 ## Independent inventory
 
@@ -30,7 +30,7 @@ Before opening `.vibe/delivery-ledger.json`, `docs/requirement-traceability.gene
 3. Build the shadow inventory with the shared canonical inventory module, independently from the ledger: approved and excluded requirements, every AC, required managed operation, and quality gate. Inspect prose for platform branches, states, actions, and failures. Treat domain-specific operations separately.
 4. Reconcile JSON links with prose. Each acceptance scenario must have its own Given/When/Then and one observable outcome. Contradictory, missing, or ambiguous normative material is a finding even if the ledger omits it.
 
-Only after freezing this shadow inventory may you inspect the ledger and generated reports. Compare them to the inventory and report omitted, grouped, stale, or overstated entries.
+Use `inventory-sources.py` and include `sourceCoverage` for every heading in product/domain/data/design/quality prose and FLOW/SCREEN files. Map normative sections to obligation IDs; explain any contextual section. Inspect actions, states, failures and platform branches; text absent from JSON is still a finding. Only after freezing this shadow inventory may you inspect the ledger and generated reports. Compare them to the inventory and report omitted, grouped, stale, or overstated entries.
 
 ## Evidence audit
 
@@ -43,9 +43,9 @@ public contract -> data/domain behavior -> Store/component state
 
 Use every declared `verificationSurface`; do not substitute a lower-level test for an observable public-contract, UI, platform, persistence, or release surface. Each surface needs matching evidence and a successful audit-time check explicitly covering that obligation/surface pair. Verify paths and exact symbols/test names, including failure and lifecycle branches.
 
-Re-run targeted checks when safe and available. A check counts only if it actually completes with its real exit code and an audit-time workspace fingerprint. Build caches are allowed; generated source or repository files outside the two audit artifacts are not. A stale receipt, skipped task, nonexistent symbol, unrelated assertion, or command recorded against another workspace fingerprint is not evidence.
+Re-run targeted checks when safe and available. A check counts only if it actually completes inside the audit time window with its real exit code, `executionStatus: completed`, and matching `startWorkspaceFingerprint`/`workspaceFingerprint`. Record exact symbols and assertions. Use `run-check.py` for non-Gradle checks; during the stopped implementation phase, hold the exclusive audit verification lease and use the shared serialized `run-gradle.ps1` for Windows Gradle checks. Return the lease when auditing ends. Build caches are allowed; persistent changes to tracked source or other project files are not. Keep command logs/receipts under `.vibe/receipts`; the launcher writes attempt metadata. A stale receipt, skipped task, nonexistent symbol, unrelated assertion, or command recorded against another workspace fingerprint is not evidence.
 
-Review waivers against an existing durable decision path and optional anchor. `blocked-external` is legal only for external/platform/release gates; it never satisfies `release-ready` and cannot hide a repository-verifiable obligation.
+Review waivers against accepted `docs/decisions/DEC-*.json` records scoped to the exact obligation, with an exact captured user quote and source hash. Verify the quote actually authorizes this waiver; a structured record does not replace semantic inspection. `blocked-external` is legal only for external/platform/release gates; it never satisfies `release-ready` and cannot hide a repository-verifiable obligation.
 
 ## Verdict
 
@@ -59,7 +59,7 @@ Write findings with obligation IDs, exact paths/symbols/tests, the failed link i
 
 Immediately before writing, recompute both fingerprints. If either changed during the audit, discard any prospective `PASS`, return `BLOCKED`, and rerun from a fresh snapshot. A prior `PASS` is invalid after any AppSpec or workspace change.
 
-Write `.vibe/closure-audit.json` to [closure-audit.schema.json](assets/closure-audit.schema.json), including request path/ID/SHA-256, matching context fields, start/completion timestamps, and exact surface coverage. Render the Markdown view and validate with `scripts/validate-closure-audit.py --app-spec-root <app-spec> --repository <repo>`. The final delivery validator also checks report parity.
+Return the audit JSON to the launcher using [closure-audit.schema.json](assets/closure-audit.schema.json), including request path/ID/SHA-256, matching context fields, start/completion timestamps, and exact surface coverage. The orchestrator renders the Markdown view after the launcher has written audit and launch evidence, then validates with `scripts/validate-closure-audit.py --app-spec-root <app-spec> --repository <repo>`. The final delivery validator also checks report parity.
 
 ## Handoff
 

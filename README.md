@@ -45,7 +45,7 @@ python .\vibe-developer\scripts\validate-app-spec.py D:\Projects\MyApp\app-spec 
 
 - `.vibe/delivery-ledger.json` — единственный редактируемый источник состояния;
 - `.vibe/handoffs/*.json` и `.vibe/receipts/*.json` — immutable evidence;
-- `.vibe/audit-request.json` и `.vibe/closure-audit.json` — request-bound независимый аудит;
+- `.vibe/audits/<request-id>/request.json` и `.vibe/audits/<request-id>/audit.json` — request-bound независимый аудит;
 - оба файла `docs/*.generated.md` — проверяемые детерминированные проекции.
 
 `implementation-complete` требует закрыть все AC и repository gates, последний успешный receipt для каждой surface, единый final receipt, свежий audit `PASS` и parity отчётов. `release-ready` дополнительно требует закрыть platform/external/release gates; `blocked-external` с ним несовместим.

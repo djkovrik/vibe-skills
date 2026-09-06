@@ -107,8 +107,16 @@ def main() -> int:
                 entry["updatedAt"] = utc_now()
             for item_id in data.get("qualityGateIds", []):
                 if item_id not in gates: raise ProtocolError(f"unknown quality gate: {item_id}")
+                gate = gates[item_id]
+                if not gate.get("fileBoundaries") or not paths_within_boundaries(data["changedFiles"], gate["fileBoundaries"]): raise ProtocolError(f"hand-off conflicts with gate assignment boundaries for {item_id}")
+                if not fingerprint_equal(data.get("baseWorkspaceFingerprint"), gate.get("baselineFingerprint")): raise ProtocolError(f"hand-off base conflicts with gate baseline for {item_id}")
                 gates[item_id]["productionEvidence"] += data["productionEvidence"]
                 gates[item_id]["testEvidence"] += data["testEvidence"]
+                gate["handoffRefs"] = sorted(set(gate.get("handoffRefs", []) + [relative]))
+                gate["pendingChecks"] = data["requestedCommands"]
+                gate["blockers"] = data["blockers"]
+                gate["status"] = "implemented-unverified" if not data["blockers"] else "in-progress"
+                gate["updatedAt"] = utc_now()
             ledger.setdefault("ingestedHandoffs", []).append({"handoffId": data["handoffId"], "path": relative, "sha256": digest, "ingestedAt": utc_now()})
             ledger["workspaceFingerprint"] = current
             ledger["execution"]["phase"] = "reconciling"

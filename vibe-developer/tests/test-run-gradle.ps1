@@ -114,7 +114,10 @@ exit /b 0
     $timedOut.WaitForExit()
     $timedOut.Refresh()
     Assert-True ($timedOut.HasExited) 'timed-out runner process must finish'
-    Assert-True (-not (Test-Path -LiteralPath (Join-Path $testRoot '.vibe\receipts\timeout-receipt.json'))) 'timeout must not write a completion receipt'
+    $timeoutReceipt = Get-Content -LiteralPath (Join-Path $testRoot '.vibe\receipts\timeout-receipt.json') -Raw | ConvertFrom-Json
+    Assert-True ($timeoutReceipt.executionStatus -eq 'interrupted') 'timeout must leave durable interrupted evidence'
+    Assert-True ($timedOut.ExitCode -ne 0) 'timeout must fail the runner'
+    Assert-True ($failureReceipt.startWorkspaceFingerprint.digest -eq $failureReceipt.workspaceFingerprint.digest) 'completed unchanged check must carry both fingerprints'
 
     $afterTimeout = Start-Runner -Task 'fast' -LogName 'after-timeout.log' -ReceiptName '' -LockTimeoutSeconds 2
     $afterTimeout.WaitForExit()
