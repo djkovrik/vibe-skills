@@ -19,7 +19,7 @@ Read [material3-foundations.md](material3-foundations.md) first. Material 3 is t
 - Define each text role's intended hierarchy, line-height, maximum normal-scale line count, overflow policy, and stress-scale wrapping behavior.
 - Verify the real bundled fonts and every supported locale's glyphs in rendered goldens; a fallback font or missing glyph is a release defect.
 - Keep one coherent icon family and weight. Inventory interactive elements and decide `icon`, `text`, `icon + text`, or `intentionally no icon`; do not mix arbitrary outline/filled styles except for meaningful states.
-- Prefer standard Material Symbols for platform actions when approved. Ask for custom/brand assets before implementation, including light/dark variants or tintability, license/source, vector/raster format, and minimum-size behavior.
+- Prefer standard Material Symbols for platform actions when approved. Specify custom/brand artwork in assetRequirements and route creation/generation to Assets Creator, including light/dark variants or tintability, provenance, vector/raster format, and minimum-size behavior. Ask only for exact external brand inputs or a material unresolved decision.
 - Use matching semantic foreground/background roles and check actual contrast in light/dark plus enabled, disabled, selected, focus, error, and success states.
 
 Use current Material/Compose guidance:

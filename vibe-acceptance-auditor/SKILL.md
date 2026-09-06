@@ -66,3 +66,7 @@ Return the audit JSON to the launcher using [closure-audit.schema.json](assets/c
 On `GAPS`, return the audit artifact to `$vibe-developer`, which assigns fixes without letting this auditor edit them. After fixes and local verification, a new audit request and clean-context auditor are required. No workflow may claim completion without a current request-bound `PASS`.
 
 For optional package regression checks against DishReady commits, use `scripts/run-dishready-regression.ps1` only on temporary `git archive` extracts; never switch or modify the live checkout.
+
+## Asset completeness
+
+Apply the [asset contract](../vibe-assets-creator/references/asset-contract.md). Independently compare every required icon/logo/illustration in design/screens and state variants against assetRequirements, then inspect the delivered manifest, files, provenance and actual production usage through Compose Multiplatform Resources. Run the asset validator and inspect real preview/golden evidence at intended sizes in both themes. A prompt, placeholder, unused file, missing variant, opaque icon background or stale evidence is a gap. Follow shared resource mappings to reachable screens; static name matching does not prove use. Legacy inventories must not hide prose requirements.

@@ -72,7 +72,7 @@ Rules:
 | Surface hierarchy | M3 `Surface`/component defaults with tonal and shadow elevation as specified |
 | Spacing | App semantic spacing tokens aligned to the M3 spacing scale; no screen-local magic numbers |
 | Motion | `MaterialTheme.motionScheme` or current M3 token APIs when available; otherwise a documented app motion abstraction |
-| Icons | Compose Resources vectors or approved Material Symbols assets; semantic labels from resources |
+| Icons | Compose Multiplatform Resources XML/PNG from Assets Creator, including standard Material Symbols XML; typed Res.drawable usage and semantic labels from string resources |
 | Strings | Compose Multiplatform Resources `Res.string.*`; shared keys across locales |
 | Assets/fonts | Compose Multiplatform Resources owned by the UI/resource module |
 

@@ -28,7 +28,7 @@ Read [app-spec-contract.md](references/app-spec-contract.md) before consuming an
 4. Read settings/root build files, version catalog, convention plugins, platform entry points, module build files, CI, and release configuration.
 5. Map modules, source sets, dependency direction, targets, toolchains, minimum OS/API, variants, package IDs, and composition roots.
 6. Locate domain contracts, Decompose components and their package roles, Stores, Managers, non-Decompose `di/*Module.kt` boundaries, composition roots, persistence, network, sync, platform services, localization resources/key mappings, component-module preview implementations, screenshot host, and tests.
-7. Detect installed `vibe-*`, Compose Expert, and Lazyweb capabilities.
+7. Detect installed `vibe-*`, Compose Expert, Lazyweb and image-generation capabilities. For new delivery planning or any asset work, apply the [asset contract](../vibe-assets-creator/references/asset-contract.md): Product Designer specifies the complete icon/logo/illustration inventory; `$vibe-assets-creator` creates or generates missing artwork and supplies Compose Resources plus delivery evidence. Reconcile legacy specs before asset work; planned generation is valid intake, not a request for the user to draw assets.
 8. Before the first code edit, run `scripts/init-delivery-ledger.py`, compare the shared canonical inventory with normative prose, then use `checkpoint-delivery.py` with the current ledger digest, active AC, owner, boundaries, phase, and exact next action. Build a dependency-aware plan as vertical AC slices. Assign one owner per non-overlapping change and require the immutable JSON contract in [specialist-handoff-contract.md](references/specialist-handoff-contract.md). Keep all existing component, Store, Manager, preview, DI-module, localization, UI/golden, privacy, ads, and CI deliverables explicit.
 9. Execute only necessary concerns inside each vertical slice. For each assigned AC, complete the production contract, data/domain path, Store/component path, UI/platform wiring, required tests, targeted verification, and evidence package before moving its ledger entry to `verified`:
 
@@ -73,7 +73,7 @@ Treat `.vibe/delivery-ledger.json` as the only editable delivery-state source an
 - Reject flattened component packages that place Store/Default/Manager beside the public component contract, Compose-local preview fakes that replace the component module's `*ComponentPreview`, and non-Decompose composition roots that bypass required `*Module` factories by constructing outward-provided implementations directly.
 - Host screenshot testing in the Compose UI/resource-owning module by default; require a written build/aggregation constraint for a dedicated screenshot module.
 - After recording approved goldens, require Product Designer to run the current Lazyweb review workflow across the declared primary-screen/flow coverage as a strict ordered queue. Allow exactly one screen/report in flight for the task: never batch screens or parallelize review requests, and do not submit the next screen until the previous report reaches terminal completion, has been retrieved, and its URL, coverage, and findings are recorded. Do not claim a full-app review when only one screen was reviewed.
-- Route objective rendering defects that violate the AppSpec (clipping, unintended wrapping, missing glyphs, insufficient contrast, missing/incorrect icons, inconsistent tokens) back to Compose/Product Designer. Request a user decision only when a fix changes approved product intent or requires unresolved custom assets.
+- Route objective rendering defects that violate the AppSpec (clipping, unintended wrapping, missing glyphs, insufficient contrast, missing/incorrect icons, inconsistent tokens) back to Compose/Product Designer and asset-file defects to Assets Creator. Request a user decision only when a fix changes approved product intent or needs an unavailable exact external brand input; creation from an approved brief is already part of implementation.
 - Re-record and re-verify only approved visual changes, then close or explicitly waive every blocking design-review finding with rationale.
 - Require applicable domain, Store/component, persistence/network/sync, UI golden, Android, iOS, quality, and release checks. State why any check was unavailable.
 - Require public-contract Decompose component tests to lead application acceptance coverage; prefer the separate `root` component module for their centralized suite unless dependency direction requires a documented alternative.
@@ -96,6 +96,7 @@ Treat `.vibe/delivery-ledger.json` as the only editable delivery-state source an
 - SQLDelight/settings: `$vibe-persistence-engineer`
 - Snapshot/conflict coordination: `$vibe-sync-engineer`
 - Product UI/design evidence: `$vibe-product-designer`
+- Icons/logos/illustrations and Compose resource delivery: `$vibe-assets-creator`
 - Previews/Paparazzi/goldens: `$vibe-visual-testing`
 - Ads/privacy integration: `$vibe-monetization-engineer`
 - Non-visual tests/coverage: `$vibe-test-engineer`

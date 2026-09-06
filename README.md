@@ -1,6 +1,6 @@
 # Vibe KMP Skills
 
-Локальный пакет из 14 Agent Skills для разработки Kotlin Multiplatform приложений под Android и iOS. Protocol 2.0 принимает только утверждённый Vibe AppSpec 2.0, восстанавливает работу из репозитория и `.vibe`, реализует требования вертикальными slices и допускает итоговый статус только после request-bound fresh-context аудита.
+Локальный пакет из 15 Agent Skills для разработки Kotlin Multiplatform приложений под Android и iOS. Protocol 2.0 принимает только утверждённый Vibe AppSpec 2.0, восстанавливает работу из репозитория и `.vibe`, реализует требования вертикальными slices и допускает итоговый статус только после request-bound fresh-context аудита.
 
 Основной пользовательский процесс описан в [VIBE-DEVELOPMENT-WORKFLOW.md](docs/VIBE-DEVELOPMENT-WORKFLOW.md). Установку и режимы Copy/Junction объясняет [INSTALL.md](INSTALL.md).
 
@@ -27,6 +27,7 @@ AppSpec и delivery artifacts 1.x являются несовместимыми:
 - [vibe-persistence-engineer](vibe-persistence-engineer/SKILL.md) — SQLDelight, migrations и Settings;
 - [vibe-sync-engineer](vibe-sync-engineer/SKILL.md) — snapshots, conflicts и offline sync;
 - [vibe-product-designer](vibe-product-designer/SKILL.md) — UI evidence, Material 3 и accessibility;
+- [vibe-assets-creator](vibe-assets-creator/SKILL.md) — создание и генерация иконок, логотипов и иллюстраций через Compose Resources;
 - [vibe-visual-testing](vibe-visual-testing/SKILL.md) — previews, Paparazzi и goldens;
 - [vibe-monetization-engineer](vibe-monetization-engineer/SKILL.md) — Yandex Ads и privacy gate;
 - [vibe-test-engineer](vibe-test-engineer/SKILL.md) — non-visual test pyramid.

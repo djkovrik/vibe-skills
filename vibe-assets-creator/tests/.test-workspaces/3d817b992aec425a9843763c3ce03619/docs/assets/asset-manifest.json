@@ -1,0 +1,30 @@
+{
+  "schemaVersion": "1.0",
+  "assets": [
+    {
+      "id": "ASSET-002",
+      "outputs": [
+        {
+          "path": "composeApp/src/commonMain/composeResources/drawable/ic_bookmark.xml",
+          "sha256": "59a33be8a8c68917732305c6c0c8b5bc2419e98b4f01dbfc1706437cc6c63e25"
+        }
+      ],
+      "provenance": {
+        "method": "create-vector",
+        "source": "Original geometry authored from app-spec/app-spec.json assetRequirements ASSET-002; editable runtime source: composeApp/src/commonMain/composeResources/drawable/ic_bookmark.xml",
+        "rights": "Original project geometry created for the approved brief; no third-party source artwork used. No separate license or legal-clearance claim."
+      },
+      "usages": [
+        {
+          "path": "composeApp/src/commonMain/kotlin/Bookmark.kt",
+          "sha256": "5b6350428a8fc5e792df17224862f393fd521c39dc1f968048dc66bc4e3a599a",
+          "symbol": "Bookmark",
+          "screenIds": [
+            "SCREEN-001"
+          ]
+        }
+      ],
+      "visualEvidence": []
+    }
+  ]
+}

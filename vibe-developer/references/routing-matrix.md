@@ -16,6 +16,7 @@ Each row contains four forward prompts and the expected route.
 | Persistence | “Add SQLDelight tables and typed settings.” | “Implement offline cache/settings.” | “Map a REST response DTO.” -> Network | “Apply a remote snapshot atomically.” -> Persistence owns transaction; Sync owns merge policy |
 | Sync | “Resolve versioned snapshot conflicts.” | “Implement offline remote coordination.” | “Retry an idempotent HTTP PUT.” -> Network | “Remote reminders changed.” -> Sync merges; Platform reschedules after commit |
 | Product Designer | “Research and design this settings screen.” | “Define UI evidence, hierarchy, themes, icon inventory, preview matrix, and post-golden review.” | “Fix a `LaunchedEffect` recomposition bug.” -> Compose Expert | “Finalize the UI.” -> Product Designer defines/ reviews; Compose Expert renders; Visual Testing records/verifies |
+| Assets Creator | “Create transparent icons and an original app logo.” | “Deliver every ASSET ID as Compose Resources with provenance and usage evidence.” | “Redesign the home layout.” -> Product Designer | “Custom art is missing.” -> Assets Creator creates/generates; Compose Expert wires; Visual Testing verifies |
 | Visual Testing | “Add Paparazzi goldens for all preview states.” | “Turn every primary screen/state into light/dark preview/golden CI.” | “Choose a better empty-state hierarchy.” -> Product Designer | “Paparazzi cannot render a native ad view.” -> Visual Testing adds seam; Platform/Monetization test native behavior |
 | Monetization | “Integrate Yandex inline ads safely.” | “Implement the requested ads capability.” | “Redesign the feed hierarchy.” -> Product Designer | “Enable personalized ads.” -> user/product/legal decides; Monetization implements only approved policy |
 | Test Engineer | “Test Decompose component behavior.” | “Cover non-visual acceptance scenarios.” | “Update screenshot snapshots.” -> Visual Testing | “Test a Store-backed component.” -> Test Engineer owns harness; Decompose/MVIKotlin clarify contracts |
@@ -40,7 +41,7 @@ For a new Android+iOS KMP app with onboarding, home tabs, OAuth REST, SQLDelight
 | evidence, hierarchy, theme, accessibility, EN/RU | Product Designer -> Lazyweb -> Compose Expert |
 | placements/privacy-safe SDK setup | Monetization + Product Designer/product/legal |
 | domain/Store/component/data tests | Test Engineer |
-| preview matrix and icon/asset decisions | Product Designer -> user for unresolved assets -> Compose Expert |
+| preview matrix and icon/asset decisions | Product Designer requirements -> Assets Creator production -> Compose Expert usage -> Visual Testing; user only for unresolved material choices/exact external brand inputs |
 | Compose-owned previews/scanner/Paparazzi/CI diffs and coverage inventory | Architect hosts -> Visual Testing owns mechanics |
 | post-golden full-UI Lazyweb review and approved-fix loop | Product Designer -> Compose Expert -> Visual Testing |
 | localized local catalogs and bundled text | Domain IDs/keys -> Persistence key storage -> Architect resource wiring -> Product Designer/Compose resources -> Platform native fallback -> Test/Visual verification |

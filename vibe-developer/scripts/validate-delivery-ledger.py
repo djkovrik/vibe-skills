@@ -124,6 +124,9 @@ def validate_ledger(project_root: Path, ledger_path: Path, *, closure: bool = Tr
         current_app = compute_app_spec_fingerprint(app_root); current_workspace = compute_workspace_fingerprint(root)
     except (ProtocolError, OSError, ValueError) as exc: result.errors.append(str(exc)); return result
     if app is None: return result
+    from asset_contract import validate_delivery
+    asset_errors, _ = validate_delivery(app, root)
+    result.errors.extend(f"Assets: {error}" for error in asset_errors)
     if not fingerprint_equal(app_ref.get("fingerprint"), current_app): result.errors.append("app-spec.fingerprint.stale")
     if not fingerprint_equal(ledger.get("workspaceFingerprint"), current_workspace): result.errors.append("workspace.fingerprint.stale")
     inventory = canonical_inventory(app)

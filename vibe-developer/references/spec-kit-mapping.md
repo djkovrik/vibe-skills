@@ -14,7 +14,7 @@ Map artifacts as follows:
 | --- | --- |
 | feature intent, audience, success criteria | `product.md` |
 | user stories and priorities | `requirements` plus `product.md` |
-| design research, design system, typography, icon/asset decisions | `design.md` plus `uiQuality` |
+| design research, design system, typography, icon/asset decisions | `design.md` plus `uiQuality`; complete `assetRequirements` with ASSET IDs, creation briefs and resource destinations |
 | Given/When/Then scenarios | `flows/FLOW-*.md` and requirement acceptance IDs |
 | entities, rules, edge cases | `domain.md` |
 | API, storage, offline, sync | `data.md` |

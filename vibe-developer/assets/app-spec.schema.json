@@ -3,32 +3,403 @@
   "$id": "https://vibe.local/schemas/app-spec-v2.0.json",
   "title": "Vibe AppSpec Protocol 2.0",
   "type": "object",
-  "required": ["schemaVersion", "app", "requirements", "acceptanceScenarios", "managedEntities", "qualityGates", "flows", "screens", "capabilities", "constraints", "localization", "architecture", "uiQuality", "openQuestions"],
+  "required": [
+    "schemaVersion",
+    "app",
+    "requirements",
+    "acceptanceScenarios",
+    "managedEntities",
+    "qualityGates",
+    "flows",
+    "screens",
+    "capabilities",
+    "constraints",
+    "localization",
+    "architecture",
+    "uiQuality",
+    "openQuestions"
+  ],
   "properties": {
-    "schemaVersion": { "const": "2.0" },
-    "app": { "type": "object", "required": ["name", "summary", "targets", "locales"] },
+    "schemaVersion": {
+      "const": "2.0"
+    },
+    "app": {
+      "type": "object",
+      "required": [
+        "name",
+        "summary",
+        "targets",
+        "locales"
+      ]
+    },
     "requirements": {
-      "type": "array", "minItems": 1,
+      "type": "array",
+      "minItems": 1,
       "items": {
         "oneOf": [
-          { "type": "object", "required": ["id", "title", "priority", "status", "acceptanceScenarioIds"], "properties": { "id": { "$ref": "#/$defs/requirementId" }, "title": { "type": "string", "minLength": 1 }, "priority": { "enum": ["must", "should", "could"] }, "status": { "const": "approved" }, "acceptanceScenarioIds": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "$ref": "#/$defs/acceptanceId" } } }, "not": { "required": ["reason"] } },
-          { "type": "object", "required": ["id", "title", "status", "reason"], "properties": { "id": { "$ref": "#/$defs/requirementId" }, "title": { "type": "string", "minLength": 1 }, "priority": { "enum": ["must", "should", "could"] }, "status": { "const": "excluded" }, "reason": { "type": "string", "minLength": 1 } }, "not": { "required": ["acceptanceScenarioIds"] } }
+          {
+            "type": "object",
+            "required": [
+              "id",
+              "title",
+              "priority",
+              "status",
+              "acceptanceScenarioIds"
+            ],
+            "properties": {
+              "id": {
+                "$ref": "#/$defs/requirementId"
+              },
+              "title": {
+                "type": "string",
+                "minLength": 1
+              },
+              "priority": {
+                "enum": [
+                  "must",
+                  "should",
+                  "could"
+                ]
+              },
+              "status": {
+                "const": "approved"
+              },
+              "acceptanceScenarioIds": {
+                "type": "array",
+                "minItems": 1,
+                "uniqueItems": true,
+                "items": {
+                  "$ref": "#/$defs/acceptanceId"
+                }
+              }
+            },
+            "not": {
+              "required": [
+                "reason"
+              ]
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "id",
+              "title",
+              "status",
+              "reason"
+            ],
+            "properties": {
+              "id": {
+                "$ref": "#/$defs/requirementId"
+              },
+              "title": {
+                "type": "string",
+                "minLength": 1
+              },
+              "priority": {
+                "enum": [
+                  "must",
+                  "should",
+                  "could"
+                ]
+              },
+              "status": {
+                "const": "excluded"
+              },
+              "reason": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "not": {
+              "required": [
+                "acceptanceScenarioIds"
+              ]
+            }
+          }
         ]
       }
     },
-    "acceptanceScenarios": { "type": "array", "items": { "type": "object", "required": ["id", "title", "requirementId", "flowId", "screenIds", "kind", "subject", "operation", "verificationSurfaces", "dependsOnAcceptanceScenarioIds"], "properties": { "id": { "$ref": "#/$defs/acceptanceId" }, "requirementId": { "$ref": "#/$defs/requirementId" }, "flowId": { "$ref": "#/$defs/flowId" }, "screenIds": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "$ref": "#/$defs/screenId" } }, "kind": { "enum": ["action", "state", "failure"] }, "verificationSurfaces": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "string", "minLength": 1 } }, "dependsOnAcceptanceScenarioIds": { "type": "array", "uniqueItems": true, "items": { "$ref": "#/$defs/acceptanceId" } } }, "not": { "required": ["required"] } } },
-    "managedEntities": { "type": "array" },
-    "qualityGates": { "type": "array", "minItems": 1, "items": { "type": "object", "required": ["id", "title", "category", "platform", "requirement", "verificationMethod", "contractSource", "verificationSurfaces"], "properties": { "id": { "$ref": "#/$defs/qualityGateId" }, "category": { "enum": ["repository", "platform", "external", "release"] }, "requirement": { "enum": ["required", "conditional"] }, "verificationSurfaces": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "string", "minLength": 1 } } } } },
-    "flows": { "type": "array", "uniqueItems": true, "items": { "$ref": "#/$defs/flowId" } },
-    "screens": { "type": "array", "uniqueItems": true, "items": { "$ref": "#/$defs/screenId" } },
-    "capabilities": { "type": "object" }, "constraints": { "type": "object" }, "localization": { "type": "object" }, "architecture": { "type": "object" }, "uiQuality": { "type": "object" }, "openQuestions": { "type": "array" }
+    "acceptanceScenarios": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "title",
+          "requirementId",
+          "flowId",
+          "screenIds",
+          "kind",
+          "subject",
+          "operation",
+          "verificationSurfaces",
+          "dependsOnAcceptanceScenarioIds"
+        ],
+        "properties": {
+          "id": {
+            "$ref": "#/$defs/acceptanceId"
+          },
+          "requirementId": {
+            "$ref": "#/$defs/requirementId"
+          },
+          "flowId": {
+            "$ref": "#/$defs/flowId"
+          },
+          "screenIds": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": {
+              "$ref": "#/$defs/screenId"
+            }
+          },
+          "kind": {
+            "enum": [
+              "action",
+              "state",
+              "failure"
+            ]
+          },
+          "verificationSurfaces": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "dependsOnAcceptanceScenarioIds": {
+            "type": "array",
+            "uniqueItems": true,
+            "items": {
+              "$ref": "#/$defs/acceptanceId"
+            }
+          }
+        },
+        "not": {
+          "required": [
+            "required"
+          ]
+        }
+      }
+    },
+    "managedEntities": {
+      "type": "array"
+    },
+    "qualityGates": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "title",
+          "category",
+          "platform",
+          "requirement",
+          "verificationMethod",
+          "contractSource",
+          "verificationSurfaces"
+        ],
+        "properties": {
+          "id": {
+            "$ref": "#/$defs/qualityGateId"
+          },
+          "category": {
+            "enum": [
+              "repository",
+              "platform",
+              "external",
+              "release"
+            ]
+          },
+          "requirement": {
+            "enum": [
+              "required",
+              "conditional"
+            ]
+          },
+          "verificationSurfaces": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        }
+      }
+    },
+    "flows": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/flowId"
+      }
+    },
+    "screens": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/screenId"
+      }
+    },
+    "capabilities": {
+      "type": "object"
+    },
+    "constraints": {
+      "type": "object"
+    },
+    "localization": {
+      "type": "object"
+    },
+    "architecture": {
+      "type": "object"
+    },
+    "uiQuality": {
+      "type": "object"
+    },
+    "openQuestions": {
+      "type": "array"
+    },
+    "assetRequirements": {
+      "type": "object",
+      "required": [
+        "resourceSystem",
+        "deliveryManifest",
+        "qualityGateId",
+        "items"
+      ],
+      "properties": {
+        "resourceSystem": {
+          "const": "compose-multiplatform-resources"
+        },
+        "deliveryManifest": {
+          "const": "docs/assets/asset-manifest.json"
+        },
+        "qualityGateId": {
+          "$ref": "#/$defs/qualityGateId"
+        },
+        "noAssetsReason": {
+          "type": "string",
+          "minLength": 1
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/assetRequirement"
+          }
+        }
+      }
+    }
   },
   "$defs": {
-    "requirementId": { "type": "string", "pattern": "^REQ-[0-9]{3,}$" },
-    "acceptanceId": { "type": "string", "pattern": "^AC-[0-9]{3,}$" },
-    "flowId": { "type": "string", "pattern": "^FLOW-[0-9]{3,}$" },
-    "screenId": { "type": "string", "pattern": "^SCREEN-[0-9]{3,}$" },
-    "qualityGateId": { "type": "string", "pattern": "^QG-[0-9]{3,}$" }
+    "requirementId": {
+      "type": "string",
+      "pattern": "^REQ-[0-9]{3,}$"
+    },
+    "acceptanceId": {
+      "type": "string",
+      "pattern": "^AC-[0-9]{3,}$"
+    },
+    "flowId": {
+      "type": "string",
+      "pattern": "^FLOW-[0-9]{3,}$"
+    },
+    "screenId": {
+      "type": "string",
+      "pattern": "^SCREEN-[0-9]{3,}$"
+    },
+    "qualityGateId": {
+      "type": "string",
+      "pattern": "^QG-[0-9]{3,}$"
+    },
+    "assetRequirement": {
+      "type": "object",
+      "required": [
+        "id",
+        "kind",
+        "acquisition",
+        "brief",
+        "screenIds",
+        "acceptanceScenarioIds",
+        "resourceName",
+        "displayDp",
+        "maxDensity",
+        "transparent",
+        "themeBehavior",
+        "tintBehavior",
+        "accessibility",
+        "variants"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^ASSET-[0-9]{3,}$"
+        },
+        "kind": {
+          "enum": [
+            "icon",
+            "logo",
+            "illustration"
+          ]
+        },
+        "acquisition": {
+          "enum": [
+            "reuse",
+            "create-vector",
+            "generate-raster",
+            "user-provided"
+          ]
+        },
+        "resourceName": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]*$"
+        },
+        "displayDp": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": {
+            "type": "number",
+            "exclusiveMinimum": 0
+          }
+        },
+        "maxDensity": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "transparent": {
+          "type": "boolean"
+        },
+        "variants": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": [
+              "path"
+            ],
+            "properties": {
+              "path": {
+                "type": "string",
+                "minLength": 1
+              },
+              "widthPx": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "heightPx": {
+                "type": "integer",
+                "minimum": 1
+              }
+            }
+          }
+        }
+      }
+    }
   },
   "additionalProperties": true
 }

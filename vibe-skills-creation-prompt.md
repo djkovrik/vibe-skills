@@ -3,7 +3,7 @@
 
 ## Protocol 2.0 override
 
-Этот раздел имеет приоритет над любыми оставшимися историческими формулировками ниже. Пакет имеет version 2.0.0 и принимает только AppSpec, ledger, hand-off, receipt, audit request и closure audit Protocol 2.0. AppSpec fingerprint включает все regular files и assets. Обязательны shared canonical inventory, dependency DAG, atomic digest-checked ledger writes, read-only resume classification, immutable specialist hand-offs, latest-receipt ordering, covering final receipt, request-bound fresh audit, final report parity validation и optional isolated codex exec evals. Migration и compatibility с 1.x отсутствуют.
+Этот раздел имеет приоритет над любыми оставшимися историческими формулировками ниже. Пакет имеет version 2.2.0 и принимает только AppSpec, ledger, hand-off, receipt, audit request и closure audit Protocol 2.0. AppSpec fingerprint включает все regular files и assets. Обязательны shared canonical inventory, dependency DAG, atomic digest-checked ledger writes, read-only resume classification, immutable specialist hand-offs, latest-receipt ordering, covering final receipt, request-bound fresh audit, final report parity validation и optional isolated codex exec evals. Migration и compatibility с 1.x отсутствуют.
 
 ## Роль и конечная цель
 
@@ -80,7 +80,7 @@ LAZYWEB_SKILL = C:\Users\Sergey\.codex\skills\lazyweb\SKILL.md
 
 ## Архитектурное решение по пакету
 
-Создай 14 skills:
+Создай 15 skills:
 
 1. `vibe-developer`
 2. `vibe-project-architect`
@@ -96,6 +96,7 @@ LAZYWEB_SKILL = C:\Users\Sergey\.codex\skills\lazyweb\SKILL.md
 12. `vibe-monetization-engineer`
 13. `vibe-test-engineer`
 14. `vibe-acceptance-auditor`
+15. `vibe-assets-creator`
 
 Это skills, а не постоянно работающие агенты. Причина: их знания нужны по этапам, и progressive disclosure позволяет не загружать весь корпус в каждую задачу.
 
@@ -122,6 +123,7 @@ vibe-network-engineer/
 vibe-persistence-engineer/
 vibe-sync-engineer/
 vibe-product-designer/
+vibe-assets-creator/
 vibe-visual-testing/
 vibe-monetization-engineer/
 vibe-test-engineer/
@@ -651,6 +653,12 @@ Atomic cross-entity replacement?
 - `screen-states-responsive-accessibility.md`;
 - `compose-expert-handoff.md`;
 - `design-to-golden-loop.md`.
+
+### `vibe-assets-creator`
+
+Узкий specialist для создания и генерации иконок, оригинальных лого и иллюстраций по утверждённому asset brief. Product Designer сохраняет владение UI/UX и визуальным направлением. Assets Creator выбирает reuse/create-vector/generate-raster/user-provided, поставляет переносимые XML/PNG в commonMain Compose Resources, provenance и manifest с production use sites. При raster generation используй imagegen; одни промпты не являются результатом.
+
+Все создаваемые runtime-ассеты используются через Compose Multiplatform Resources. Простые иконки предпочтительно XML vector; raster icons default — прозрачный PNG 128×128. Размер 64×64 допустим, если покрывает displayDp × maxDensity. Ресурсные пути, ASSET IDs, AC/screens, варианты и ожидаемые размеры фиксируются в AppSpec; итоговые outputs/hashes, provenance и visual evidence — в docs/assets/asset-manifest.json. Включи required repository asset gate, проверку до аудита, golden review, recovery packets и immutable hand-off.
 
 ### `vibe-visual-testing`
 
@@ -1403,7 +1411,7 @@ python "C:\Users\Sergey\.codex\skills\.system\skill-creator\scripts\quick_valida
 Выполни работу полностью:
 
 1. Покажи короткий план.
-2. Создай все 14 skills через `init_skill.py`.
+2. Создай все 15 skills через `init_skill.py`.
 3. Заполни SKILL/reference/script/asset files.
 4. Сгенерируй `agents/openai.yaml`.
 5. Создай AppSpec 2.0 template/schema/strict validator и Protocol 2.0 delivery/resume/checkpoint/hand-off/receipt/audit tooling без migrator.
@@ -1424,3 +1432,7 @@ python "C:\Users\Sergey\.codex\skills\.system\skill-creator\scripts\quick_valida
     - какие reusable patterns были зафиксированы.
 
 Не останавливайся на описании того, что следовало бы создать. Итогом следующей сессии должны быть реально созданные, проверенные и установленные skills.
+
+## Asset delivery 2.2 override
+
+Пакет 2.2.0 сохраняет протокол 2.0 и добавляет обязательный для новых спецификаций [asset contract](vibe-assets-creator/references/asset-contract.md). Этот раздел заменяет историческое требование всегда ждать custom assets от пользователя. Product Designer определяет инвентарь/brief, Assets Creator создаёт и генерирует файлы, Compose Expert подключает через Compose Multiplatform Resources; Visual Testing и независимый аудитор проверяют использование. Для raster icons default — прозрачный PNG 128×128, для простых иконок — XML vector; 64×64 только при достаточном dp×density. Требования заморожены в AppSpec, фактическая поставка фиксируется в manifest вне AppSpec, progress — в ledger. Плановая генерация валидна на intake; завершённая поставка требует файлов, hashes, provenance, production usages и визуальных доказательств.

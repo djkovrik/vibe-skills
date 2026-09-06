@@ -58,3 +58,7 @@ Propose reusable preview/golden infrastructure rules for [learned-patterns.md](r
 ## Recovery of unfinished work
 
 For multi-step work, including direct specialist requests, follow the shared [recovery contract](../vibe-developer/references/recovery-contract.md). Save the durable assignment before edits, checkpoint unfinished work with `specialist-state.py`, and resume from its packet after compaction or interruption, including inside the same turn. Preserve new user decisions immediately. A final hand-off does not replace intermediate checkpoints.
+
+## Asset acceptance
+
+Use the [asset contract](../vibe-assets-creator/references/asset-contract.md). Cover every ASSET ID through production screen/state/theme previews, including meaningful selected states, tint, optical size, alpha fringes and logo colors. Record actual reviewed artifacts in the asset manifest. Request the asset-check and asset-visual gate checks through Developer; a generated file without production usage or a reviewed screen is incomplete.

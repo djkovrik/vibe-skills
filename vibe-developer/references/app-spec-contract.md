@@ -53,3 +53,7 @@ python .\vibe-developer\scripts\validate-app-spec.py --require-current <app-spec
 ```
 
 The compatibility flag is accepted for a stable command line, but validation is always strict 2.0. Validation is read-only and checks requirement states, links, per-AC Given/When/Then, dependency cycles, operation decisions, gate coverage, file structure, and blocking questions.
+
+## Asset requirements (package 2.2)
+
+New AppSpecs include `assetRequirements` as defined in the [asset contract](../../vibe-assets-creator/references/asset-contract.md). Intake validates approved briefs, IDs, output destinations and sizes, allowing planned creation/generation. Delivery validates actual output via the required asset gate. Runtime files and mutable delivery evidence are outside the frozen AppSpec; accepted scope changes use spec reconciliation. Legacy specs without the extension emit a warning; reconcile the inventory before asset work.

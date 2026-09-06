@@ -59,3 +59,7 @@ Propose durable test-harness patterns for [learned-patterns.md](references/learn
 ## Recovery of unfinished work
 
 For multi-step work, including direct specialist requests, follow the shared [recovery contract](../vibe-developer/references/recovery-contract.md). Save the durable assignment before edits, checkpoint unfinished work with `specialist-state.py`, and resume from its packet after compaction or interruption, including inside the same turn. Preserve new user decisions immediately. A final hand-off does not replace intermediate checkpoints.
+
+## Asset checks
+
+Use the [asset contract](../vibe-assets-creator/references/asset-contract.md) for the asset-check gate: inventory, hashes, dimensions/transparency, portable vector references and production resource usage. Run the Assets Creator validator; request actual resource compilation for supported targets. Visual Testing owns image appearance and goldens. Static references are not proof of reachable UI.

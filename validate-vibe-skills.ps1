@@ -1,7 +1,8 @@
 [CmdletBinding()]
 param(
     [switch]$SkipInstallerWhatIf,
-    [switch]$IncludeAgentEvals
+    [switch]$IncludeAgentEvals,
+    [string]$PythonPath
 )
 
 $ErrorActionPreference = 'Continue'
@@ -85,6 +86,7 @@ foreach ($privacyContractFile in $privacyContractFiles) {
 
 $quickValidate = 'C:\Users\Sergey\.codex\skills\.system\skill-creator\scripts\quick_validate.py'
 $localPython = Join-Path $root '.tooling\venv\Scripts\python.exe'
+if ($PythonPath) { $localPython = [System.IO.Path]::GetFullPath($PythonPath) }
 if (-not (Test-Path -LiteralPath $localPython -PathType Leaf)) {
     Add-Failure "Local validation Python is missing: $localPython"
 }

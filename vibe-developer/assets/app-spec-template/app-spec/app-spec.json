@@ -3,8 +3,14 @@
   "app": {
     "name": "Example App",
     "summary": "A validated hand-off example.",
-    "targets": ["android", "ios"],
-    "locales": ["en", "ru"]
+    "targets": [
+      "android",
+      "ios"
+    ],
+    "locales": [
+      "en",
+      "ru"
+    ]
   },
   "requirements": [
     {
@@ -12,7 +18,11 @@
       "title": "Persist the selected preference",
       "priority": "must",
       "status": "approved",
-      "acceptanceScenarioIds": ["AC-001", "AC-002", "AC-003"]
+      "acceptanceScenarioIds": [
+        "AC-001",
+        "AC-002",
+        "AC-003"
+      ]
     }
   ],
   "acceptanceScenarios": [
@@ -21,11 +31,16 @@
       "title": "Save the first preference selection",
       "requirementId": "REQ-001",
       "flowId": "FLOW-001",
-      "screenIds": ["SCREEN-001"],
+      "screenIds": [
+        "SCREEN-001"
+      ],
       "kind": "action",
       "subject": "PreferenceSelection",
       "operation": "create",
-      "verificationSurfaces": ["component-test", "settings-integration-test"],
+      "verificationSurfaces": [
+        "component-test",
+        "settings-integration-test"
+      ],
       "dependsOnAcceptanceScenarioIds": []
     },
     {
@@ -33,34 +48,66 @@
       "title": "Restore the persisted preference selection",
       "requirementId": "REQ-001",
       "flowId": "FLOW-001",
-      "screenIds": ["SCREEN-001"],
+      "screenIds": [
+        "SCREEN-001"
+      ],
       "kind": "state",
       "subject": "PreferenceSelection",
       "operation": "read",
-      "verificationSurfaces": ["component-test", "settings-integration-test"],
-      "dependsOnAcceptanceScenarioIds": ["AC-001"]
+      "verificationSurfaces": [
+        "component-test",
+        "settings-integration-test"
+      ],
+      "dependsOnAcceptanceScenarioIds": [
+        "AC-001"
+      ]
     },
     {
       "id": "AC-003",
       "title": "Replace a saved preference selection",
       "requirementId": "REQ-001",
       "flowId": "FLOW-001",
-      "screenIds": ["SCREEN-001"],
+      "screenIds": [
+        "SCREEN-001"
+      ],
       "kind": "action",
       "subject": "PreferenceSelection",
       "operation": "update",
-      "verificationSurfaces": ["component-test", "settings-integration-test"],
-      "dependsOnAcceptanceScenarioIds": ["AC-001"]
+      "verificationSurfaces": [
+        "component-test",
+        "settings-integration-test"
+      ],
+      "dependsOnAcceptanceScenarioIds": [
+        "AC-001"
+      ]
     }
   ],
   "managedEntities": [
     {
       "entity": "PreferenceSelection",
       "operations": {
-        "create": { "status": "required", "acceptanceScenarioIds": ["AC-001"] },
-        "read": { "status": "required", "acceptanceScenarioIds": ["AC-002"] },
-        "update": { "status": "required", "acceptanceScenarioIds": ["AC-003"] },
-        "delete": { "status": "not-applicable", "reason": "The product always keeps one selection and exposes no clear/reset action." }
+        "create": {
+          "status": "required",
+          "acceptanceScenarioIds": [
+            "AC-001"
+          ]
+        },
+        "read": {
+          "status": "required",
+          "acceptanceScenarioIds": [
+            "AC-002"
+          ]
+        },
+        "update": {
+          "status": "required",
+          "acceptanceScenarioIds": [
+            "AC-003"
+          ]
+        },
+        "delete": {
+          "status": "not-applicable",
+          "reason": "The product always keeps one selection and exposes no clear/reset action."
+        }
       }
     }
   ],
@@ -73,7 +120,9 @@
       "requirement": "required",
       "verificationMethod": "Run the focused test, Detekt, Kover, and build tasks declared in quality.md.",
       "contractSource": "quality.md#test-matrix",
-      "verificationSurfaces": ["repository-check"]
+      "verificationSurfaces": [
+        "repository-check"
+      ]
     },
     {
       "id": "QG-002",
@@ -83,7 +132,9 @@
       "requirement": "required",
       "verificationMethod": "Run the declared Android build and platform test tasks.",
       "contractSource": "quality.md#release-acceptance",
-      "verificationSurfaces": ["android-build"]
+      "verificationSurfaces": [
+        "android-build"
+      ]
     },
     {
       "id": "QG-003",
@@ -93,7 +144,9 @@
       "requirement": "required",
       "verificationMethod": "Run the declared iOS compilation and platform test tasks.",
       "contractSource": "quality.md#release-acceptance",
-      "verificationSurfaces": ["ios-build"]
+      "verificationSurfaces": [
+        "ios-build"
+      ]
     },
     {
       "id": "QG-004",
@@ -103,7 +156,9 @@
       "requirement": "required",
       "verificationMethod": "Verify every release acceptance item and its current evidence.",
       "contractSource": "quality.md#release-acceptance",
-      "verificationSurfaces": ["release-check"]
+      "verificationSurfaces": [
+        "release-check"
+      ]
     },
     {
       "id": "QG-005",
@@ -114,11 +169,30 @@
       "condition": "A distribution build is being published to an external store or service.",
       "verificationMethod": "Verify the configured external account, credentials, and publication result.",
       "contractSource": "quality.md#release-acceptance",
-      "verificationSurfaces": ["publication-check"]
+      "verificationSurfaces": [
+        "publication-check"
+      ]
+    },
+    {
+      "id": "QG-006",
+      "title": "Asset creation and production usage",
+      "category": "repository",
+      "platform": "all",
+      "requirement": "required",
+      "verificationMethod": "Run validate-assets.py, compile Compose Resources and inspect production preview/golden evidence for every ASSET ID.",
+      "contractSource": "quality.md#asset-delivery",
+      "verificationSurfaces": [
+        "asset-check",
+        "asset-visual"
+      ]
     }
   ],
-  "flows": ["FLOW-001"],
-  "screens": ["SCREEN-001"],
+  "flows": [
+    "FLOW-001"
+  ],
+  "screens": [
+    "SCREEN-001"
+  ],
   "capabilities": {
     "network": false,
     "database": false,
@@ -131,9 +205,15 @@
   },
   "constraints": {
     "offlineMode": "The preference remains available offline.",
-    "privacy": ["Do not collect personal data."],
-    "accessibility": ["Support screen readers and font scaling."],
-    "performance": ["Persist the preference without visible delay."]
+    "privacy": [
+      "Do not collect personal data."
+    ],
+    "accessibility": [
+      "Support screen readers and font scaling."
+    ],
+    "performance": [
+      "Persist the preference without visible delay."
+    ]
   },
   "localization": {
     "defaultLocale": "en",
@@ -158,8 +238,14 @@
     "screenshotTestHostRationale": "The Compose module owns production previews, theme, fonts, resources, generated Android unit tests, and snapshots."
   },
   "uiQuality": {
-    "previewThemes": ["light", "dark"],
-    "fontScales": [1.0, 2.0],
+    "previewThemes": [
+      "light",
+      "dark"
+    ],
+    "fontScales": [
+      1.0,
+      2.0
+    ],
     "localeCoverage": "all",
     "goldenTesting": {
       "required": true,
@@ -170,7 +256,9 @@
       "required": true,
       "provider": "lazyweb",
       "trigger": "after-goldens",
-      "standards": ["material3"]
+      "standards": [
+        "material3"
+      ]
     },
     "iconography": {
       "inventoryStatus": "approved",
@@ -178,5 +266,66 @@
       "customAssetsStatus": "not-required"
     }
   },
-  "openQuestions": []
+  "openQuestions": [],
+  "assetRequirements": {
+    "resourceSystem": "compose-multiplatform-resources",
+    "deliveryManifest": "docs/assets/asset-manifest.json",
+    "qualityGateId": "QG-006",
+    "items": [
+      {
+        "id": "ASSET-001",
+        "kind": "icon",
+        "acquisition": "reuse",
+        "brief": "Canonical Material Symbols back action with meaningful RTL mirroring.",
+        "screenIds": [
+          "SCREEN-001"
+        ],
+        "acceptanceScenarioIds": [
+          "AC-001"
+        ],
+        "resourceName": "ic_arrow_back",
+        "displayDp": [
+          24,
+          24
+        ],
+        "maxDensity": 4,
+        "transparent": true,
+        "themeBehavior": "Shared tintable vector in light/dark themes.",
+        "tintBehavior": "Material content color.",
+        "accessibility": "Localized action semantics; do not duplicate adjacent text.",
+        "variants": [
+          {
+            "path": "composeApp/src/commonMain/composeResources/drawable/ic_arrow_back.xml"
+          }
+        ]
+      },
+      {
+        "id": "ASSET-002",
+        "kind": "icon",
+        "acquisition": "reuse",
+        "brief": "Canonical Material Symbols save action matching the same outlined icon family.",
+        "screenIds": [
+          "SCREEN-001"
+        ],
+        "acceptanceScenarioIds": [
+          "AC-001"
+        ],
+        "resourceName": "ic_save",
+        "displayDp": [
+          24,
+          24
+        ],
+        "maxDensity": 4,
+        "transparent": true,
+        "themeBehavior": "Shared tintable vector in light/dark themes.",
+        "tintBehavior": "Material content color.",
+        "accessibility": "Localized action semantics; do not duplicate adjacent text.",
+        "variants": [
+          {
+            "path": "composeApp/src/commonMain/composeResources/drawable/ic_save.xml"
+          }
+        ]
+      }
+    ]
+  }
 }

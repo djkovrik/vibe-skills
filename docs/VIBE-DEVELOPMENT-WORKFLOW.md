@@ -51,3 +51,9 @@ Receipts существуют только как JSON-файлы под .vibe/r
 Первый verdict допускает незакрытые внешние platform/external/release gates; второй — нет. Waiver действителен только со ссылкой на существующее долговечное решение.
 
 Подробный протокол восстановления после compaction, durable decisions, specialist checkpoints, согласования принятой редакции AppSpec и повторных аудитов: [recovery-contract.md](../vibe-developer/references/recovery-contract.md). Waived/blocked gates требуют реальных решений или блокеров, а не фиктивных успешных команд.
+
+## Создание и поставка ассетов
+
+Product Designer фиксирует все нужные иконки, лого и иллюстрации в `assetRequirements`, связывая их с экранами/AC и описаниями design.md. Assets Creator создаёт XML-векторы или генерирует растровые изображения по утверждённому brief. Compose Expert подключает их только через Compose Multiplatform Resources, Architect обеспечивает resource wiring, Visual Testing проверяет реальные экраны.
+
+Растровые иконки по умолчанию: прозрачный PNG 128×128; 64×64 допускается при достаточном разрешении для заявленных dp и плотности. Простые иконки предпочтительно хранить в XML-векторах. Результаты, происхождение и use sites фиксируются в `docs/assets/asset-manifest.json`; полнота проверяется отдельным repository gate до аудита. [Полный контракт](../vibe-assets-creator/references/asset-contract.md).

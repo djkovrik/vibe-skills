@@ -53,3 +53,7 @@ The standalone audit validator derives canonical inventory from AppSpec itself. 
 validate-delivery-ledger.py is the one final command. It strictly validates AppSpec, reconciles inventories, applies receipt ordering, validates audit/request binding, compares both generated reports with their deterministic renderers, and prints both verdict lines even after validation failures.
 
 implementation-complete requires all ACs and applicable repository gates resolved, current successful surface evidence, a covering final receipt, a fresh PASS audit, current fingerprints, and report parity. release-ready additionally resolves every applicable platform, external, and release gate and permits no blocked-external.
+
+## Asset delivery
+
+For specs declaring assetRequirements, aggregate validation (including pre-audit readiness) invokes the shared asset delivery validator. Track creation under the linked ACs and the required asset-check/asset-visual repository gate. `docs/assets/asset-manifest.json` is evidence, not a second status ledger; its bytes and output/use-site changes invalidate workspace-bound verification. Follow the [asset contract](../../vibe-assets-creator/references/asset-contract.md).

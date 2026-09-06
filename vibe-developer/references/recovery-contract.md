@@ -52,3 +52,9 @@ Run `run-acceptance-audit.py <repo> --request .vibe/audits/<request-id>/request.
 After GAPS, interruption, failure or further code changes, retain the attempt, fix/revalidate locally and create a new request ID. Audits are immutable; current pointers live in the ledger and previous pointers in `auditHistory`. The request/launch/audit/final times must follow actual execution order. Render reports only after final ledger mutation so their parity remains current.
 
 Receipts need `executionStatus`, `startWorkspaceFingerprint` and `workspaceFingerprint`. Old receipts without these fields cannot prove current completion; rerun checks with the updated runner. The final receipt must start after the current audit completes and cover all verified obligation/surface pairs. Waived and externally blocked gates require their decisions/blockers, not fabricated successful commands. A later successful run may supersede a failed/interrupted run; preserve both files.
+
+## Asset work
+
+Across all assignments, an executed check is not necessarily a resolved check. After a failed run, retain the pending rerun/fix action until a successful result resolves it. Keep a partially implemented AC `in-progress`; use `implemented-unverified` only when its required implementation exists and verification is still outstanding. A narrative next action does not replace these structured fields.
+
+For Assets Creator checkpoints preserve ASSET IDs, brief and manifest paths, completed output/source paths with hashes, pending variants/generation, reviewed evidence and next action. Resume by reading these files before generating again. Working evidence lives outside AppSpec; update the existing manifest instead of duplicating task status. Only Developer advances the linked AC/asset gate.

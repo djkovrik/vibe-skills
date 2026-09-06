@@ -1,0 +1,4 @@
+interface:
+  display_name: "Vibe Assets Creator"
+  short_description: "Create and verify Compose resource icons and artwork"
+  default_prompt: "Use $vibe-assets-creator to create the required app assets and deliver them through Compose Multiplatform Resources."

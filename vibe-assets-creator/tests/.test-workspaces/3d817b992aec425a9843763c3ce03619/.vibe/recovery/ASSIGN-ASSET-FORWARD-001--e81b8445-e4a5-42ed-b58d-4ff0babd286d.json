@@ -1,0 +1,137 @@
+{
+  "assignmentId": "ASSIGN-ASSET-FORWARD-001",
+  "blockers": [
+    "Build and screenshot tooling unavailable; visualEvidence absent; frozen prose conflicts with JSON brief"
+  ],
+  "createdAt": "2026-09-06T07:57:56.430118Z",
+  "fileBoundaries": [
+    "composeApp/src/commonMain/composeResources/drawable/ic_bookmark.xml",
+    "docs/assets/**",
+    ".vibe/**"
+  ],
+  "nextAction": "Retain ASSET-002 XML with hash from manifest; Developer resolves prose mismatch and supplies actual build/render infrastructure, then record real visual evidence and rerun validation.",
+  "obligationIds": [
+    "ASSET-002",
+    "AC-001",
+    "QG-006"
+  ],
+  "owner": "vibe-assets-creator",
+  "pendingChecks": [
+    "Compile Android/iOS Compose Resources and verify production theme/state previews and goldens"
+  ],
+  "requiredReadHashes": [
+    {
+      "path": "docs/assets/assignment.md",
+      "sha256": "a310f37f54039313b7a8e23df5c27ee8ec592616ca3816bd8f6fea91894e0223"
+    },
+    {
+      "path": "docs/assets/asset-manifest.json",
+      "sha256": "0e0256e12541495a0e1a6652df62d0b85a87af542e09ccd7d587b757fc1f79e9"
+    },
+    {
+      "path": "docs/assets/check-results.json",
+      "sha256": "bb10bc457231334ea39ade5f7dcf604e5b8d73be95f23323e3f7b035b6055bd9"
+    },
+    {
+      "path": "docs/assets/delivery-report.md",
+      "sha256": "6c65232cb6c98d04b57151d2de2bd1e7936029baef1edde2ae1bc406f4b4b379"
+    },
+    {
+      "path": "AGENTS.md",
+      "sha256": "551638222b9306ea030e53a751addbae967749722909bf23768d56ea0af1b034"
+    },
+    {
+      "path": "app-spec/app-spec.json",
+      "sha256": "9cf6d79fe54460c2eeecd285a7e0bc51bded39f69e71ed5a9003c6e66683e1af"
+    }
+  ],
+  "requiredReads": [
+    "docs/assets/assignment.md",
+    "docs/assets/asset-manifest.json",
+    "docs/assets/check-results.json",
+    "docs/assets/delivery-report.md",
+    "AGENTS.md",
+    "app-spec/app-spec.json"
+  ],
+  "schemaVersion": "2.0",
+  "scopedInstructions": [
+    {
+      "path": "AGENTS.md",
+      "scope": ".",
+      "sha256": "551638222b9306ea030e53a751addbae967749722909bf23768d56ea0af1b034"
+    }
+  ],
+  "status": "returned",
+  "workspaceFingerprint": {
+    "algorithm": "sha256",
+    "binaryDiffSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "digest": "9c85ac2706f3e28aa0e8e3ea2125785b8c50a276119a624158cbf04598aec32e",
+    "gitHead": "79a244e713ada3877d5ad8fd5ed0dcc3f95b2175",
+    "workingFiles": [
+      {
+        "path": "AGENTS.md",
+        "sha256": "551638222b9306ea030e53a751addbae967749722909bf23768d56ea0af1b034"
+      },
+      {
+        "path": "app-spec/app-spec.json",
+        "sha256": "9cf6d79fe54460c2eeecd285a7e0bc51bded39f69e71ed5a9003c6e66683e1af"
+      },
+      {
+        "path": "app-spec/assets/.gitkeep",
+        "sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b"
+      },
+      {
+        "path": "app-spec/data.md",
+        "sha256": "dd9679488b97a864814bcab0ccf3233ee4cede1423ffa5bb324bfae4694838e7"
+      },
+      {
+        "path": "app-spec/design.md",
+        "sha256": "277eceba0f1fae33d8368f9ab87b630b632d3c11ae778eba1b81b887bf49de7c"
+      },
+      {
+        "path": "app-spec/domain.md",
+        "sha256": "464acb185a96eaf9c588615bd791151ab984bdd95744a3f780db3b9a74af1dde"
+      },
+      {
+        "path": "app-spec/flows/FLOW-001.md",
+        "sha256": "bcf8e865f51637b6d927c6c4e68507d884b7005f840e55377a2bba953c024c9d"
+      },
+      {
+        "path": "app-spec/product.md",
+        "sha256": "2579775fc4db54fef11fc42ba3e444dcdbd5bba032860318cce05629860d8d59"
+      },
+      {
+        "path": "app-spec/quality.md",
+        "sha256": "bc986cfab5b39e9fc3263aa6471152dcce018f6873b7235eb9f4feb8cf3cc6fd"
+      },
+      {
+        "path": "app-spec/screens/SCREEN-001.md",
+        "sha256": "2cac07c3f51b3b547e3914cb14ce4fcb72a47500062d2ba7db8c65bf5a1e4063"
+      },
+      {
+        "path": "composeApp/src/commonMain/composeResources/drawable/ic_bookmark.xml",
+        "sha256": "59a33be8a8c68917732305c6c0c8b5bc2419e98b4f01dbfc1706437cc6c63e25"
+      },
+      {
+        "path": "composeApp/src/commonMain/kotlin/Bookmark.kt",
+        "sha256": "5b6350428a8fc5e792df17224862f393fd521c39dc1f968048dc66bc4e3a599a"
+      },
+      {
+        "path": "docs/assets/asset-manifest.json",
+        "sha256": "0e0256e12541495a0e1a6652df62d0b85a87af542e09ccd7d587b757fc1f79e9"
+      },
+      {
+        "path": "docs/assets/assignment.md",
+        "sha256": "a310f37f54039313b7a8e23df5c27ee8ec592616ca3816bd8f6fea91894e0223"
+      },
+      {
+        "path": "docs/assets/check-results.json",
+        "sha256": "bb10bc457231334ea39ade5f7dcf604e5b8d73be95f23323e3f7b035b6055bd9"
+      },
+      {
+        "path": "docs/assets/delivery-report.md",
+        "sha256": "6c65232cb6c98d04b57151d2de2bd1e7936029baef1edde2ae1bc406f4b4b379"
+      }
+    ]
+  }
+}

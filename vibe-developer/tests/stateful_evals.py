@@ -26,7 +26,7 @@ def prepare(destination):
         "Keep class and method names. Only src/value.py may change. The verification contract is tests/verify_value.py; preserve its exact assertions. "
         "Preserve config/user-owned.txt. This is a bounded protocol fixture, not a request to scaffold a KMP application or change its AppSpec. "
         f"Use Python {sys.executable}. Shared recovery/checkpoint/receipt scripts are at {SCRIPTS}. "
-        "After verification, checkpoint with phase implementing, status implemented-unverified and no pending check; final app completion is outside this assignment.")
+        "After completing both methods and successful verification, checkpoint with phase implementing, status implemented-unverified and no pending check; final app completion is outside this assignment. Before then preserve in-progress status and the pending verification, including after a failing check.")
     (destination/"docs/assignments/ASSIGN-EVAL.md").write_text(request,encoding="utf-8")
     (destination/"docs/coverage.json").write_text(json.dumps({"coveredObligations":[{"obligationId":"AC-001","surfaces":["component-test"]}]}),encoding="utf-8")
     for args in (["init","-q"],["config","user.email","fixture@example.test"],["config","user.name","Fixture"],["add","."],["commit","-qm","materialized fixture"]):

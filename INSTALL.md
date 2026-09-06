@@ -1,12 +1,12 @@
-# Vibe KMP skills 2.1
+# Vibe KMP skills 2.2
 
 Run commands from this package root in PowerShell.
 
-The official `skill-creator` validator requires PyYAML. This workstation uses a package-local `.tooling\venv`; nothing is installed globally. If that ignored environment is absent on another workstation, create a local venv and install PyYAML only after approving the download:
+The official `skill-creator` validator requires PyYAML. This workstation uses a package-local `.tooling\venv`; nothing is installed globally. If that ignored environment is absent on another workstation, create a local venv and install the validation dependencies when downloads are authorized:
 
 ```powershell
 python -m venv .\.tooling\venv
-.\.tooling\venv\Scripts\python.exe -m pip install PyYAML
+.\.tooling\venv\Scripts\python.exe -m pip install PyYAML -r .\vibe-assets-creator\scripts\requirements.txt
 ```
 
 ```powershell
@@ -30,7 +30,7 @@ Junction keeps this package as the single editable copy. Copy mode creates indep
 
 Installed skills become available on the next turn.
 
-The manifest currently installs 14 skills, including the independent `$vibe-acceptance-auditor`. The manifest, rather than a hard-coded count in the installer, is the source of truth for Copy/Junction installation and post-install checks.
+The manifest currently installs 15 skills, including the independent `$vibe-acceptance-auditor`. The manifest, rather than a hard-coded count in the installer, is the source of truth for Copy/Junction installation and post-install checks.
 
 To implement an application, prepare and approve Vibe AppSpec 2.0, then start a separate session:
 
@@ -60,3 +60,5 @@ Run the deterministic package suite and the separate stateful agent gate before 
 ```
 
 The agent gate creates a real repository, starts two independent ephemeral executions, and checks saved state, protected file hashes, production behavior, command events and receipts. A missing CLI/tooling failure is a blocked gate, never a pass. These runs use the configured Codex account/model. Ordinary local deterministic validation remains available without this additional agent cost.
+
+Package 2.2 adds `$vibe-assets-creator`. PNG validation needs Pillow in the verification Python environment; XML-only validation is dependency-free. Install `vibe-assets-creator/scripts/requirements.txt` when needed. Full package tests need both PyYAML (official skill validator) and Pillow; `validate-vibe-skills.ps1 -PythonPath <python.exe>` can select an existing environment with both. Use `-MissingOnly` to add a missing skill while preserving current junctions, then run `check-vibe-installation.py`.

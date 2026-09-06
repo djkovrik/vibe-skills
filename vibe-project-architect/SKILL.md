@@ -59,3 +59,7 @@ Follow the package learning policy. Propose approved architectural rules for [le
 ## Recovery of unfinished work
 
 For multi-step work, including direct specialist requests, follow the shared [recovery contract](../vibe-developer/references/recovery-contract.md). Save the durable assignment before edits, checkpoint unfinished work with `specialist-state.py`, and resume from its packet after compaction or interruption, including inside the same turn. Preserve new user decisions immediately. A final hand-off does not replace intermediate checkpoints.
+
+## Asset resource wiring
+
+For icons/logos/illustrations apply the [asset contract](../vibe-assets-creator/references/asset-contract.md). Own resource-module placement, Compose resource dependency/plugin and generated accessor visibility for Android/iOS and screenshot hosts. Assets Creator owns XML/PNG files; Compose Expert owns typed usage. Keep runtime artwork in commonMain Compose Resources. Platform-specific launcher/store derivatives are additional exports with their native constraints.

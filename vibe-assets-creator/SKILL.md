@@ -1,0 +1,30 @@
+---
+name: vibe-assets-creator
+description: Create, generate, adapt, and deliver app icons, logos, and illustrations as Compose Multiplatform Resources with a traceable asset inventory and validation. Use for missing app artwork, custom icon families, transparent PNG exports, portable vector drawables, and asset delivery; screen layout and product UX belong to Product Designer.
+---
+
+# Vibe Assets Creator
+
+Own the actual resource files from an approved asset brief through production hand-off. Product Designer owns what an asset communicates, where it appears and the visual direction. Do not move screen design or golden infrastructure into this skill.
+
+## Read and plan
+
+Read the target instructions, current resources, AppSpec `assetRequirements`, `design.md`, referenced screens and [asset contract](references/asset-contract.md). Use the shared [source registry](../vibe-developer/references/source-registry.md) only for applicable local adaptations. For new visual direction or product UI critique, use Lazyweb first through Product Designer; an already approved brief and technical resource export do not need repeated research.
+
+Inventory every required icon, logo and illustration, including selected states, empty/error states and theme variants. Reuse suitable project assets and one coherent standard icon family. Add stable `ASSET-*` IDs and production destinations before creating files. An approved plan to create/generate assets is sufficient to start implementation; missing artwork is an implementation task. Ask only for a material unresolved visual choice or an exact external brand asset that cannot be created from the available brief.
+
+## Create and integrate
+
+1. Resolve `acquisition` per asset: reuse, create-vector, generate-raster or user-provided. Reuse canonical Material Symbols XML for familiar actions when consistent with the approved design. Draw simple custom geometry directly as portable vector XML; preserve existing editable sources. Record source and rights/attribution without inventing a license.
+2. For bitmap artwork, use the installed `$imagegen` workflow and built-in image-generation tool. Read that skill when needed; discover tool availability first. Give each asset its semantic purpose, style reference, optical weight, palette/tint rules, transparent background, composition, padding, intended display size and export dimensions. Generate the actual artwork, not just a prompt or placeholder. Keep generated provenance and selected source in the project. Use the tool's current edit/reference rules and inspect returned dimensions/alpha; a requested size is not evidence of the returned size. Follow host image-editing rules for any export/resizing. If generation is unavailable, preserve that item as blocked with a next action; do not silently substitute unrelated art or claim completion.
+3. Prefer scalable Android vector XML for simple icons. For raster icons default to **128×128 PNG with real transparency**. 64×64 is acceptable only when it covers `displayDp × maxDensity`; record larger export dimensions when needed. 24/32 dp UI size is independent from pixel size and touch target size. Logos and illustrations use their required aspect ratio and resolution, not an automatic square icon crop.
+4. Deliver every created runtime asset under the owning module's `src/commonMain/composeResources/drawable/`, with optional `drawable-dark`/`drawable-light` variants and an unqualified fallback. SVG may be retained as an editable source; Android+iOS runtime deliverables use XML or PNG. Never make app UI depend on a generation-service URL, tool cache, base64 blob, platform-only drawable or hand-coded `ImageVector` in place of the required Compose resource.
+5. Hand the typed `Res.drawable.<name>` accessors to Compose Expert; use `org.jetbrains.compose.resources.painterResource`/`vectorResource` with the project's generated `Res` imports. Architect owns Gradle/resource-module visibility. Product Designer owns localized semantics, meaningful mirroring and tint intent; preserve original logo/illustration colors (`Image`, or `Icon` with `Color.Unspecified`) when tinting is inappropriate. Native launcher/store artwork is derived separately by Platform/Architect and does not replace the common app resource.
+6. Populate `docs/assets/asset-manifest.json` with actual output hashes, provenance, production use sites and visual evidence. Inspect alpha (not a painted checkerboard), clipping, optical size, strokes, silhouette and theme contrast at the actual display size. Visual Testing renders production resources in required screen/state/theme previews and verifies goldens; inventory items are not delivered merely because their files exist.
+7. Run `scripts/validate-assets.py --app-spec-root <spec> --repository <repo>` with Pillow available for PNGs. The orchestrator records the command via `run-check.py` for the asset gate, owns Gradle builds and final receipt binding. Static checks cannot prove visual meaning, reachable UI or rendering on both platforms; preserve build, visual review and golden evidence separately.
+
+## Recovery and hand-off
+
+Follow the shared [recovery contract](../vibe-developer/references/recovery-contract.md) for direct and orchestrated multi-step work. Save assignment, ASSET IDs, spec/manifest paths, selected sources and hashes, generation outputs already obtained, unresolved variants and the exact next action before interruption or compaction. Resume the packet and inspect files before generating again. Do not regenerate a delivered asset solely because chat history was compressed.
+
+For orchestrated delivery, use the immutable [specialist hand-off](../vibe-developer/references/specialist-handoff-contract.md), with AC/gate IDs, file boundaries, resource/manifest evidence, actual completed checks, requested resource compilation/golden commands and blockers. Do not edit the ledger, run Gradle or declare app completion. If implementation changes a frozen requirement, route through Developer's accepted spec-revision procedure; keep working delivery state outside AppSpec.

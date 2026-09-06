@@ -1,6 +1,6 @@
 {
   "packageName": "vibe-kmp-skills",
-  "packageVersion": "2.1.0",
+  "packageVersion": "2.2.0",
   "schemaVersion": "1.0",
   "skillDirectories": [
     "vibe-developer",
@@ -14,6 +14,7 @@
     "vibe-persistence-engineer",
     "vibe-sync-engineer",
     "vibe-product-designer",
+    "vibe-assets-creator",
     "vibe-visual-testing",
     "vibe-monetization-engineer",
     "vibe-test-engineer"

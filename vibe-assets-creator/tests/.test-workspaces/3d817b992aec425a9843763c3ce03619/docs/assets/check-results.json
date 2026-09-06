@@ -1,0 +1,61 @@
+{
+  "checks": [
+    {
+      "name": "requirements",
+      "argv": [
+        "C:\\Users\\Sergey\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\python\\python.exe",
+        "-B",
+        "D:/Sources/vibe-skills/vibe-assets-creator/scripts/validate-assets.py",
+        "--app-spec-root",
+        "app-spec"
+      ],
+      "cwd": "D:\\Sources\\vibe-skills\\vibe-assets-creator\\tests\\.test-workspaces\\3d817b992aec425a9843763c3ce03619",
+      "startedAt": "2026-09-06T07:56:47.649787+00:00",
+      "completedAt": "2026-09-06T07:56:47.748920+00:00",
+      "exitCode": 0,
+      "stdout": "{\n  \"valid\": true,\n  \"errors\": [],\n  \"warnings\": []\n}\n",
+      "stderr": ""
+    },
+    {
+      "name": "delivery",
+      "argv": [
+        "C:\\Users\\Sergey\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\python\\python.exe",
+        "-B",
+        "D:/Sources/vibe-skills/vibe-assets-creator/scripts/validate-assets.py",
+        "--app-spec-root",
+        "app-spec",
+        "--repository",
+        "."
+      ],
+      "cwd": "D:\\Sources\\vibe-skills\\vibe-assets-creator\\tests\\.test-workspaces\\3d817b992aec425a9843763c3ce03619",
+      "startedAt": "2026-09-06T07:56:47.748920+00:00",
+      "completedAt": "2026-09-06T07:56:47.856053+00:00",
+      "exitCode": 1,
+      "stdout": "{\n  \"valid\": false,\n  \"errors\": [\n    \"ASSET-002: visualEvidence required\"\n  ],\n  \"warnings\": []\n}\n",
+      "stderr": ""
+    }
+  ],
+  "xmlInspection": {
+    "passed": true,
+    "method": "ElementTree parse and exact geometry/attribute assertions; no rendering",
+    "intrinsicDp": [
+      24,
+      24
+    ],
+    "viewport": [
+      24,
+      24
+    ],
+    "strokeWidth": 2,
+    "fill": "transparent",
+    "stroke": "opaque black",
+    "path": "M6,3 H18 V21 L12,17 L6,21 Z",
+    "geometricStrokeBounds": [
+      5,
+      2,
+      19,
+      22
+    ],
+    "boundsMeaning": "Analytical envelope for 2-unit stroke with round joins; lies within viewport. Not pixel-level clipping evidence."
+  }
+}

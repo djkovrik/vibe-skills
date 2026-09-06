@@ -616,7 +616,10 @@ def validate_app_spec_data(root: Path, data: dict[str, Any]) -> tuple[list[str],
         if not isinstance(golden, dict) or golden.get("required") is not True or golden.get("engine") != "paparazzi" or golden.get("previewDiscovery") != "ComposablePreviewScanner": errors.append("uiQuality.goldenTesting contract is invalid")
         standards = review.get("standards", []) if isinstance(review, dict) else []
         if not isinstance(review, dict) or review.get("required") is not True or review.get("provider") != "lazyweb" or review.get("trigger") != "after-goldens" or not isinstance(standards, list) or "material3" not in standards: errors.append("uiQuality.designReview contract is invalid")
-        if not isinstance(icons, dict) or icons.get("inventoryStatus") not in {"approved", "not-required"} or icons.get("customAssetsStatus") not in {"provided", "not-required"}: errors.append("uiQuality.iconography inventory is unresolved")
+        asset_items = data["assetRequirements"].get("items") if isinstance(data.get("assetRequirements"), dict) else None
+        planned_assets = isinstance(asset_items, list) and any(isinstance(a, dict) and a.get("acquisition") in {"create-vector", "generate-raster"} for a in asset_items)
+        allowed_asset_statuses = {"provided", "not-required"} | ({"planned"} if planned_assets else set())
+        if not isinstance(icons, dict) or icons.get("inventoryStatus") not in {"approved", "not-required"} or icons.get("customAssetsStatus") not in allowed_asset_statuses: errors.append("uiQuality.iconography inventory is unresolved")
     capabilities = data.get("capabilities")
     if not isinstance(capabilities, dict): errors.append("capabilities must be an object")
     else:
@@ -637,6 +640,9 @@ def validate_app_spec(root: str | Path) -> tuple[dict[str, Any] | None, list[str
     except ProtocolError as exc:
         return None, [str(exc)], []
     errors, warnings = validate_app_spec_data(spec_root, data)
+    from asset_contract import validate_requirements
+    asset_errors, asset_warnings = validate_requirements(data)
+    errors.extend(asset_errors); warnings.extend(asset_warnings)
     return data, errors, warnings
 
 
