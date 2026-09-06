@@ -12,6 +12,7 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 if str(SCRIPT_DIR) not in sys.path: sys.path.insert(0, str(SCRIPT_DIR))
 
 from vibe_protocol import ProtocolError, compute_workspace_fingerprint, discover_scoped_instructions, update_ledger_atomic, utc_now, workspace_drift_paths, paths_within_boundaries, audit_paths, decision_valid
+from recovery_inputs import capture_request, capture_reads, validate_request
 
 PHASES = ("planning", "implementing", "reconciling", "auditing", "final-verification", "complete", "blocked")
 
@@ -29,6 +30,7 @@ def main() -> int:
     parser.add_argument("--clear-pending-checks", action="append", default=[], metavar="ID")
     parser.add_argument("--clear-blockers", action="append", default=[], metavar="ID")
     parser.add_argument("--required-read", action="append", default=None)
+    parser.add_argument("--request-file", help="Repository-relative saved user request/assignment, required before implementation")
     parser.add_argument("--reconcile-drift", help="Inspected explanation for a commit or changes outside prior boundaries")
     parser.add_argument("--set-item-status", action="append", default=[], metavar="ID=STATUS")
     parser.add_argument("--add-receipt", action="append", default=[], metavar="ID=.vibe/receipts/name.json")
@@ -145,7 +147,12 @@ def main() -> int:
                 "checkpoint": {"checkpointId": f"CP-{uuid.uuid4()}", "createdAt": now, "workspaceFingerprint": workspace},
                 "nextAction": args.next_action,
             })
-            if args.required_read is not None: execution["requiredReads"] = args.required_read
+            if args.required_read is not None:
+                execution["requiredReads"] = sorted(set(execution.get("requiredReads", [])) | set(args.required_read))
+            if args.request_file: execution["durableRequest"] = capture_request(root, args.request_file)
+            request_errors = validate_request(root, ledger)
+            if request_errors: raise ProtocolError("; ".join(request_errors))
+            execution["requiredReadHashes"] = capture_reads(root, ledger)
             for item in items.values():
                 if item.get("status") == "waived" and not decision_valid(root, item.get("decisionReference"), item["id"]): raise ProtocolError(f"{item['id']}: waiver requires an accepted scoped user decision")
             ledger["workspaceFingerprint"] = workspace

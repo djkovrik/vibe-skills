@@ -2,7 +2,35 @@
 import json
 import re
 from pathlib import Path
-from vibe_protocol import ProtocolError, read_json, sha256_bytes, audit_paths, parse_time, fingerprint_equal
+from vibe_protocol import ProtocolError, read_json, sha256_bytes, audit_paths, parse_time, fingerprint_equal, repository_path
+
+
+def validate_check_receipt(check, root):
+    """Bind an audit claim to the exact immutable runner receipt and captured log."""
+    errors = []
+    try:
+        reference = check.get("receiptRef")
+        path = repository_path(root, reference)
+        if path.parent != (root / ".vibe" / "receipts").resolve() or path.suffix != ".json":
+            raise ProtocolError("audit check receiptRef must point directly to .vibe/receipts/*.json")
+        if sha256_bytes(path.read_bytes()) != check.get("receiptSha256"):
+            errors.append("audit check receipt hash mismatch")
+        receipt = read_json(path)
+        if receipt.get("schemaVersion") != "2.0" or not receipt.get("receiptId") or receipt.get("kind") != "targeted":
+            errors.append("audit check requires a Protocol 2.0 targeted runner receipt")
+        for field in ("argv", "exitCode", "executionStatus", "startWorkspaceFingerprint", "workspaceFingerprint"):
+            if check.get(field) != receipt.get(field): errors.append(f"audit check receipt {field} mismatch")
+        for field in ("startedAt", "completedAt"):
+            if parse_time(check.get(field)) != parse_time(receipt.get(field)): errors.append(f"audit check receipt {field} mismatch")
+        claimed = {(p["obligationId"], p["surface"]) for p in check["coverage"]}
+        recorded = {(p["obligationId"], s) for p in receipt["coveredObligations"] for s in p["surfaces"]}
+        if claimed != recorded: errors.append("audit check receipt coverage mismatch")
+        log = receipt["log"]
+        log_path = repository_path(root, log["path"])
+        if sha256_bytes(log_path.read_bytes()) != log.get("sha256"): errors.append("audit check receipt log hash mismatch")
+    except (ProtocolError, OSError, ValueError, KeyError, TypeError) as exc:
+        errors.append(f"audit check receipt invalid: {exc}")
+    return errors
 
 
 def source_sections(app_root):

@@ -20,8 +20,10 @@ from vibe_protocol import (
     ProtocolError, canonical_inventory, compute_app_spec_fingerprint,
     compute_workspace_fingerprint, discover_scoped_instructions, fingerprint_equal,
     ledger_digest, read_json, validate_app_spec,
-    decision_valid, valid_time, parse_time, audit_paths,
+    decision_valid, valid_time, parse_time, audit_paths, pending_handoff_paths, verification_surface_map,
 )
+
+from recovery_inputs import validate_reads
 
 STATUSES = {"not-started", "in-progress", "implemented-unverified", "verified", "blocked-external", "waived"}
 PHASES = {"planning", "implementing", "reconciling", "auditing", "final-verification", "complete", "blocked"}
@@ -131,7 +133,10 @@ def validate_ledger(project_root: Path, ledger_path: Path, *, closure: bool = Tr
     if not fingerprint_equal(ledger.get("workspaceFingerprint"), current_workspace): result.errors.append("workspace.fingerprint.stale")
     inventory = canonical_inventory(app)
     if ledger.get("canonicalInventory") != inventory: result.errors.append("canonical inventory mismatch")
+    pending = pending_handoff_paths(root, ledger)
+    if pending: result.errors.append("pending specialist hand-offs must be inspected and ingested: " + ", ".join(pending))
     execution = ledger.get("execution") if isinstance(ledger.get("execution"), dict) else {}
+    result.errors.extend(validate_reads(root, ledger))
     if execution.get("phase") not in PHASES: result.errors.append("execution.phase is invalid")
     if not isinstance(execution.get("nextAction"), str) or not execution.get("nextAction").strip(): result.errors.append("execution.nextAction is required")
     if execution.get("scopedInstructions") != discover_scoped_instructions(root): result.errors.append("execution.scopedInstructions is stale")
@@ -166,7 +171,7 @@ def validate_ledger(project_root: Path, ledger_path: Path, *, closure: bool = Tr
     receipts = load_receipts(root, refs, current_workspace, result)
     receipt_ids = [receipt.get("receiptId") for receipt in receipts.values() if isinstance(receipt.get("receiptId"), str)]
     if len(receipt_ids) != len(set(receipt_ids)): result.errors.append("receiptId values must be unique")
-    declared_surfaces = {item_id: item["verificationSurfaces"] for item_id, item in {**spec_acs, **spec_gates}.items()}
+    declared_surfaces = verification_surface_map(app)
     for ref, receipt in receipts.items():
         for index, coverage in enumerate(receipt.get("coveredObligations", []) if isinstance(receipt.get("coveredObligations"), list) else []):
             if not isinstance(coverage, dict) or coverage.get("obligationId") not in declared_surfaces:

@@ -29,3 +29,17 @@ def launch_fixture(root, request_path, request, completed="2026-09-04T10:12:30Z"
 
 def coverage_fixture(app_root, ids):
     return [{**section, "classification":"normative", "obligationIds":ids} for section in source_sections(app_root)]
+
+
+def audit_receipt_fixture(root, check):
+    """Synthetic runner receipt for structural tests only; real-run tests use run_check."""
+    directory = root / ".vibe/receipts"; directory.mkdir(parents=True, exist_ok=True)
+    log = directory / f"{check['checkId']}.log"; log.write_text("Synthetic command output", encoding="utf-8")
+    receipt = {key:check[key] for key in ("argv", "startedAt", "completedAt", "exitCode", "executionStatus", "startWorkspaceFingerprint", "workspaceFingerprint")}
+    grouped = {}
+    for pair in check["coverage"]: grouped.setdefault(pair["obligationId"], []).append(pair["surface"])
+    receipt.update(schemaVersion="2.0", receiptId=check["checkId"], kind="targeted", tasks=[],
+        coveredObligations=[{"obligationId":key, "surfaces":value} for key,value in grouped.items()],
+        log={"path":log.relative_to(root).as_posix(), "sha256":sha256_bytes(log.read_bytes())})
+    path = directory / f"{check['checkId']}.json"; path.write_text(json.dumps(receipt), encoding="utf-8")
+    check.update(receiptRef=path.relative_to(root).as_posix(), receiptSha256=sha256_bytes(path.read_bytes()))

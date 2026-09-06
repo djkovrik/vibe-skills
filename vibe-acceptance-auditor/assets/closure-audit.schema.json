@@ -106,7 +106,33 @@
       "type": "array"
     },
     "checks": {
-      "type": "array"
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "checkId",
+          "argv",
+          "startedAt",
+          "completedAt",
+          "exitCode",
+          "executionStatus",
+          "startWorkspaceFingerprint",
+          "workspaceFingerprint",
+          "coverage",
+          "receiptRef",
+          "receiptSha256"
+        ],
+        "properties": {
+          "receiptRef": {
+            "type": "string",
+            "pattern": "^\\.vibe/receipts/[^/]+\\.json$"
+          },
+          "receiptSha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          }
+        }
+      }
     },
     "findings": {
       "type": "array"

@@ -167,7 +167,8 @@ class RecoveryHardeningTests(unittest.TestCase):
         self.assertEqual(0,self.request("second-context").returncode)
         binding=self.case.ledger()["closureAudit"]; request_path=self.root/binding["requestPath"]; request=read_json(request_path)
         audit_started=utc_now()
-        _,audit_receipt=CHECK.run_check(self.root,[sys.executable,"-B","-c","from pathlib import Path;assert 'value = v' in Path('src/App.kt').read_text()"],coverage)
+        audit_coverage = [*coverage, {"obligationId":"Value:create", "surfaces":["component-test"]}]
+        audit_receipt_path,audit_receipt=CHECK.run_check(self.root,[sys.executable,"-B","-c","from pathlib import Path;assert 'value = v' in Path('src/App.kt').read_text()"],audit_coverage)
         app=read_json(self.root/"app-spec/app-spec.json")
         obligations=[{"id":item_id,"result":"verified","verificationSurfaces":["component-test"],"evidence":[{"path":"src/App.kt","symbol":"saveValue","surface":"component-test"}]} for item_id in ("AC-001","Value:create")]
         obligations += [{"id":g["id"],"result":"waived","verificationSurfaces":g["verificationSurfaces"],"decisionReference":"docs/decisions/DEC-FIXTURE.json","evidence":[]} for g in app["qualityGates"]]
@@ -176,6 +177,7 @@ class RecoveryHardeningTests(unittest.TestCase):
             obligation["scope"] = next((g["category"] for g in app["qualityGates"] if g["id"]==obligation["id"]),"repository")
         check={k:audit_receipt[k] for k in ("argv","startedAt","completedAt","exitCode","executionStatus","startWorkspaceFingerprint","workspaceFingerprint")}
         check.update(checkId="CHECK-1",coverage=[{"obligationId":i,"surface":"component-test"} for i in ("AC-001","Value:create")])
+        check.update(receiptRef=audit_receipt_path.relative_to(self.root).as_posix(), receiptSha256=sha256_bytes(audit_receipt_path.read_bytes()))
         from vibe_protocol import canonical_inventory
         audit={"schemaVersion":"2.0","auditId":"AUDIT-PASS","auditRequest":{"path":binding["requestPath"],"requestId":request["requestId"],"sha256":sha256_bytes(request_path.read_bytes())},
             "auditorContext":{"contextId":request["requiredAuditorContextId"],"invocationKind":"fresh-context","implementationContextAvailable":False},

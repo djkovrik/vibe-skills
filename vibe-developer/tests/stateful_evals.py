@@ -33,7 +33,7 @@ def prepare(destination):
         subprocess.run(["git","-C",str(destination),*args],check=True,capture_output=True)
     subprocess.run([sys.executable,str(SCRIPTS/"init-delivery-ledger.py"),str(destination/"app-spec"),"--project-root",str(destination)],check=True,capture_output=True)
     ledger=read_json(destination/".vibe/delivery-ledger.json")
-    subprocess.run([sys.executable,str(SCRIPTS/"checkpoint-delivery.py"),str(destination),"--expected-ledger-digest",ledger["ledgerDigest"],"--phase","implementing","--active-ac","AC-001","--owner","evaluation","--file-boundary","src/value.py","--pending-check","Run tests/verify_value.py","--required-read","docs/assignments/ASSIGN-EVAL.md","--next-action","Implement save(value), then checkpoint before completing read()."],check=True,capture_output=True)
+    subprocess.run([sys.executable,str(SCRIPTS/"checkpoint-delivery.py"),str(destination),"--expected-ledger-digest",ledger["ledgerDigest"],"--phase","implementing","--active-ac","AC-001","--owner","evaluation","--file-boundary","src/value.py","--pending-check","Run tests/verify_value.py","--request-file","docs/assignments/ASSIGN-EVAL.md","--required-read","docs/assignments/ASSIGN-EVAL.md","--next-action","Implement save(value), then checkpoint before completing read()."],check=True,capture_output=True)
     return {"repository":str(destination),"protected":{name:sha256_bytes((destination/name).read_bytes()) for name in ("config/user-owned.txt","tests/verify_value.py","docs/assignments/ASSIGN-EVAL.md")}}
 
 

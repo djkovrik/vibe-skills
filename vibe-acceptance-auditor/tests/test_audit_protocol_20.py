@@ -15,7 +15,7 @@ DEVELOPER_SCRIPTS = AUDITOR.parent / "vibe-developer" / "scripts"
 sys.path.insert(0, str(DEVELOPER_SCRIPTS))
 from vibe_protocol import canonical_inventory, compute_app_spec_fingerprint, compute_workspace_fingerprint
 sys.path.insert(0, str(AUDITOR.parent / "vibe-developer" / "tests"))
-from protocol_fixture_support import decision_fixture, launch_fixture, coverage_fixture
+from protocol_fixture_support import decision_fixture, launch_fixture, coverage_fixture, audit_receipt_fixture
 
 def load(name, path):
     spec = importlib.util.spec_from_file_location(name, path); module = importlib.util.module_from_spec(spec); sys.modules[name] = module; spec.loader.exec_module(module); return module
@@ -45,7 +45,9 @@ class AuditProtocol20Tests(unittest.TestCase):
             scope = gates[item_id]["category"] if item_id in gates else "repository"
             obligations.append({"id":item_id,"kind":kind,"scope":scope,"result":"verified","verificationSurfaces":surfaces,"evidence":[{"path":"project/src/preference_component.py","surface":surface} for surface in surfaces]})
             coverage += [{"obligationId":item_id,"surface":surface} for surface in surfaces]
-        return {"schemaVersion":"2.0","auditId":"AUDIT-1","auditRequest":{"path":".vibe/audits/AUDIT-REQUEST-1/request.json","requestId":"AUDIT-REQUEST-1","sha256":hashlib.sha256(self.request_path.read_bytes()).hexdigest()},"auditorContext":{"contextId":"fresh-1","invocationKind":"fresh-context","implementationContextAvailable":False},"startedAt":"2026-09-04T10:00:00Z","completedAt":"2026-09-04T10:01:00Z","verdict":"PASS","appSpecFingerprint":self.app_fp,"workspaceFingerprint":self.workspace_fp,"sourceCoverage":coverage_fixture(self.root / "app-spec", list(surface_map)),"shadowInventory":canonical_inventory(self.app),"obligations":obligations,"checks":[{"checkId":"CHECK-1","argv":["python","verify_fixture.py"],"startedAt":"2026-09-04T10:00:00Z","completedAt":"2026-09-04T10:00:30Z","exitCode":0,"executionStatus":"completed","startWorkspaceFingerprint":self.workspace_fp,"workspaceFingerprint":self.workspace_fp,"coverage":coverage}],"findings":[],"completion":{"implementationComplete":True,"releaseReady":True}}
+        audit = {"schemaVersion":"2.0","auditId":"AUDIT-1","auditRequest":{"path":".vibe/audits/AUDIT-REQUEST-1/request.json","requestId":"AUDIT-REQUEST-1","sha256":hashlib.sha256(self.request_path.read_bytes()).hexdigest()},"auditorContext":{"contextId":"fresh-1","invocationKind":"fresh-context","implementationContextAvailable":False},"startedAt":"2026-09-04T10:00:00Z","completedAt":"2026-09-04T10:01:00Z","verdict":"PASS","appSpecFingerprint":self.app_fp,"workspaceFingerprint":self.workspace_fp,"sourceCoverage":coverage_fixture(self.root / "app-spec", list(surface_map)),"shadowInventory":canonical_inventory(self.app),"obligations":obligations,"checks":[{"checkId":"CHECK-1","argv":["python","verify_fixture.py"],"startedAt":"2026-09-04T10:00:00Z","completedAt":"2026-09-04T10:00:30Z","exitCode":0,"executionStatus":"completed","startWorkspaceFingerprint":self.workspace_fp,"workspaceFingerprint":self.workspace_fp,"coverage":coverage}],"findings":[],"completion":{"implementationComplete":True,"releaseReady":True}}
+        audit_receipt_fixture(self.root, audit["checks"][0])
+        return audit
     def validate(self, audit): return VALIDATOR.validate(audit, self.root / "app-spec", self.root, self.request_path)
 
     def test_valid_request_bound_audit(self): self.assertEqual([], self.validate(self.audit()))
@@ -88,5 +90,29 @@ class AuditProtocol20Tests(unittest.TestCase):
         self.assertTrue(any("interrupted" in e for e in self.validate(audit)))
         audit=self.audit(); audit["checks"][0]["startWorkspaceFingerprint"]={}
         self.assertTrue(any("start fingerprint" in e for e in self.validate(audit)))
+
+    def test_audit_check_requires_receipt_and_rejects_invented_command(self):
+        audit = self.audit(); audit["checks"][0].pop("receiptRef")
+        self.assertTrue(any("receipt invalid" in e for e in self.validate(audit)))
+        audit = self.audit(); audit["checks"][0]["argv"] = ["never-executed-command"]
+        self.assertTrue(any("receipt argv mismatch" in e for e in self.validate(audit)))
+
+    def test_audit_receipt_and_log_tampering_are_rejected(self):
+        audit = self.audit(); check = audit["checks"][0]; path = self.root / check["receiptRef"]
+        path.write_text(path.read_text() + "\n")
+        self.assertTrue(any("receipt hash mismatch" in e for e in self.validate(audit)))
+        audit = self.audit(); receipt = json.loads((self.root / audit["checks"][0]["receiptRef"]).read_text())
+        (self.root / receipt["log"]["path"]).write_text("altered output")
+        self.assertTrue(any("log hash mismatch" in e for e in self.validate(audit)))
+
+    def test_audit_receipt_scope_and_outcome_must_match(self):
+        for field, value in (("coverage", []), ("exitCode", 7), ("completedAt", "2026-09-04T10:00:31Z")):
+            with self.subTest(field=field):
+                audit = self.audit(); audit["checks"][0][field] = value
+                self.assertTrue(any(f"receipt {field} mismatch" in e for e in self.validate(audit)))
+
+    def test_audit_receipt_cannot_escape_receipt_directory(self):
+        audit = self.audit(); audit["checks"][0]["receiptRef"] = "../receipt.json"
+        self.assertTrue(any("receipt invalid" in e for e in self.validate(audit)))
 
 if __name__ == "__main__": unittest.main()

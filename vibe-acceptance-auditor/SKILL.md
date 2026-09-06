@@ -47,6 +47,8 @@ Re-run targeted checks when safe and available. A check counts only if it actual
 
 Review waivers against accepted `docs/decisions/DEC-*.json` records scoped to the exact obligation, with an exact captured user quote and source hash. Verify the quote actually authorizes this waiver; a structured record does not replace semantic inspection. `blocked-external` is legal only for external/platform/release gates; it never satisfies `release-ready` and cannot hide a repository-verifiable obligation.
 
+Bind every audit-time check to its targeted runner receipt with `receiptRef` and `receiptSha256`. Copy the actual command, timestamps, outcome, fingerprints and full coverage; include managed-operation IDs in runner coverage when proving those obligations. Validation also checks the receipt's log hash. A fresh auditor launch does not itself prove that its reported checks ran.
+
 ## Verdict
 
 Emit exactly one top-level verdict: `PASS`, `GAPS`, or `BLOCKED`.

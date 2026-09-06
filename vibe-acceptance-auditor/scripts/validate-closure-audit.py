@@ -15,7 +15,8 @@ from typing import Any
 DEVELOPER_SCRIPTS = Path(__file__).resolve().parents[2] / "vibe-developer" / "scripts"
 if str(DEVELOPER_SCRIPTS) not in sys.path: sys.path.insert(0, str(DEVELOPER_SCRIPTS))
 from vibe_protocol import canonical_inventory, compute_app_spec_fingerprint, compute_workspace_fingerprint, fingerprint_equal, read_json, validate_app_spec, valid_time, parse_time, decision_valid, audit_paths, ProtocolError
-from audit_evidence import validate_launch, validate_source_coverage
+from audit_evidence import validate_launch, validate_source_coverage, validate_check_receipt
+from vibe_protocol import verification_surface_map
 
 def timestamp(value: Any) -> bool:
     return valid_time(value)
@@ -24,15 +25,7 @@ def nonempty(value: Any) -> bool:
     return isinstance(value, str) and bool(value.strip())
 
 def expected_surface_map(app: dict) -> dict[str, list[str]]:
-    result = {item["id"]: item["verificationSurfaces"] for item in app["acceptanceScenarios"]}
-    result.update({item["id"]: item["verificationSurfaces"] for item in app["qualityGates"]})
-    by_ac = {item["id"]: item for item in app["acceptanceScenarios"]}
-    for entity in app.get("managedEntities", []):
-        for operation, decision in entity["operations"].items():
-            if decision.get("status") == "required":
-                surfaces = sorted({surface for ac in decision["acceptanceScenarioIds"] for surface in by_ac[ac]["verificationSurfaces"]})
-                result[f"{entity['entity']}:{operation}"] = surfaces
-    return result
+    return verification_surface_map(app)
 
 def validate(data: dict[str, Any], app_root: Path, repository: Path, request_path: Path) -> list[str]:
     errors: list[str] = []
@@ -85,6 +78,8 @@ def validate(data: dict[str, Any], app_root: Path, repository: Path, request_pat
     for index, check in enumerate(checks):
         prefix = f"checks[{index}]"
         if not isinstance(check, dict): errors.append(f"{prefix} must be an object"); continue
+        receipt_errors = validate_check_receipt(check, repository)
+        errors.extend(f"{prefix}: {error}" for error in receipt_errors)
         if not nonempty(check.get("checkId")) or not isinstance(check.get("argv"), list) or not check.get("argv"): errors.append(f"{prefix} requires checkId and argv")
         if not timestamp(check.get("startedAt")) or not timestamp(check.get("completedAt")): errors.append(f"{prefix} requires timestamps")
         elif timestamp(data.get("startedAt")) and timestamp(data.get("completedAt")):
@@ -93,7 +88,7 @@ def validate(data: dict[str, Any], app_root: Path, repository: Path, request_pat
         if not fingerprint_equal(check.get("startWorkspaceFingerprint"), current_workspace): errors.append(f"{prefix} missing start fingerprint or workspace changed during check")
         if check.get("executionStatus") != "completed": errors.append(f"{prefix} was interrupted or did not complete")
         coverage = check.get("coverage") if isinstance(check.get("coverage"), list) else []
-        if check.get("exitCode") == 0:
+        if check.get("exitCode") == 0 and not receipt_errors:
             for pair in coverage:
                 if isinstance(pair, dict) and pair.get("obligationId") in expected_ids and pair.get("surface") in surfaces[pair["obligationId"]]:
                     successful_pairs.add((pair["obligationId"], pair["surface"]))

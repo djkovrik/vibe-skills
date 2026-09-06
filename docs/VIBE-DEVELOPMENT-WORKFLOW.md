@@ -27,21 +27,25 @@ Protocol 1.x несовместим. Инструменты отвечают uns
 
     python <skills>\vibe-developer\scripts\resume-delivery.py <repo>
 
-Resume заново обнаруживает AGENTS.md, валидирует AppSpec, canonical inventory, ledger digest, fingerprints, dependencies и pending hand-offs. clean разрешает продолжение; expected-drift требует инспекции активного slice; unexpected-drift запрещает новые правки до явного reconciliation; stale-evidence требует повторных checks и audit.
+Resume заново обнаруживает AGENTS.md, валидирует AppSpec, canonical inventory, ledger digest, fingerprints, dependencies, сохранённый запрос, обязательные чтения и pending hand-offs. Продолжение определяется `safeToContinue` и указанным next action, а не одним `clean`; expected-drift требует инспекции активного slice; unexpected-drift запрещает новые правки до явного reconciliation; stale-evidence требует повторных checks и audit.
 
 ## Checkpoints и slices
 
-Перед первой правкой AC укажите owner и непересекающиеся file boundaries через checkpoint-delivery.py. Checkpoint также обязателен перед расширением границ, после specialist hand-off, до и после долгой проверки и перед завершением turn. Каждая атомарная команда принимает предыдущий ledgerDigest.
+Перед реализацией сохраните фактический запрос пользователя и ограничения в файле репозитория. В первом checkpoint передайте `--request-file docs/assignments/REQUEST.md`, owner и непересекающиеся file boundaries. Нормативная проза AppSpec и активные FLOW/SCREEN входят в обязательные чтения автоматически; контракты специалистов добавляются через `--required-read`. Запрос и чтения проверяются по хешам. Checkpoint также обязателен перед расширением границ, после specialist hand-off, до и после долгой проверки и перед завершением turn. Каждая атомарная команда принимает предыдущий ledgerDigest.
 
 AC выполняются в порядке dependsOnAcceptanceScenarioIds. Статус in-progress хранит owner, boundaries, baseline/checkpoint fingerprints, dependencies, changed files, pending checks, hand-off refs, blockers и timestamps. blocked-external допустим только для platform, external и release gates.
 
 Specialist пишет один immutable .vibe/handoffs/<id>.json по [контракту](../vibe-developer/references/specialist-handoff-contract.md). Orchestrator проверяет diff и границы, затем импортирует SHA-256 через ingest-handoff.py. Conversation summary не заменяет hand-off.
+
+Промежуточные checkpoints специалиста наследуют незавершённые проверки, блокеры и required reads. Снятие пункта требует явного `--resolve-pending-check` или `--resolve-blocker` с `--resolution-reason`. Возвращённое задание нельзя продолжить: для новой работы нужен новый assignment ID. Любой непринятый hand-off блокирует итоговую готовность, в том числе если он появился после audit PASS.
 
 ## Receipts и audit
 
 Receipts существуют только как JSON-файлы под .vibe/receipts. Они содержат kind targeted или final, exact argv/tasks, covered obligation/surface pairs, timestamps, текущий fingerprint, exit code и hash лога. Для каждой пары учитывается последний receipt на текущем fingerprint: PASS→FAIL не закрывает пару, FAIL→PASS закрывает только новым успехом.
 
 После закрытия local obligations orchestrator создаёт immutable .vibe/audits/<request-id>/request.json и запускает vibe-acceptance-auditor в указанном fresh context. Audit обязан ссылаться на exact request hash, иметь implementationContextAvailable false, самостоятельно построить canonical shadow inventory и доказать каждую declared surface audit-time check.
+
+Каждый audit-time check связывается с targeted runner receipt через `receiptRef` и `receiptSha256`: валидатор сверяет команду, результат, время, fingerprints, полное покрытие и хеш лога. Старые audit checks без этой связи требуют нового аудита; старые ledger без сохранённого запроса — явного checkpoint с запросом, без переинициализации истории.
 
 После audit PASS выполняется один final receipt, покрывающий все verified obligation/surface pairs. Затем генерируются оба Markdown report и запускается один validate-delivery-ledger.py. Он сам проверяет AppSpec, inventory, receipt ordering, audit и report parity и всегда печатает:
 

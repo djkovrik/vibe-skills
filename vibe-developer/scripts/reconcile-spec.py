@@ -6,6 +6,7 @@ import sys
 import uuid
 from pathlib import Path
 from vibe_protocol import ProtocolError, atomic_write_json, decision_valid, update_ledger_atomic, utc_now, fingerprint_equal
+from recovery_inputs import capture_reads
 
 
 def reconcile(ledger, root, app_root, decision):
@@ -25,10 +26,14 @@ def reconcile(ledger, root, app_root, decision):
     ledger.setdefault("specHistory", []).append({"path":history.relative_to(root).as_posix(), "decisionReference":decision,
         "added":sorted(new_ids-old_ids), "removed":sorted(old_ids-new_ids), "reopened":sorted(old_ids & new_ids), "at":utc_now()})
     if ledger.get("closureAudit", {}).get("requestPath"): ledger.setdefault("auditHistory", []).append(ledger["closureAudit"])
+    previous_execution = ledger.get("execution", {})
     for key in ("appSpec", "canonicalInventory", "workspaceFingerprint", "acceptanceScenarios", "qualityGates", "execution", "finalReceiptRef", "closureAudit"):
         ledger[key] = fresh[key]
     ledger["execution"]["nextAction"] = "Reread the approved AppSpec revision and decision; select the first dependency-ready AC for revalidation."
-    ledger["execution"]["requiredReads"] = [decision]
+    ledger["execution"]["requiredReads"] = sorted(set(previous_execution.get("requiredReads", [])) | {decision})
+    if previous_execution.get("durableRequest"):
+        ledger["execution"]["durableRequest"] = previous_execution["durableRequest"]
+    ledger["execution"]["requiredReadHashes"] = capture_reads(root, ledger)
     ledger["updatedAt"] = utc_now()
 
 

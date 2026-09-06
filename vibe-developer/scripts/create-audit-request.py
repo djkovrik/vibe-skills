@@ -12,7 +12,7 @@ from pathlib import Path
 SCRIPT_DIR = Path(__file__).resolve().parent
 if str(SCRIPT_DIR) not in sys.path: sys.path.insert(0, str(SCRIPT_DIR))
 
-from vibe_protocol import ProtocolError, atomic_write_json, canonical_inventory, compute_app_spec_fingerprint, compute_workspace_fingerprint, fingerprint_equal, ledger_digest, read_json, update_ledger_atomic, utc_now, validate_app_spec, audit_paths
+from vibe_protocol import ProtocolError, atomic_write_json, canonical_inventory, compute_app_spec_fingerprint, compute_workspace_fingerprint, fingerprint_equal, ledger_digest, read_json, update_ledger_atomic, utc_now, validate_app_spec, audit_paths, pending_handoff_paths
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
@@ -61,8 +61,7 @@ def prepare_request(root, ledger, request_path, request_id, args):
     for gate in ledger.get("qualityGates", []):
         if gate.get("category") == "repository" and not (gate.get("applicability") == "not-applicable" or (gate.get("applicability") == "applicable" and gate.get("status") in {"verified", "waived"})):
             raise ProtocolError(f"repository gate is not closed: {gate.get('id')}")
-    ingested = {item.get("sha256") for item in ledger.get("ingestedHandoffs", []) if isinstance(item, dict)}
-    if any(hashlib.sha256(path.read_bytes()).hexdigest() not in ingested for path in (root / ".vibe" / "handoffs").glob("*.json")):
+    if pending_handoff_paths(root, ledger):
         raise ProtocolError("pending specialist hand-offs must be inspected and ingested before audit")
     # Validate all local evidence without depending on the audit we are creating.
     import importlib.util

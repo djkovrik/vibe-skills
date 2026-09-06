@@ -304,6 +304,22 @@ def fingerprint_equal(left: Any, right: Any) -> bool:
     return isinstance(left, dict) and isinstance(right, dict) and left.get("digest") == right.get("digest") and left == right
 
 
+def pending_handoff_paths(root: Path, ledger: dict) -> list[str]:
+    """Every on-disk hand-off must have an inspected, path-and-hash-bound import."""
+    imported = {(item.get("path"), item.get("sha256")) for item in ledger.get("ingestedHandoffs", []) if isinstance(item, dict)}
+    return [path.relative_to(root).as_posix() for path in sorted((root / ".vibe" / "handoffs").glob("*.json"))
+            if (path.relative_to(root).as_posix(), sha256_bytes(path.read_bytes())) not in imported]
+
+
+def verification_surface_map(app: dict) -> dict[str, list[str]]:
+    result = {item["id"]: item["verificationSurfaces"] for item in [*app["acceptanceScenarios"], *app["qualityGates"]]}
+    for entity in app.get("managedEntities", []):
+        for operation, decision in entity["operations"].items():
+            if decision.get("status") == "required":
+                result[f"{entity['entity']}:{operation}"] = sorted({s for ac in decision["acceptanceScenarioIds"] for s in result[ac]})
+    return result
+
+
 def discover_scoped_instructions(project_root: str | Path) -> list[dict[str, str]]:
     root = Path(project_root).resolve()
     candidates: set[Path] = set()

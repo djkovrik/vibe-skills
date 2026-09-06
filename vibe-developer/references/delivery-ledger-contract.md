@@ -40,6 +40,8 @@ The brief carries the full active AC/gate, all unresolved obligations, saved blo
 
 Use [specialist-handoff-contract.md](specialist-handoff-contract.md) for immutable hand-offs. The orchestrator inspects the diff and imports the file SHA-256; chat text is not evidence.
 
+Resume, pre-audit readiness and final aggregate validation all compare every on-disk hand-off by path and SHA-256 with inspected imports. Any unimported or changed hand-off blocks closure, including one arriving after an audit PASS. Preserve and inspect it; do not delete it to make validation pass.
+
 A receipt is a file under .vibe/receipts with schemaVersion 2.0, unique receiptId, kind targeted or final, exact argv and tasks, coveredObligations containing IDs and surfaces, start/completion timestamps, start/end workspace fingerprints, executionStatus, actual exit code, and a log path plus SHA-256. Inline receipt objects are invalid.
 
 For each obligation and surface, only the latest receipt with the current workspace fingerprint counts. Therefore PASS then FAIL remains failed; FAIL then PASS closes only after the later success. Stale receipts never count. A single explicit, successful, current final receipt must cover every verified obligation and surface. The final run must start after the current audit completes; old attempts remain as history.

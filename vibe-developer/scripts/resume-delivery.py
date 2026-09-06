@@ -7,6 +7,7 @@ import argparse
 import json
 import sys
 import importlib.util
+from recovery_inputs import required_reads as recovery_required_reads, validate_reads
 from pathlib import Path
 
 SCRIPT_DIR = Path(__file__).resolve().parent
@@ -17,7 +18,7 @@ from vibe_protocol import (
     compute_workspace_fingerprint, discover_scoped_instructions, fingerprint_equal,
     ledger_digest, paths_within_boundaries, read_json, validate_app_spec,
     workspace_drift_paths,
-    audit_paths, parse_time, valid_time,
+    audit_paths, parse_time, valid_time, pending_handoff_paths,
 )
 
 def resolve(root: Path, value: str) -> Path:
@@ -40,6 +41,7 @@ def build_resume(project_root: Path, ledger_path: Path) -> dict:
     if app is not None and ledger.get("canonicalInventory") != canonical_inventory(app):
         errors.append("canonical inventory mismatch")
     execution = ledger.get("execution", {})
+    errors.extend(validate_reads(root, ledger))
     items = [*ledger.get("acceptanceScenarios", []), *ledger.get("qualityGates", [])]
     active_id = execution.get("activeAcceptanceScenarioId") or execution.get("activeQualityGateId")
     active = next((item for item in items if item.get("id") == active_id), None)
@@ -85,13 +87,13 @@ def build_resume(project_root: Path, ledger_path: Path) -> dict:
     if classification == "clean" and stale:
         classification = "stale-evidence"
     handoff_dir = root / ".vibe" / "handoffs"
-    ingested = {item.get("sha256") for item in ledger.get("ingestedHandoffs", []) if isinstance(item, dict)}
+    unimported = set(pending_handoff_paths(root, ledger))
     pending = []
     if handoff_dir.is_dir():
         import hashlib
         for path in sorted(handoff_dir.glob("*.json")):
             digest = hashlib.sha256(path.read_bytes()).hexdigest()
-            if digest not in ingested:
+            if path.relative_to(root).as_posix() in unimported:
                 issues: list[str] = []
                 try:
                     handoff = read_json(path)
@@ -165,7 +167,7 @@ def build_resume(project_root: Path, ledger_path: Path) -> dict:
             eligible = aggregate.implementation_complete
             completion_errors = aggregate.errors
         except Exception as exc: completion_errors = [str(exc)]
-    required_reads = [str(app_root / "app-spec.json"), str(ledger_path), *[i["path"] for i in instructions], *execution.get("requiredReads", [])]
+    required_reads = [*recovery_required_reads(root, ledger), str(ledger_path), *[i["path"] for i in instructions]]
     if active:
         required_reads += [str(app_root / "flows" / f"{active['flowId']}.md")] if active.get("flowId") else []
         required_reads += [str(app_root / "screens" / f"{screen}.md") for screen in active.get("screenIds", [])]
