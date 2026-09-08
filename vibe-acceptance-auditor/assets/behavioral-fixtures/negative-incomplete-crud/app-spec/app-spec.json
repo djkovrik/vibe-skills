@@ -336,9 +336,7 @@
                              "requirement":  "required",
                              "verificationMethod":  "Run public component tests for every managed operation.",
                              "contractSource":  "quality.md#test-matrix",
-                             "verificationSurfaces":  [
-                                                          "repository-check"
-                                                      ]
+                             "verificationSurfaces":  ["repository-check", "asset-check", "asset-visual"]
                          },
                          {
                              "id":  "QG-002",
@@ -471,5 +469,12 @@
                   },
     "openQuestions":  [
 
-                      ]
+                      ],
+  "assetRequirements": {
+    "items": [],
+    "noAssetsReason": "Protocol test fixture uses text-only UI and requires no application artwork.",
+    "resourceSystem": "compose-multiplatform-resources",
+    "deliveryManifest": "docs/assets/asset-manifest.json",
+    "qualityGateId": "QG-001"
+  }
 }

@@ -29,7 +29,7 @@ def run(root, request_path, executable, timeout):
             f"{ledger['appSpec']['root']} and immutable request {request_path}. This is a fresh process with no implementation conversation. "
             "Read the request and normative AppSpec first. Independently inventory every source section using inventory-sources.py; "
             "include sourceCoverage mapping all sections to obligations or explained contextual material. Inspect production behavior and exact assertions. "
-            "Run the required safe checks with the shared runners; bind each check with receiptRef and receiptSha256 to its targeted receipt. "
+            "Run the required safe checks with the shared runners; bind each check with receiptRef and receiptSha256 to its global kind=integration receipt (run-check.py --kind integration or run-gradle.ps1 -ReceiptKind integration). "
             "Copy exact argv, outcome, timestamps, start/end fingerprints and full coverage, including managed-operation IDs being proved. "
             "Do not edit production, tests, AppSpec, ledger, configuration or dependencies. Return the closure audit JSON as your final response. "
             "The host writes the immutable audit and launch receipt after your process exits; do not fabricate launch metadata or invoke final validation before then.")

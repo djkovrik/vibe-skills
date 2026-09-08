@@ -38,6 +38,10 @@ def render_report(ledger: dict[str, Any]) -> str:
     lines += ["", "## Quality gates", "", "| ID | Category | Platform | Applicability | Status | Surfaces | Receipts |", "| --- | --- | --- | --- | --- | --- | --- |"]
     for item in sorted(ledger["qualityGates"], key=lambda v: v["id"]):
         lines.append("| " + " | ".join(esc(v) for v in (item["id"], item["category"], item["platform"], item["applicability"], item["status"], ", ".join(item["requiredVerificationSurfaces"]), ", ".join(item.get("receiptRefs", [])) or "—")) + " |")
+    if ledger.get("workPackages"):
+        lines += ["", "## Integrated flows (separate from AC verification)", "", "| Package | ACs | Integration | Goal |", "| --- | --- | --- | --- |"]
+        for pid, package in sorted(ledger["workPackages"].items()):
+            lines.append("| " + " | ".join(esc(v) for v in (pid, ", ".join(package.get("acceptanceScenarioIds", [])), package.get("status"), package.get("integrationGoal"))) + " |")
     lines += ["", "## Durable hand-offs", ""]
     if ledger.get("ingestedHandoffs"):
         lines.extend(f"- `{item['handoffId']}` — `{item['sha256']}` ({item['path']})" for item in ledger["ingestedHandoffs"])

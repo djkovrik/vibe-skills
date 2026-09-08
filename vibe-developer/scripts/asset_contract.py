@@ -29,7 +29,7 @@ def validate_requirements(app: dict) -> tuple[list[str], list[str]]:
     if not isinstance(app, dict): return ["AppSpec must be an object"], []
     contract = app.get("assetRequirements")
     if contract is None:
-        return [], ["Legacy AppSpec has no assetRequirements; reconcile the screen inventory before adding assets. File completeness is not machine-verified."]
+        return ["assetRequirements is required"], []
     if not isinstance(contract, dict):
         return ["assetRequirements must be an object"], []
     if contract.get("resourceSystem") != "compose-multiplatform-resources":
@@ -138,7 +138,6 @@ def validate_delivery(app: dict, repository: Path) -> tuple[list[str], list[str]
     errors, warnings = validate_requirements(app)
     if errors: return errors, warnings
     contract = app.get("assetRequirements")
-    if contract is None: return errors, warnings
     root = repository.resolve()
     try:
         manifest = json.loads(local_path(root, contract["deliveryManifest"]).read_text(encoding="utf-8-sig"))

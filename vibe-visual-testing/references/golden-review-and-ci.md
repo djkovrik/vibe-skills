@@ -18,3 +18,7 @@ Primary sources:
 
 - https://cashapp.github.io/paparazzi/
 - https://github.com/cashapp/paparazzi
+
+## Capability cadence
+
+Smoke-check the scanner/Paparazzi host early with one small production preview. Compile preview changes continuously; record, inspect changed/new PNGs and verify affected snapshots at stable screen/capability boundaries. Run the full required matrix at final integration. Preserve all required state/theme coverage and pending golden obligations. See [flow-delivery-contract.md](../../vibe-developer/references/flow-delivery-contract.md).

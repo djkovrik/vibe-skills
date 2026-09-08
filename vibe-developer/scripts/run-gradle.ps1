@@ -3,17 +3,17 @@ param(
     [Parameter(Mandatory)]
     [string]$ProjectRoot,
 
-    [Parameter(Mandatory)]
     [string[]]$Tasks,
 
-    [Parameter(Mandatory)]
     [string]$LogPath,
+    [string]$RequestPath,
+    [string]$InputScopeId,
 
     [string[]]$AcceptanceScenarioIds = @(),
     [string[]]$QualityGateIds = @(),
     [string]$ReceiptPath,
 
-    [ValidateSet('targeted', 'final')]
+    [ValidateSet('targeted', 'integration', 'final')]
     [string]$ReceiptKind = 'targeted',
 
     [string]$CoverageJson,
@@ -26,6 +26,24 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+if ($RequestPath) {
+    $request = Get-Content -LiteralPath $RequestPath -Raw -Encoding UTF8 | ConvertFrom-Json
+    $Tasks = @($request.tasks)
+    $CoverageJson = ConvertTo-Json -InputObject @($request.coveredObligations) -Depth 12 -Compress
+    if ($request.kind) { $ReceiptKind = $request.kind }
+    if ($request.inputScopeId) { $InputScopeId = $request.inputScopeId }
+    if ($request.timeoutSeconds) { $TimeoutSeconds = [int]$request.timeoutSeconds }
+    $receiptDirectory = Join-Path $ProjectRoot '.vibe/receipts'
+    New-Item -ItemType Directory -Path $receiptDirectory -Force | Out-Null
+    $runId = [Guid]::NewGuid().ToString()
+    $ReceiptPath = Join-Path $receiptDirectory "RECEIPT-$runId.json"
+    $LogPath = Join-Path $receiptDirectory "RECEIPT-$runId.log"
+}
+if ($ReceiptKind -notin @('targeted', 'integration', 'final')) { throw 'Invalid receipt kind' }
+if ($ReceiptKind -eq 'targeted' -and -not $InputScopeId) { throw 'Targeted checks require InputScopeId' }
+if ($InputScopeId -and $ReceiptKind -ne 'targeted') { throw 'Integration/final receipts require global inputs' }
+if (-not $LogPath) { throw 'LogPath or RequestPath is required' }
+
 $utf8 = [System.Text.UTF8Encoding]::new($false)
 [Console]::OutputEncoding = $utf8
 $OutputEncoding = $utf8
@@ -96,6 +114,11 @@ function Write-Receipt {
             sha256 = (Get-FileHash -LiteralPath $LogPath -Algorithm SHA256).Hash.ToLowerInvariant()
         }
     }
+    if ($InputScopeId) {
+        $receipt.inputScopeId = $InputScopeId
+        $receipt.startInputFingerprint = $beforeInputFingerprint
+        $receipt.inputFingerprint = $afterInputFingerprint
+    }
     $temporary = "$fullPath.$([Guid]::NewGuid().ToString('N')).tmp"
     try {
         [System.IO.File]::WriteAllText($temporary, ($receipt | ConvertTo-Json -Depth 12), $utf8)
@@ -163,6 +186,11 @@ try {
         $beforeFingerprint = ($beforeText -join [Environment]::NewLine) | ConvertFrom-Json
     }
 
+    if ($InputScopeId) {
+        $inputText = & python $fingerprintScript $root --input-scope $InputScopeId
+        if ($LASTEXITCODE -ne 0) { throw 'Input scope capture failed' }
+        $beforeInputFingerprint = ($inputText -join [Environment]::NewLine) | ConvertFrom-Json
+    }
     $startInfo = [System.Diagnostics.ProcessStartInfo]::new()
     $startInfo.FileName = $env:ComSpec
     $startInfo.Arguments = '/d /s /c "' + $command + '"'
@@ -209,7 +237,12 @@ try {
         $fingerprintText = & python $fingerprintScript $root
         if ($LASTEXITCODE -ne 0) { throw "Workspace fingerprint failed with exit code $LASTEXITCODE" }
         $fingerprint = ($fingerprintText -join [Environment]::NewLine) | ConvertFrom-Json
-        if ($executionStatus -eq 'completed' -and $beforeFingerprint.digest -ne $fingerprint.digest) { $executionStatus = 'workspace-changed' }
+        if ($InputScopeId) {
+            $inputText = & python $fingerprintScript $root --input-scope $InputScopeId
+            if ($LASTEXITCODE -ne 0) { throw 'Input scope capture failed' }
+            $afterInputFingerprint = ($inputText -join [Environment]::NewLine) | ConvertFrom-Json
+            if ($executionStatus -eq 'completed' -and $beforeInputFingerprint.digest -ne $afterInputFingerprint.digest) { $executionStatus = 'workspace-changed' }
+        } elseif ($executionStatus -eq 'completed' -and $beforeFingerprint.digest -ne $fingerprint.digest) { $executionStatus = 'workspace-changed' }
         if ($CoverageJson) {
             $coverage = @($CoverageJson | ConvertFrom-Json)
         } else {
@@ -230,6 +263,7 @@ try {
     if ($process) { $process.Dispose() }
 }
 
+if ($ReceiptPath) { Write-Host "Receipt: $ReceiptPath" }
 if ($exitCode -eq 0 -and $executionStatus -eq 'completed') {
     Write-Host "Gradle succeeded (exit 0): $($Tasks -join ', ')"
     exit 0

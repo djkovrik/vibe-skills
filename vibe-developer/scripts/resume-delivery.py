@@ -9,6 +9,7 @@ import sys
 import importlib.util
 from recovery_inputs import required_reads as recovery_required_reads, validate_reads
 from pathlib import Path
+from scoped_evidence import active_boundaries, assignment_errors, receipt_current, receipt_stable
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 if str(SCRIPT_DIR) not in sys.path: sys.path.insert(0, str(SCRIPT_DIR))
@@ -51,7 +52,7 @@ def build_resume(project_root: Path, ledger_path: Path) -> dict:
         classification = "clean"
     elif isinstance(checkpoint, dict) and checkpoint.get("gitHead") != current_workspace.get("gitHead"):
         classification = "unexpected-drift"
-    elif active and active.get("status") in {"in-progress", "implemented-unverified"} and paths_within_boundaries(drift_paths, active.get("fileBoundaries", [])):
+    elif active_boundaries(ledger) and paths_within_boundaries(drift_paths, active_boundaries(ledger)):
         classification = "expected-drift"
     else:
         classification = "unexpected-drift"
@@ -64,10 +65,10 @@ def build_resume(project_root: Path, ledger_path: Path) -> dict:
     for item in items:
         if item.get("status") != "verified": continue
         for surface in item.get("requiredVerificationSurfaces", []):
-            matching = [r for r in receipts if fingerprint_equal(r.get("workspaceFingerprint"), current_workspace)
+            matching = [r for r in receipts if receipt_current(root, r, current_workspace)
                 and valid_time(r.get("completedAt")) and any(c.get("obligationId") == item["id"] and surface in c.get("surfaces", []) for c in r.get("coveredObligations", []))]
             latest = max(matching, key=lambda r: (parse_time(r["completedAt"]), r.get("exitCode") != 0)) if matching else None
-            if latest is None or latest.get("exitCode") != 0 or latest.get("executionStatus") != "completed" or not fingerprint_equal(latest.get("startWorkspaceFingerprint"), current_workspace):
+            if latest is None or latest.get("exitCode") != 0 or latest.get("executionStatus") != "completed" or not receipt_stable(latest):
                 evidence_issues.append(f"{item['id']}/{surface}: current successful completed receipt missing")
     binding = ledger.get("closureAudit", {})
     if binding.get("requestPath"):
@@ -98,15 +99,8 @@ def build_resume(project_root: Path, ledger_path: Path) -> dict:
                 try:
                     handoff = read_json(path)
                     if handoff.get("schemaVersion") != "2.0": issues.append("unsupported protocol")
-                    if not fingerprint_equal(handoff.get("resultWorkspaceFingerprint"), current_workspace): issues.append("stale result fingerprint")
-                    changed = handoff.get("changedFiles") if isinstance(handoff.get("changedFiles"), list) else []
-                    allowed = handoff.get("allowedFiles") if isinstance(handoff.get("allowedFiles"), list) else []
-                    if not paths_within_boundaries(changed, allowed): issues.append("changed files escape hand-off boundaries")
-                    if active and any(item_id == active_id for item_id in handoff.get("acceptanceScenarioIds", [])):
-                        if not fingerprint_equal(handoff.get("baseWorkspaceFingerprint"), active.get("baselineFingerprint")): issues.append("base fingerprint conflicts with active baseline")
-                        if not paths_within_boundaries(changed, active.get("fileBoundaries", [])): issues.append("changed files escape ledger boundaries")
-                    actual = workspace_drift_paths(handoff.get("baseWorkspaceFingerprint", {}), current_workspace)
-                    if set(changed) != set(actual): issues.append("changedFiles do not match fingerprint drift")
+                    validator = load_module("resume_handoff_validator", SCRIPT_DIR / "ingest-handoff.py")
+                    issues.extend(validator.validate_handoff(handoff, root, current_workspace))
                 except (ProtocolError, TypeError, ValueError) as exc:
                     issues.append(str(exc))
                 pending.append({"path": path.relative_to(root).as_posix(), "sha256": digest, "valid": not issues, "issues": issues})
@@ -178,6 +172,7 @@ def build_resume(project_root: Path, ledger_path: Path) -> dict:
         "driftClassification": classification, "driftPaths": drift_paths,
         "safeToContinue": not errors and classification != "unexpected-drift" and not (active and (active.get("blockers") or active.get("blocker"))),
         "completionEligible": eligible, "completionBlockers": completion_errors,
+        "activePackage": ledger.get("workPackages", {}).get(execution.get("activePackageId")),
         "activeSlice": active, "unresolvedObligations": [i for i in items if i.get("status") not in {"verified", "waived"}],
         "pendingChecks": [{"id":i["id"], "checks":i["pendingChecks"]} for i in items if i.get("pendingChecks")],
         "itemBlockers": item_blockers, "evidenceIssues": evidence_issues,
@@ -199,6 +194,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("project_root", nargs="?", type=Path, default=Path.cwd())
     parser.add_argument("--ledger", type=Path)
+    parser.add_argument("--compact", action="store_true", help="Omit repeated snapshots; preserve actionable state")
     args = parser.parse_args()
     ledger_path = (args.ledger or args.project_root / ".vibe" / "delivery-ledger.json").resolve()
     try:
@@ -206,6 +202,13 @@ def main() -> int:
     except (ProtocolError, OSError, ValueError) as exc:
         print(json.dumps({"schemaVersion": "2.0", "blockers": [str(exc)], "completionEligible": False}, indent=2))
         return 1
+    if args.compact:
+        def compact(value):
+            if isinstance(value, list): return [compact(v) for v in value]
+            if not isinstance(value, dict): return value
+            if value.get("algorithm") == "sha256" and "digest" in value: return {"digest": value["digest"]}
+            return {k: compact(v) for k, v in value.items()}
+        brief = compact(brief)
     print(json.dumps(brief, ensure_ascii=False, indent=2, sort_keys=True))
     return 0 if not brief["blockers"] and brief["driftClassification"] != "unexpected-drift" else 1
 

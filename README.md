@@ -8,7 +8,7 @@
 
 ```text
 discovery -> approved AppSpec 2.0 -> strict validation
--> ledger checkpoint -> vertical AC slices and immutable hand-offs
+-> ledger checkpoint -> capability packages, early production integration and assignment-local hand-offs
 -> targeted receipts -> audit request -> fresh audit -> final receipt -> aggregate validation
 ```
 
@@ -59,3 +59,7 @@ python .\vibe-developer\scripts\validate-app-spec.py D:\Projects\MyApp\app-spec 
 ```
 
 Manifest является единственным источником точного списка устанавливаемых skills. Installer проверяет каждую его запись и в Junction, и в Copy mode.
+
+## Current evidence contract
+
+AppSpec 2.0 requires assetRequirements; no legacy-spec compatibility is supported. Specialist handoffs use only registered assignment-local baselines/results. Targeted receipts require inputScopeId and start/end input fingerprints; uncertain dependencies require a conservatively registered whole-repository scope. Global integration and audit checks use kind integration; post-audit closure uses kind final. Unsupported artifacts are rejected, never converted or relabeled. See [flow delivery contract](vibe-developer/references/flow-delivery-contract.md).

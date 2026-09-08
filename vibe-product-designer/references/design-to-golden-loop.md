@@ -16,3 +16,7 @@
 14. Verify goldens in CI and publish failure/diff artifacts.
 
 Goldens are evidence of approved rendering, not an authority that overrides AppSpec or accessibility behavior.
+
+## Cadence
+
+Use stable screen/capability boundaries from [flow-delivery-contract.md](../../vibe-developer/references/flow-delivery-contract.md). Research precedes design; full sequential Lazyweb review runs once on stable primary screens. Repeat only material redesigns or unresolved findings, not every AC closure. Compile previews during edits and re-record/verify only affected approved visual changes.

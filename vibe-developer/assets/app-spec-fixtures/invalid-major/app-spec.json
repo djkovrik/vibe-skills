@@ -51,5 +51,11 @@
                     },
     "openQuestions":  [
 
-                      ]
+                      ],
+  "assetRequirements": {
+    "items": [],
+    "noAssetsReason": "Protocol test fixture uses text-only UI and requires no application artwork.",
+    "resourceSystem": "compose-multiplatform-resources",
+    "deliveryManifest": "docs/assets/asset-manifest.json"
+  }
 }

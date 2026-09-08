@@ -22,7 +22,7 @@ Read approved screens/theme/locales, current previews, Paparazzi/scanner configu
 5. Cache the discovered preview list and generate stable parameterized test source before test compilation.
 6. Map preview parameters into Paparazzi theme, device, dimensions, simulated system locale, font scale, UI mode, and layout direction. Locale parameters are test-host inputs, not an in-app language control.
 7. Build stable encoded snapshot IDs independent of scan or parameter order.
-8. Run the generator/compile check, record only an approved baseline, inspect every PNG, then run verify from a clean-enough state.
+8. Smoke-check scanner/Paparazzi with a small production preview early. Compile previews during edits; at a stable screen/capability boundary record only an approved baseline, inspect each new/changed PNG, then verify affected snapshots. Run the full required matrix at final integration. Deferred golden obligations remain implemented-unverified; no full record/verify cycle per AC or nonvisual edit.
 9. Produce a machine-readable coverage inventory mapping `SCREEN/state/theme/fontScale/locale/device -> preview -> snapshot`.
 10. Hand the approved golden paths and an explicit screen review order to Product Designer for the mandatory Lazyweb/full-UI review. The hand-off must require a strict one-screen-at-a-time queue with exactly one report in flight and no next submission before the previous report is received and recorded; do not split the queue across parallel reviewers. After approved fixes, re-record only affected goldens and re-run complete verification.
 11. Verify in CI and publish failure/report artifacts.
@@ -49,7 +49,7 @@ Product differences -> Product Designer. Compose rendering bugs -> Compose Exper
 
 ## Orchestrated evidence hand-off
 
-When `$vibe-developer` assigns work, accept explicit assignment, AC/gate IDs, base fingerprint, and non-overlapping file boundaries. Before returning, follow [Specialist hand-off Protocol 2.0](../vibe-developer/references/specialist-handoff-contract.md): write one immutable `.vibe/handoffs/<id>.json` containing base/result fingerprints, allowed/changed files, production and test evidence, completed non-Gradle checks, requested Gradle commands, and blockers. Do not edit the ledger or claim completion. The orchestrator alone inspects and ingests the hand-off, writes the ledger, and owns Gradle.
+When `$vibe-developer` assigns work, accept explicit assignment, AC/gate IDs, assignment baseline reference, and non-overlapping file boundaries. Request compile/targeted checks from the orchestrator as soon as code is ready, before final handoff. Use the [flow delivery contract](../vibe-developer/references/flow-delivery-contract.md) for package assignments and automated assignment-local evidence. Before returning, follow [Specialist hand-off Protocol 2.0](../vibe-developer/references/specialist-handoff-contract.md): write one immutable `.vibe/handoffs/<id>.json` containing assignment-local baseline/result evidence, allowed/changed files, production and test evidence, completed non-Gradle checks, requested Gradle commands, and blockers. Do not edit the ledger or claim completion. The orchestrator alone inspects and ingests the hand-off, writes the ledger, and owns Gradle.
 
 ## Reusable learning
 

@@ -67,13 +67,13 @@ class AssetDeliveryTests(unittest.TestCase):
         self.assertEqual([], validate_app_spec(self.root / "app-spec")[1])
         self.assertTrue(any("missing file" in e for e in self.errors()))
 
-    def test_vector_delivery_cli_and_legacy_boundary(self):
+    def test_vector_delivery_cli_and_required_inventory(self):
         self.assertEqual([], self.errors())
         result = subprocess.run([sys.executable, str(ROOT / "vibe-assets-creator/scripts/validate-assets.py"), "--app-spec-root", str(self.root / "app-spec"), "--repository", str(self.root)], capture_output=True, text=True)
         self.assertEqual(0, result.returncode, result.stdout + result.stderr)
         del self.app["assetRequirements"]
         errors, warnings = validate_requirements(self.app)
-        self.assertEqual([], errors); self.assertTrue(warnings)
+        self.assertIn("assetRequirements is required", errors); self.assertEqual([], warnings)
         self.save_spec()
         result = subprocess.run([sys.executable, str(ROOT / "vibe-assets-creator/scripts/validate-assets.py"), "--app-spec-root", str(self.root / "app-spec")], capture_output=True, text=True)
         self.assertNotEqual(0, result.returncode)

@@ -30,7 +30,7 @@ Requirements have one of two shapes:
 
 `wont` and scenario-level `required` are removed. Every declared acceptance scenario is an obligation; optionality is expressed only by excluding its requirement. The union of active requirement links equals the scenario inventory exactly, with one owning requirement per AC.
 
-Each scenario declares `id`, `title`, `requirementId`, `flowId`, non-empty `screenIds`, `kind`, `subject`, one `operation`, non-empty `verificationSurfaces`, and `dependsOnAcceptanceScenarioIds` (an empty array is valid). Dependencies reference existing ACs, may not self-reference, and must form a directed acyclic graph. A scenario may start only when all dependencies are `verified` or durably `waived`.
+Each scenario declares `id`, `title`, `requirementId`, `flowId`, non-empty `screenIds`, `kind`, `subject`, one `operation`, non-empty `verificationSurfaces`, and `dependsOnAcceptanceScenarioIds` (an empty array is valid). Dependencies reference existing ACs, may not self-reference, and must form a directed acyclic graph. External package dependencies must be `verified` or durably `waived`. Related scenarios inside one registered capability package may be implemented together in dependency order; verification obligations remain independent.
 
 Each AC has its own `## AC-NNN` flow section with ordered Given/When/Then. One AC represents one externally observable action, state, or failure. Flow and screen filenames equal their IDs.
 
@@ -56,4 +56,4 @@ The compatibility flag is accepted for a stable command line, but validation is 
 
 ## Asset requirements (package 2.2)
 
-New AppSpecs include `assetRequirements` as defined in the [asset contract](../../vibe-assets-creator/references/asset-contract.md). Intake validates approved briefs, IDs, output destinations and sizes, allowing planned creation/generation. Delivery validates actual output via the required asset gate. Runtime files and mutable delivery evidence are outside the frozen AppSpec; accepted scope changes use spec reconciliation. Legacy specs without the extension emit a warning; reconcile the inventory before asset work.
+Every AppSpec requires `assetRequirements` as defined in the [asset contract](../../vibe-assets-creator/references/asset-contract.md). Intake validates approved briefs, IDs, output destinations and sizes, allowing planned creation/generation. Delivery validates actual output via the required asset gate. Runtime files and mutable delivery evidence are outside the frozen AppSpec; accepted scope changes use spec reconciliation. Missing assetRequirements is an intake error; legacy-spec compatibility is absent.

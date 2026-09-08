@@ -13,6 +13,7 @@ if str(SCRIPT_DIR) not in sys.path: sys.path.insert(0, str(SCRIPT_DIR))
 
 from vibe_protocol import ProtocolError, compute_workspace_fingerprint, discover_scoped_instructions, update_ledger_atomic, utc_now, workspace_drift_paths, paths_within_boundaries, audit_paths, decision_valid
 from recovery_inputs import capture_request, capture_reads, validate_request
+from scoped_evidence import active_boundaries
 
 PHASES = ("planning", "implementing", "reconciling", "auditing", "final-verification", "complete", "blocked")
 
@@ -57,7 +58,7 @@ def main() -> int:
             all_items = [*ledger.get("acceptanceScenarios", []), *ledger.get("qualityGates", [])]
             old_active = next((i for i in all_items if i.get("id") == previous_id), {})
             drift = workspace_drift_paths(previous, workspace)
-            if (previous.get("gitHead") != workspace.get("gitHead") or not paths_within_boundaries(drift, old_active.get("fileBoundaries", []))) and not args.reconcile_drift:
+            if (previous.get("gitHead") != workspace.get("gitHead") or not paths_within_boundaries(drift, active_boundaries(ledger))) and not args.reconcile_drift:
                 raise ProtocolError("unexpected drift requires --reconcile-drift with inspected explanation")
             if args.reconcile_drift:
                 ledger.setdefault("reconciliations", []).append({"at":now, "reason":args.reconcile_drift, "paths":drift, "previousFingerprint":previous})

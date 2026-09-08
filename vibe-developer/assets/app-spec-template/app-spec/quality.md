@@ -41,3 +41,11 @@ Require unit tests, Android/iOS compilation, preview generation/compilation, Pap
 ## Asset delivery
 
 QG-006 requires exact asset inventory/variant coverage, valid files and hashes, provenance and production Res.drawable use sites, resource compilation and visual review through the production preview/golden matrix. Store delivery evidence in docs/assets/asset-manifest.json outside AppSpec. A generated prompt, placeholder or unused resource does not satisfy this gate.
+
+## Delivery and verification boundaries
+
+The current Vibe skills own scheduling, handoff/receipt formats and recovery. AppSpec owns product behavior and required acceptance surfaces. Implement related ACs as capability packages with a production entry point and a reachable save/read/restart flow in the first package. Prove subsequent flows through that root. An isolated component or preview is not production integration.
+
+Compile and run affected behavioral tests before handoff. Build/scanner smoke-check a small production preview early. Record, inspect and verify affected goldens at stable screen/package boundaries; every applicable primary state still needs light/dark coverage. Select additional locale/font/device stress combinations by risk and pairwise coverage. Deferred surfaces remain unverified. Perform the full matrix and global final evidence at closure.
+
+Run the complete ordered Lazyweb review once on stable primary screens, one report at a time; repeat affected screens only after material visual changes or unresolved findings. Preserve final full-set consistency review. Before the first shipped database baseline, evolve the initial schema directly; after shipping, require numbered migrations and upgrade tests from supported shipped schemas. Do not create hypothetical legacy formats.

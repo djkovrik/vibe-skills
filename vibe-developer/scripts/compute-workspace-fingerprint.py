@@ -19,9 +19,14 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("project_root", type=Path)
     parser.add_argument("--output", type=Path)
+    parser.add_argument("--input-scope")
     args = parser.parse_args()
     try:
-        value = compute_workspace_fingerprint(args.project_root)
+        if args.input_scope:
+            from scoped_evidence import registered_scope, input_fingerprint
+            value = input_fingerprint(args.project_root.resolve(), registered_scope(args.project_root.resolve(), args.input_scope))
+        else:
+            value = compute_workspace_fingerprint(args.project_root)
         rendered = json.dumps(value, ensure_ascii=False, indent=2, sort_keys=True) + "\n"
         if args.output:
             args.output.parent.mkdir(parents=True, exist_ok=True)

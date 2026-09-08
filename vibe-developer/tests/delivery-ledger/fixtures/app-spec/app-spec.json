@@ -49,7 +49,7 @@
       "requirement": "required",
       "verificationMethod": "Run repository tests.",
       "contractSource": "quality.md#repository-tests",
-      "verificationSurfaces": ["repository-check"]
+      "verificationSurfaces": ["repository-check", "asset-check", "asset-visual"]
     },
     {
       "id": "QG-002",
@@ -120,5 +120,12 @@
     "designReview": {"required": true, "provider": "lazyweb", "trigger": "after-goldens", "standards": ["material3"]},
     "iconography": {"inventoryStatus": "not-required", "standardIconSource": "Material Symbols", "customAssetsStatus": "not-required"}
   },
-  "openQuestions": []
+  "openQuestions": [],
+  "assetRequirements": {
+    "items": [],
+    "noAssetsReason": "Protocol test fixture uses text-only UI and requires no application artwork.",
+    "resourceSystem": "compose-multiplatform-resources",
+    "deliveryManifest": "docs/assets/asset-manifest.json",
+    "qualityGateId": "QG-001"
+  }
 }

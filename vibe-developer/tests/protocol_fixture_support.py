@@ -38,7 +38,7 @@ def audit_receipt_fixture(root, check):
     receipt = {key:check[key] for key in ("argv", "startedAt", "completedAt", "exitCode", "executionStatus", "startWorkspaceFingerprint", "workspaceFingerprint")}
     grouped = {}
     for pair in check["coverage"]: grouped.setdefault(pair["obligationId"], []).append(pair["surface"])
-    receipt.update(schemaVersion="2.0", receiptId=check["checkId"], kind="targeted", tasks=[],
+    receipt.update(schemaVersion="2.0", receiptId=check["checkId"], kind="integration", tasks=[],
         coveredObligations=[{"obligationId":key, "surfaces":value} for key,value in grouped.items()],
         log={"path":log.relative_to(root).as_posix(), "sha256":sha256_bytes(log.read_bytes())})
     path = directory / f"{check['checkId']}.json"; path.write_text(json.dumps(receipt), encoding="utf-8")

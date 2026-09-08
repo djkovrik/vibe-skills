@@ -17,6 +17,11 @@ def required_reads(root, ledger):
     paths += [root / value for value in execution.get("requiredReads", [])]
     if execution.get("durableRequest", {}).get("path"):
         paths.append(repository_path(root, execution["durableRequest"]["path"]))
+    package = ledger.get("workPackages", {}).get(execution.get("activePackageId"), {})
+    for item in ledger.get("acceptanceScenarios", []):
+        if item["id"] in package.get("acceptanceScenarioIds", []):
+            if item.get("flowId"): paths.append(app_root / "flows" / f"{item['flowId']}.md")
+            paths += [app_root / "screens" / f"{screen}.md" for screen in item.get("screenIds", [])]
     active_id = execution.get("activeAcceptanceScenarioId")
     active = next((item for item in ledger.get("acceptanceScenarios", []) if item.get("id") == active_id), {})
     if active.get("flowId"): paths.append(app_root / "flows" / f"{active['flowId']}.md")

@@ -8,7 +8,7 @@
 
 ## Requirement contract
 
-New AppSpecs include `assetRequirements` even if its inventory is empty (then explain `noAssetsReason`). Existing 2.0 specs without it retain compatibility with a warning; the asset validator rejects an absent inventory. On asset work or new delivery planning, reconcile it into the approved spec before ledger initialization or through `reconcile-spec.py` for an existing ledger. Never silently rewrite an approved spec to pass a new rule.
+Every AppSpec requires `assetRequirements`, including an explicit `noAssetsReason` for an empty inventory and its declared asset quality gate. Missing inventories fail intake; there is no compatibility mode. Amend an approved specification only with user authorization.
 
 Each item is required. Removing a needed asset changes scope and follows the existing decision/spec-revision flow. There is no `ready` boolean that bypasses file validation. Planned creation/generation is valid at intake: `uiQuality.iconography.customAssetsStatus` may be `planned` when the structured inventory contains a create/generate item. Exact unavailable third-party brand inputs remain blocking `openQuestions`; creating an original app logo from an approved brief does not require user-supplied art.
 

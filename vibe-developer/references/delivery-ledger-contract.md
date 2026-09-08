@@ -11,6 +11,10 @@
 
 Generated reports are never edited manually. Protocol 1.x artifacts fail as **unsupported protocol** and are neither migrated nor overwritten.
 
+## Capability packages and scoped evidence
+
+New assignments use [flow-delivery-contract.md](flow-delivery-contract.md). Optional ledger `workPackages`, `assignments`, `verificationScopes` and `execution.activePackageId` group related ACs without changing their IDs or verification requirements. `delivery-work.py` registers and captures assignments, runs checks before final handoff, generates handoffs, ingests/checkpoints, binds receipts and records reachable flow integration. `.vibe/snapshots` stores shared immutable baselines; `.vibe/requests` stores durable command requests. Both are excluded from global code fingerprints. Assignment-local handoffs and input-scoped targeted receipts are the only intermediate evidence formats. Unsupported historical formats cannot be imported or counted.
+
 ## Ledger and optimistic writes
 
 Initialize once with init-delivery-ledger.py. The ledger records AppSpec and canonical inventory, current workspace fingerprint, AC and gate state, ingested hand-off hashes, final receipt, closure bindings, and execution state. Execution records phase (planning, implementing, reconciling, auditing, final-verification, complete, or blocked), active AC, scoped instruction paths and hashes, latest checkpoint, and one mandatory concrete next action.
@@ -19,13 +23,13 @@ Every write holds an OS-owned file lock through digest comparison, mutation and 
 
 AC statuses are not-started, in-progress, implemented-unverified, verified, or waived. An in-progress AC records owner, file boundaries, baseline/checkpoint fingerprints, dependencies, changed files, pending checks, hand-off refs, blockers, and start/update timestamps. Gate entries may additionally use blocked-external, but only for platform, external, or release categories. Repository work and ACs may never use it.
 
-Checkpoint immediately before the first slice edit, before expanding boundaries, after every hand-off, before and after long verification, and before ending every turn.
+Checkpoint at package/assignment start, meaningful implementation or verification result, and before interruption/return. Capture feature boundaries up front and automate ingest/checkpoint; do not create a separate reasoning round for each new filename.
 
 ## Resume classification
 
 Start every $vibe-developer turn with:
 
-    python <skills>\vibe-developer\scripts\resume-delivery.py <project-root>
+    python <skills>\vibe-developer\scripts\resume-delivery.py <project-root> --compact
 
 The command rediscovers scoped AGENTS.md files, strictly validates AppSpec 2.0, rebuilds canonical inventory, verifies digest, fingerprints, and dependencies, and finds un-ingested hand-offs and orphan audit requests. Also run it immediately after compaction or interruption, including within one turn. Its machine-readable result is:
 
@@ -42,9 +46,9 @@ Use [specialist-handoff-contract.md](specialist-handoff-contract.md) for immutab
 
 Resume, pre-audit readiness and final aggregate validation all compare every on-disk hand-off by path and SHA-256 with inspected imports. Any unimported or changed hand-off blocks closure, including one arriving after an audit PASS. Preserve and inspect it; do not delete it to make validation pass.
 
-A receipt is a file under .vibe/receipts with schemaVersion 2.0, unique receiptId, kind targeted or final, exact argv and tasks, coveredObligations containing IDs and surfaces, start/completion timestamps, start/end workspace fingerprints, executionStatus, actual exit code, and a log path plus SHA-256. Inline receipt objects are invalid.
+A receipt is a file under .vibe/receipts with schemaVersion 2.0, unique receiptId, kind targeted, integration or final, exact argv and tasks, coveredObligations containing IDs and surfaces, start/completion timestamps, start/end workspace fingerprints, executionStatus, actual exit code, and a log path plus SHA-256. Inline receipt objects are invalid.
 
-For each obligation and surface, only the latest receipt with the current workspace fingerprint counts. Therefore PASS then FAIL remains failed; FAIL then PASS closes only after the later success. Stale receipts never count. A single explicit, successful, current final receipt must cover every verified obligation and surface. The final run must start after the current audit completes; old attempts remain as history.
+For each obligation and surface, only the latest current receipt counts. During implementation/pre-audit readiness, targeted receipts with a registered inputScopeId use current inputFingerprint and unchanged startInputFingerprint. The scope includes reviewed transitive sources/tests/configuration, automatic build/spec/instruction inputs and toolchain identity. Targeted receipts always require a registered scope; uncertain dependency closures use an explicit whole-repository input manifest. Global integration and audit checks use kind integration; only the post-audit closure run uses kind final. Final closure and audit checks still require current global workspace fingerprints. Therefore PASS then FAIL remains failed; FAIL then PASS closes only after the later success. Stale receipts never count. A single explicit, successful, current final receipt must cover every verified obligation and surface. The final run must start after the current audit completes; old attempts remain as history.
 
 ## Closure audit and final verdict
 

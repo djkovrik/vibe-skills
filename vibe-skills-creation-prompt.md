@@ -1,5 +1,8 @@
 # Промпт для создания пакета `vibe-*` skills
 
+> Current scheduling/evidence contract: [flow-delivery-contract.md](vibe-developer/references/flow-delivery-contract.md). Use capability packages with separate AC acceptance, early reachable production integration, compile/check feedback before final handoff, assignment-local baselines, reviewed targeted input scopes, JSON automation and stable-screen visual cadence. This refines historical single-AC/global-handoff examples below; final global audit/receipts and all product/architecture requirements remain mandatory.
+
+
 
 ## Protocol 2.0 override
 
@@ -1436,3 +1439,7 @@ python "C:\Users\Sergey\.codex\skills\.system\skill-creator\scripts\quick_valida
 ## Asset delivery 2.2 override
 
 Пакет 2.2.0 сохраняет протокол 2.0 и добавляет обязательный для новых спецификаций [asset contract](vibe-assets-creator/references/asset-contract.md). Этот раздел заменяет историческое требование всегда ждать custom assets от пользователя. Product Designer определяет инвентарь/brief, Assets Creator создаёт и генерирует файлы, Compose Expert подключает через Compose Multiplatform Resources; Visual Testing и независимый аудитор проверяют использование. Для raster icons default — прозрачный PNG 128×128, для простых иконок — XML vector; 64×64 только при достаточном dp×density. Требования заморожены в AppSpec, фактическая поставка фиксируется в manifest вне AppSpec, progress — в ledger. Плановая генерация валидна на intake; завершённая поставка требует файлов, hashes, provenance, production usages и визуальных доказательств.
+
+## Current evidence contract
+
+AppSpec 2.0 requires assetRequirements; no legacy-spec compatibility is supported. Specialist handoffs use only registered assignment-local baselines/results. Targeted receipts require inputScopeId and start/end input fingerprints; uncertain dependencies require a conservatively registered whole-repository scope. Global integration and audit checks use kind integration; post-audit closure uses kind final. Unsupported artifacts are rejected, never converted or relabeled. See [flow delivery contract](vibe-developer/references/flow-delivery-contract.md).

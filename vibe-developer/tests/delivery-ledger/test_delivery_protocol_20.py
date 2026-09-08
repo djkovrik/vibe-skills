@@ -34,6 +34,7 @@ class DeliveryProtocol20Tests(unittest.TestCase):
         (self.root / "config" / "quality.yml").write_text("repositoryQualityPasses\nandroidBuild\nreleaseCheck\n")
         decision_fixture(self.root, ["AC-001", "Value:create", "QG-001", "QG-002", "QG-003"])
         (self.root / "docs/assignment.md").write_text("Implement the approved Value save scenario and its declared quality gates. Preserve user changes.")
+        (self.root / "docs/assets").mkdir(); (self.root / "docs/assets/asset-manifest.json").write_text(json.dumps({"schemaVersion":"1.0", "assets":[]}))
         self.git("init"); self.git("config", "user.email", "x@example.test"); self.git("config", "user.name", "X"); self.git("add", "."); self.git("commit", "-m", "fixture")
         self.exec_script("init-delivery-ledger.py", str(self.root / "app-spec"), "--project-root", str(self.root))
         self.exec_script("checkpoint-delivery.py", str(self.root), "--expected-ledger-digest", self.ledger()["ledgerDigest"], "--phase", "planning", "--request-file", "docs/assignment.md", "--next-action", "Select the first scenario.")
@@ -47,7 +48,7 @@ class DeliveryProtocol20Tests(unittest.TestCase):
     def start(self):
         digest = self.ledger()["ledgerDigest"]
         self.exec_script("checkpoint-delivery.py", str(self.root), "--expected-ledger-digest", digest, "--phase", "implementing", "--active-ac", "AC-001", "--owner", "test", "--file-boundary", "src/**", "--file-boundary", "tests/**", "--next-action", "Implement AC-001.")
-    def receipt(self, name, exit_code, completed, surfaces, kind="targeted", coverage=None):
+    def receipt(self, name, exit_code, completed, surfaces, kind="integration", coverage=None):
         directory = self.root / ".vibe" / "receipts"; directory.mkdir(exist_ok=True)
         log = directory / f"{name}.log"; log.write_text(name)
         import hashlib
@@ -71,10 +72,13 @@ class DeliveryProtocol20Tests(unittest.TestCase):
         process = self.exec_script("resume-delivery.py", str(self.root), check=False); brief = json.loads(process.stdout); self.assertEqual("unexpected-drift", brief["driftClassification"])
 
     def test_pending_handoff_is_discovered_and_ingested(self):
-        self.start(); (self.root / "src" / "App.kt").write_text("class AppComponent { fun saveValue() = Unit; fun changed()=Unit }\n")
-        fp = compute_workspace_fingerprint(self.root); handoffs = self.root / ".vibe" / "handoffs"; handoffs.mkdir()
-        handoff = {"schemaVersion":"2.0","handoffId":"HANDOFF-1","assignmentId":"ASSIGN-1","owner":"specialist","acceptanceScenarioIds":["AC-001"],"qualityGateIds":[],"startedAt":"2026-09-04T10:00:00Z","completedAt":"2026-09-04T10:01:00Z","baseWorkspaceFingerprint":self.ledger()["acceptanceScenarios"][0]["baselineFingerprint"],"resultWorkspaceFingerprint":fp,"allowedFiles":["src/**"],"changedFiles":["src/App.kt"],"productionEvidence":[{"path":"src/App.kt","symbol":"AppComponent","surface":"public-contract"}],"testEvidence":[],"nonGradleChecks":[],"requestedCommands":[],"blockers":[]}
-        path = handoffs / "HANDOFF-1.json"; path.write_text(json.dumps(handoff))
+        self.start()
+        work = module("handoff_fixture_work", "delivery-work.py")
+        import hashlib
+        work.run(self.root, {"action":"assign", "assignmentId":"ASSIGN-1", "owner":"specialist", "allowedFiles":["src/**"], "acceptanceScenarioIds":["AC-001"], "qualityGateIds":[], "_requestRef":{"path":"docs/assignment.md", "sha256":hashlib.sha256((self.root / "docs/assignment.md").read_bytes()).hexdigest()}})
+        (self.root / "src/App.kt").write_text("class AppComponent { fun saveValue() = Unit; fun changed()=Unit }\n")
+        result = work.run(self.root, {"action":"handoff", "assignmentId":"ASSIGN-1", "handoffId":"HANDOFF-1", "productionEvidence":[{"path":"src/App.kt", "symbol":"AppComponent", "surface":"public-contract"}]})
+        path = self.root / result["handoffRef"]; handoff = json.loads(path.read_text())
         brief = json.loads(self.exec_script("resume-delivery.py", str(self.root)).stdout); self.assertEqual(1, len(brief["pendingHandoffs"]))
         digest = self.ledger()["ledgerDigest"]; self.exec_script("ingest-handoff.py", str(self.root), str(path), "--expected-ledger-digest", digest)
         self.assertEqual("implemented-unverified", self.ledger()["acceptanceScenarios"][0]["status"])

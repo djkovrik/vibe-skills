@@ -24,6 +24,7 @@ from vibe_protocol import (
 )
 
 from recovery_inputs import validate_reads
+from scoped_evidence import receipt_current, receipt_stable, receipt_format_errors
 
 STATUSES = {"not-started", "in-progress", "implemented-unverified", "verified", "blocked-external", "waived"}
 PHASES = {"planning", "implementing", "reconciling", "auditing", "final-verification", "complete", "blocked"}
@@ -70,7 +71,7 @@ def evidence_ok(root: Path, evidence: Any, label: str, result: ValidationResult)
         valid.append(item)
     return valid
 
-def load_receipts(root: Path, refs: set[str], current: dict, result: ValidationResult) -> dict[str, dict]:
+def load_receipts(root: Path, refs: set[str], current: dict, result: ValidationResult, *, scoped=False) -> dict[str, dict]:
     loaded: dict[str, dict] = {}
     for ref in sorted(refs):
         if not isinstance(ref, str) or not ref.startswith(".vibe/receipts/") or not ref.endswith(".json"):
@@ -80,19 +81,22 @@ def load_receipts(root: Path, refs: set[str], current: dict, result: ValidationR
             receipt = read_json(path)
         except ProtocolError as exc: result.errors.append(str(exc)); continue
         label = f"receipt[{ref}]"
-        if not fingerprint_equal(receipt.get("workspaceFingerprint"), current):
+        format_errors = receipt_format_errors(receipt)
+        if format_errors:
+            result.errors.extend(f"{label}: {error}" for error in format_errors)
+            continue
+        if not (receipt_current(root, receipt, current) if scoped else fingerprint_equal(receipt.get("workspaceFingerprint"), current)):
             result.warnings.append(f"{label}: stale workspace fingerprint; retained only as history")
             continue
         if receipt.get("schemaVersion") != "2.0": result.errors.append(f"{label}: unsupported protocol")
         for field in ("receiptId", "kind", "argv", "tasks", "coveredObligations", "startedAt", "completedAt", "workspaceFingerprint", "exitCode", "log"):
             if field not in receipt: result.errors.append(f"{label}.{field}: required")
-        if receipt.get("kind") not in {"targeted", "final"}: result.errors.append(f"{label}.kind: expected targeted or final")
+        if receipt.get("kind") not in {"targeted", "integration", "final"}: result.errors.append(f"{label}.kind: expected targeted, integration or final")
+        if receipt.get("inputScopeId") and receipt.get("kind") != "targeted": result.errors.append(f"{label}: integration/final receipt cannot use scoped inputs")
         if not isinstance(receipt.get("argv"), list) or not receipt.get("argv") or any(not isinstance(v, str) for v in receipt.get("argv", [])): result.errors.append(f"{label}.argv: expected non-empty string array")
         if not isinstance(receipt.get("tasks"), list): result.errors.append(f"{label}.tasks: expected array")
         if not timestamp(receipt.get("startedAt")) or not timestamp(receipt.get("completedAt")): result.errors.append(f"{label}: invalid timestamps")
         elif parse_time(receipt["startedAt"]) > parse_time(receipt["completedAt"]): result.errors.append(f"{label}: completedAt precedes startedAt")
-        if receipt.get("executionStatus") not in {"completed", "interrupted", "workspace-changed"}: result.warnings.append(f"{label}: executionStatus missing or invalid; cannot prove completion, rerun with the current runner")
-        if not isinstance(receipt.get("startWorkspaceFingerprint"), dict): result.warnings.append(f"{label}: start fingerprint missing; cannot prove completion, rerun with the current runner")
         if not isinstance(receipt.get("exitCode"), int): result.errors.append(f"{label}.exitCode: expected integer")
         if not fingerprint_equal(receipt.get("workspaceFingerprint"), current): result.warnings.append(f"{label}: stale workspace fingerprint")
         log = receipt.get("log")
@@ -133,6 +137,10 @@ def validate_ledger(project_root: Path, ledger_path: Path, *, closure: bool = Tr
     if not fingerprint_equal(ledger.get("workspaceFingerprint"), current_workspace): result.errors.append("workspace.fingerprint.stale")
     inventory = canonical_inventory(app)
     if ledger.get("canonicalInventory") != inventory: result.errors.append("canonical inventory mismatch")
+    if closure:
+        for package_id, package in ledger.get("workPackages", {}).items():
+            if package.get("status") != "integrated" or not package.get("integrationEvidence") or not package.get("integrationReceiptRef"):
+                result.errors.append(f"{package_id}: production flow integration is incomplete")
     pending = pending_handoff_paths(root, ledger)
     if pending: result.errors.append("pending specialist hand-offs must be inspected and ingested: " + ", ".join(pending))
     execution = ledger.get("execution") if isinstance(ledger.get("execution"), dict) else {}
@@ -158,7 +166,7 @@ def validate_ledger(project_root: Path, ledger_path: Path, *, closure: bool = Tr
             handoff_path = resolve(root, handoff["path"], label)
             if not handoff["path"].startswith(".vibe/handoffs/") or not handoff_path.is_file() or hashlib.sha256(handoff_path.read_bytes()).hexdigest() != handoff["sha256"]:
                 result.errors.append(f"{label}: immutable hand-off is missing or hash-mismatched")
-            elif read_json(handoff_path).get("schemaVersion") != "2.0": result.errors.append(f"{label}: unsupported hand-off protocol")
+            elif read_json(handoff_path).get("schemaVersion") != "2.0" or read_json(handoff_path).get("evidenceMode") != "assignment": result.errors.append(f"{label}: unsupported hand-off protocol/format")
         except ProtocolError as exc: result.errors.append(str(exc))
     refs: set[str] = set()
     for item in [*ledger_acs.values(), *ledger_gates.values()]:
@@ -168,7 +176,7 @@ def validate_ledger(project_root: Path, ledger_path: Path, *, closure: bool = Tr
     if closure and ledger.get("finalReceiptRef") is not None: refs.add(ledger["finalReceiptRef"])
     # A failed run cannot disappear by omitting its ref from the ledger.
     refs.update(path.relative_to(root).as_posix() for path in (root / ".vibe" / "receipts").glob("*.json"))
-    receipts = load_receipts(root, refs, current_workspace, result)
+    receipts = load_receipts(root, refs, current_workspace, result, scoped=not closure)
     receipt_ids = [receipt.get("receiptId") for receipt in receipts.values() if isinstance(receipt.get("receiptId"), str)]
     if len(receipt_ids) != len(set(receipt_ids)): result.errors.append("receiptId values must be unique")
     declared_surfaces = verification_surface_map(app)
@@ -181,10 +189,10 @@ def validate_ledger(project_root: Path, ledger_path: Path, *, closure: bool = Tr
                 result.errors.append(f"receipt[{ref}].coveredObligations[{index}]: incompatible surface")
     latest: dict[tuple[str, str], tuple[datetime, int]] = {}
     for receipt in receipts.values():
-        if not fingerprint_equal(receipt.get("workspaceFingerprint"), current_workspace): continue
+        if not (receipt_current(root, receipt, current_workspace) if not closure else fingerprint_equal(receipt.get("workspaceFingerprint"), current_workspace)): continue
         if not timestamp(receipt.get("completedAt")): continue
         completed = parse_time(receipt["completedAt"])
-        outcome = receipt.get("exitCode") if receipt.get("executionStatus") == "completed" and fingerprint_equal(receipt.get("startWorkspaceFingerprint"), receipt.get("workspaceFingerprint")) else 1
+        outcome = receipt.get("exitCode") if receipt.get("executionStatus") == "completed" and (receipt_stable(receipt) if not closure else fingerprint_equal(receipt.get("startWorkspaceFingerprint"), receipt.get("workspaceFingerprint"))) else 1
         for coverage in receipt.get("coveredObligations", []) if isinstance(receipt.get("coveredObligations"), list) else []:
             if not isinstance(coverage, dict): continue
             obligation_id = coverage.get("obligationId")

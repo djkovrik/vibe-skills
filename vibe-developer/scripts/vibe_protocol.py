@@ -29,6 +29,8 @@ DELIVERY_ARTIFACT_PATTERNS = (
     ".vibe/audits",
     ".vibe/recovery",
     ".vibe/history",
+    ".vibe/snapshots",
+    ".vibe/requests",
     ".vibe/delivery-ledger.json.lock",
     "docs/requirement-traceability.generated.md",
     "docs/closure-audit.generated.md",

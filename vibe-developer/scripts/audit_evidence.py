@@ -16,8 +16,10 @@ def validate_check_receipt(check, root):
         if sha256_bytes(path.read_bytes()) != check.get("receiptSha256"):
             errors.append("audit check receipt hash mismatch")
         receipt = read_json(path)
-        if receipt.get("schemaVersion") != "2.0" or not receipt.get("receiptId") or receipt.get("kind") != "targeted":
-            errors.append("audit check requires a Protocol 2.0 targeted runner receipt")
+        from scoped_evidence import receipt_format_errors
+        errors.extend(receipt_format_errors(receipt))
+        if receipt.get("schemaVersion") != "2.0" or not receipt.get("receiptId") or receipt.get("kind") != "integration":
+            errors.append("audit check requires a Protocol 2.0 global integration runner receipt")
         for field in ("argv", "exitCode", "executionStatus", "startWorkspaceFingerprint", "workspaceFingerprint"):
             if check.get(field) != receipt.get(field): errors.append(f"audit check receipt {field} mismatch")
         for field in ("startedAt", "completedAt"):

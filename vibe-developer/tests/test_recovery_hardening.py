@@ -62,13 +62,13 @@ class RecoveryHardeningTests(unittest.TestCase):
         self.assertIn("exact regression",json.dumps(brief["pendingChecks"]))
         self.assertFalse(brief["safeToContinue"])
 
-    def test_new_success_can_supersede_pre_hardening_receipt_without_deleting_it(self):
+    def test_incomplete_receipt_format_is_rejected_without_rewriting_it(self):
         old=self.case.receipt("legacy",0,"2026-09-04T10:02:00Z",["component-test"])
         path=self.root/old; data=read_json(path); data.pop("executionStatus");data.pop("startWorkspaceFingerprint");path.write_text(json.dumps(data))
         original=path.read_bytes();self.case.verified_ac([old])
-        self.assertTrue(any("latest current receipt" in e for e in D.VALIDATOR.validate_ledger(self.root,self.case.ledger_path).errors))
+        self.assertTrue(any("requires executionStatus" in e for e in D.VALIDATOR.validate_ledger(self.root,self.case.ledger_path).errors))
         new=self.case.receipt("current",0,"2026-09-04T10:03:00Z",["component-test"]);self.case.verified_ac([old,new])
-        self.assertFalse(any("latest current receipt" in e for e in D.VALIDATOR.validate_ledger(self.root,self.case.ledger_path).errors))
+        self.assertTrue(any("requires executionStatus" in e for e in D.VALIDATOR.validate_ledger(self.root,self.case.ledger_path).errors))
         self.assertEqual(original,path.read_bytes())
 
     def test_gate_only_work_recovers_expected_drift(self):
@@ -133,11 +133,11 @@ class RecoveryHardeningTests(unittest.TestCase):
 
     def test_real_check_records_timeout_and_workspace_mutation(self):
         coverage=[{"obligationId":"AC-001","surfaces":["component-test"]}]
-        _,success=CHECK.run_check(self.root,[sys.executable,"-B","-c","assert 2+2 == 4"],coverage)
+        _,success=CHECK.run_check(self.root,[sys.executable,"-B","-c","assert 2+2 == 4"],coverage,kind="integration")
         self.assertEqual("completed",success["executionStatus"]); self.assertEqual(0,success["exitCode"])
-        _,timeout=CHECK.run_check(self.root,[sys.executable,"-B","-c","import time;time.sleep(5)"],coverage,timeout=.1)
+        _,timeout=CHECK.run_check(self.root,[sys.executable,"-B","-c","import time;time.sleep(5)"],coverage,kind="integration",timeout=.1)
         self.assertEqual("interrupted",timeout["executionStatus"])
-        _,changed=CHECK.run_check(self.root,[sys.executable,"-B","-c","from pathlib import Path;Path('src/new.txt').write_text('changed')"],coverage)
+        _,changed=CHECK.run_check(self.root,[sys.executable,"-B","-c","from pathlib import Path;Path('src/new.txt').write_text('changed')"],coverage,kind="integration")
         self.assertEqual(0,changed["exitCode"]); self.assertEqual("workspace-changed",changed["executionStatus"])
 
     def test_specialist_recovers_without_conversation(self):
@@ -162,13 +162,13 @@ class RecoveryHardeningTests(unittest.TestCase):
         cp=self.checkpoint("--phase","implementing","--active-ac","AC-001","--next-action","Verify save path")
         self.assertEqual(0,cp.returncode,cp.stderr)
         coverage=[{"obligationId":"AC-001","surfaces":["component-test"]}]
-        path,receipt=CHECK.run_check(self.root,[sys.executable,"-B","-c","from pathlib import Path;assert 'value = v' in Path('src/App.kt').read_text()"],coverage)
+        path,receipt=CHECK.run_check(self.root,[sys.executable,"-B","-c","from pathlib import Path;assert 'value = v' in Path('src/App.kt').read_text()"],coverage,kind="integration")
         self.case.verified_ac([path.relative_to(self.root).as_posix()])
         self.assertEqual(0,self.request("second-context").returncode)
         binding=self.case.ledger()["closureAudit"]; request_path=self.root/binding["requestPath"]; request=read_json(request_path)
         audit_started=utc_now()
         audit_coverage = [*coverage, {"obligationId":"Value:create", "surfaces":["component-test"]}]
-        audit_receipt_path,audit_receipt=CHECK.run_check(self.root,[sys.executable,"-B","-c","from pathlib import Path;assert 'value = v' in Path('src/App.kt').read_text()"],audit_coverage)
+        audit_receipt_path,audit_receipt=CHECK.run_check(self.root,[sys.executable,"-B","-c","from pathlib import Path;assert 'value = v' in Path('src/App.kt').read_text()"],audit_coverage,kind="integration")
         app=read_json(self.root/"app-spec/app-spec.json")
         obligations=[{"id":item_id,"result":"verified","verificationSurfaces":["component-test"],"evidence":[{"path":"src/App.kt","symbol":"saveValue","surface":"component-test"}]} for item_id in ("AC-001","Value:create")]
         obligations += [{"id":g["id"],"result":"waived","verificationSurfaces":g["verificationSurfaces"],"decisionReference":"docs/decisions/DEC-FIXTURE.json","evidence":[]} for g in app["qualityGates"]]

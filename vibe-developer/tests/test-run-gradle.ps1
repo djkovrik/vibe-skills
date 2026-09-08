@@ -30,6 +30,7 @@ function Start-Runner {
         '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', (Quote-Argument $runner),
         '-ProjectRoot', (Quote-Argument $testRoot),
         '-Tasks', $Task,
+        '-ReceiptKind', 'integration',
         '-LogPath', (Quote-Argument (Join-Path $testRoot ".vibe\$LogName")),
         '-TimeoutSeconds', $TimeoutSeconds,
         '-LockTimeoutSeconds', $LockTimeoutSeconds
@@ -101,7 +102,7 @@ exit /b 0
     $failureReceipt = Get-Content -LiteralPath (Join-Path $testRoot '.vibe\receipts\fail-receipt.json') -Raw | ConvertFrom-Json
     Assert-True ($failureReceipt.exitCode -eq 7) 'completed failure receipt must keep real exit code'
     Assert-True ($failureReceipt.schemaVersion -eq '2.0') 'receipt must use Protocol 2.0'
-    Assert-True ($failureReceipt.kind -eq 'targeted') 'receipt kind must be explicit'
+    Assert-True ($failureReceipt.kind -eq 'integration') 'receipt kind must be explicit'
     Assert-True ('AC-001' -in @($failureReceipt.coveredObligations.obligationId)) 'receipt must name assigned AC'
     Assert-True ($failureReceipt.log.sha256 -match '^[a-f0-9]{64}$') 'receipt must hash its log'
     $receiptBytes = [System.IO.File]::ReadAllBytes((Join-Path $testRoot '.vibe\receipts\fail-receipt.json'))

@@ -17,7 +17,8 @@
     "localization",
     "architecture",
     "uiQuality",
-    "openQuestions"
+    "openQuestions",
+    "assetRequirements"
   ],
   "properties": {
     "schemaVersion": {

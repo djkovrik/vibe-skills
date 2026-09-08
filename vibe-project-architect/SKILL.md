@@ -40,6 +40,8 @@ Read the target AppSpec, repository instructions, module/build graph, catalogs, 
 - Co-locate screenshot tests with the module that owns production previews/resources unless a recorded build constraint requires aggregation/isolation.
 - Make generated preview tests an explicit input to Android unit-test compilation and Paparazzi record/verify tasks; keep discovery package-scoped and configuration-cache behavior honest.
 
+Create a reachable production root and one persistence/restart flow with the first capability package. Validate scanner/Paparazzi hosting early with a small production preview before growing the matrix; defer neither entry-point integration nor basic toolchain compatibility until the first golden-heavy AC.
+
 ## Validation
 
 Check settings inclusion, component-module boundaries/exceptions and package roles, dependency direction, source-set compilation, catalog/convention use, per-module manual-DI contracts, composition-root use of module factories instead of direct concrete construction, lazy ownership, Compose resource generation, English default/fallback and locale packaging, native fallback resource packaging, screenshot host ownership/rationale, generator-to-compile task dependency, Paparazzi record/verify availability, snapshot/Git-LFS paths, CI diff/report artifacts, Android builds, available iOS framework/Pod/Xcode builds, the selected current Detekt version and generated `detekt/base-config.yml`, strict Detekt failure behavior, Kover scope inventory/baseline/committed minimum/verification, all five baseline workflow files, CI syntax, minimum permissions, concurrency, signing-variable contract, release artifacts, and the project-specific external setup guide. Distinguish local validation from credential-dependent end-to-end publication.
@@ -50,7 +52,7 @@ Hand pure rules to Domain, UI navigation to Decompose, platform services to Plat
 
 ## Orchestrated evidence hand-off
 
-When `$vibe-developer` assigns work, follow [Specialist hand-off Protocol 2.0](../vibe-developer/references/specialist-handoff-contract.md). Accept assignment, AC/gate IDs, base fingerprint, and non-overlapping file boundaries. Write one immutable `.vibe/handoffs/<id>.json` with base/result fingerprints, allowed/changed files, exact production/test evidence, completed non-Gradle checks, requested Gradle commands and blockers. The orchestrator alone inspects and ingests it, writes the ledger and owns Gradle. Do not claim completion.
+When `$vibe-developer` assigns work, follow [Specialist hand-off Protocol 2.0](../vibe-developer/references/specialist-handoff-contract.md). Accept assignment, AC/gate IDs, assignment baseline reference, and non-overlapping file boundaries. Write one immutable `.vibe/handoffs/<id>.json` with assignment-local baseline/result evidence, allowed/changed files, exact production/test evidence, completed non-Gradle checks, requested Gradle commands and blockers. The orchestrator alone inspects and ingests it, writes the ledger and owns Gradle. Do not claim completion.
 
 ## Reusable learning
 
