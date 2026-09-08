@@ -8,7 +8,7 @@ Plan a bounded user capability (for example catalog create/edit/delete) with sev
 
 Create a real production root and one reachable save/read/restart flow in the first package. Each subsequent package connects to that root. Component verification alone does not prove a usable flow. Record entry-point, navigation and restart evidence plus a real successful integration receipt; report integrated flows separately from verified AC counts. Never present their ratio as percent application completion.
 
-Package-internal dependencies may be implemented together, in dependency order. External dependencies must already be verified/waived. A package may be integrated while some ACs are implemented-unverified pending scheduled goldens; keep those obligations and checks explicit. Do not infer that a later action is safe if it depends on unresolved behavior. Never mark ACs verified just to unblock scheduling.
+Package-internal dependencies may be implemented together, in dependency order. External dependencies must be verified/waived or have accepted, current `dependencyReadiness` for their required behavioral surfaces. A package may be integrated while some ACs are implemented-unverified pending scheduled goldens; keep those obligations and checks explicit. Do not infer that a later action is safe if it depends on unresolved behavior. Never mark ACs verified just to unblock scheduling.
 
 ## JSON automation
 
@@ -74,7 +74,7 @@ Compile modified modules and run the smallest meaningful behavioral test as soon
 
 After actual feedback and fixes, prepare a `handoff` request with assignmentId, productionEvidence, testEvidence, nonGradleChecks actually executed, remaining requestedCommands and blockers. The helper computes authored delta, result/input fingerprints and writes the immutable file; do not type fingerprints or cumulative AC drift by hand. `ingest` takes handoffRef and a non-empty inspectionNote after reviewing the diff. It imports and checkpoints in one ledger transaction. If an unimported attempt became stale, create a corrected handoff with `supersedes: [".vibe/handoffs/old-id.json"]`; inspect both attempts before ingest. The old bytes remain immutable, hash-bound history and cease blocking resume only when the replacement for the same assignment is accepted. `bind` takes receiptRef and records its coverage, including failures, without changing AC status or clearing pending checks. Clear resolved checks and verify ACs only after all their required surfaces have successful current evidence.
 
-`integrate` takes packageId, receiptRef and integrationEvidence rows with `path`, `symbol`, and roles `entry-point`, `navigation`, `restart`. Record real production/navigation symbols and a restart test symbol; the independent auditor verifies the claimed behavior. This state does not replace AC verification. The next package may start after integration.
+`integrate` takes packageId, receiptRef and integrationEvidence rows with `path`, `symbol`, and roles `entry-point`, `navigation`, `restart`. Record real production/navigation symbols and a restart test symbol; the independent auditor verifies the claimed behavior. This state does not replace AC verification. Independent packages may start concurrently. Integrate each package when its own flow is ready.
 
 ## Verification cadence
 
@@ -82,7 +82,7 @@ After actual feedback and fixes, prepare a `handoff` request with assignmentId, 
 | --- | --- |
 | Edit/repair | Changed-module compile, new behavior test and affected regressions |
 | Stable screen/capability | Combined relevant domain/component/persistence suite, reachable production flow, affected goldens |
-| Final integration | Full required matrix with global `kind: integration` receipts, independent fresh audit using the same explicit global kind, then the post-audit `kind: final` receipt |
+| Final integration | One full required matrix with global `kind: integration` receipts; fresh audit reviews/reuses them and executes missing checks; `close` binds a closure manifest |
 
 Build/scanner smoke-check a small production preview early, before expanding the state matrix. Compile previews during UI edits. Record/inspect/verify at a stable screen/package boundary and after approved visual changes, only for affected screenshots. Preserve every applicable primary state in light/dark; choose additional font/locale/device stress variants by risk/pairwise coverage. A deferred golden-test leaves its AC implemented-unverified, not verified or waived.
 
@@ -94,4 +94,24 @@ Use `resume-delivery.py --compact` after interruption/compaction and at turn sta
 
 If the same failure category repeats twice, diagnose a minimal case and repair the shared harness/pattern before another identical attempt. Escalate the bounded diagnosis or reasoning effort when justified and allowed; do not change all model settings by default.
 
-Targeted scope reuse is for implementation/pre-audit readiness only. Final completion retains global workspace/AppSpec fingerprints, current successful global checks, fresh independent audit and the post-audit covering final receipt. Historical artifacts are never upgraded or relabeled to make them current evidence. A user-authorized fresh iteration preserves its predecessor outside the active delivery state and starts with new evidence. Never remove architecture, privacy, localization, transaction or visual coverage obligations to improve throughput.
+Targeted scope reuse is for implementation/pre-audit readiness only. Final completion retains global workspace/AppSpec fingerprints, current successful global checks, fresh independent audit and a hash-bound closure manifest. Historical artifacts are never upgraded or relabeled to make them current evidence. A user-authorized fresh iteration preserves its predecessor outside the active delivery state and starts with new evidence. Never remove architecture, privacy, localization, transaction or visual coverage obligations to improve throughput.
+
+## Current coordination and evidence interfaces
+
+`execution.activePackageIds` holds independent active packages. Each assignment has a generated `packetRef`; populate `goal`, `contractInputs`, `requiredReads`, `requestedCommands`, and `acceptanceCriteria` in the assign request. Consumers read the packet and the referenced contracts; new agents use `fork_turns: none`. Root wiring, version catalog and shared resource edits retain one writer.
+
+Action `contract-ready` takes `obligationId`, nonempty `behavioralSurfaces`, `contractEvidence` (path/symbol/surface), and `inspectionNote`. Declare all behavior surfaces the consumer depends on, excluding deferred goldens. Current successful checks and existing anchors are required; the AC is not marked verified.
+
+Action `check-batch` takes ready `checks`, each with `checkId`, runner/kind/inputScopeId/timeoutSeconds/toolchainIdentity, tasks and coveredObligations. Only identical execution settings and Gradle options combine. The result retains sourceCheckIds and exact combined coverage. Do not attach coverage to tasks that were not run.
+
+Jobs persist under `.vibe/jobs`: queued, running, receipt-written, binding, bound or binding-pending. Administrative binding has a 30-second default deadline. Action `retry-bind` takes jobId and receiptRef and never executes the original command. Direct `bind` is idempotent by receipt path/hash and does not checkpoint source. Failed checks are registered too. Resume lists unfinished jobs; do not repeat a job already recorded.
+
+Handoff productionEvidence/testEvidence rows require exact anchors and `coverage: [{"obligationId":"AC-001","surface":"component-test"}]`. A single-obligation handoff may omit coverage; multi-obligation handoffs must specify it. Ledger arrays contain evidence IDs, with one record under `evidence`. For XML use `anchor: {"kind":"xml","element":"uses-permission","attributes":{"{http://schemas.android.com/apk/res/android}name":"android.permission.POST_NOTIFICATIONS"}}`; Kotlin uses symbol/testName.
+
+Action `reconcile-evidence` takes oldEvidenceIds, obligationIds, newEvidence rows (including kind), reason and inspectionNote. It changes current references only, retains old evidence and handoff bytes, and reopens incomplete coverage. `supersedes` remains exclusively for unimported handoff attempts. Action `resolve-work` takes resolvedIds and inspectionNote; use the real successful receipt for checks and actual resolution for blockers.
+
+`validate-render-smoke.py <repo> --inventory <json>` requires `previewCount > 0`, a run `startedAt`, and cases with unique id, variant (`light`, `dark`, `ru-200`) and snapshotPath. Run the actual production render first into clean output. The validator rejects missing/stale PNGs; inspect the output before expanding. The command is a harness gate, not a substitute for full visual acceptance.
+
+Action `availability` records hostAvailability (host, tools, surfaces). A surface row has obligationId, surface, available, reason and prerequisites. Only actual external/platform limitations may be unavailable. Action `close` creates closureManifest after a validated audit PASS. Run reports then closure validation. Local-only PASS reports locallyVerified=true with full completion false while required platform surfaces remain unverified.
+
+A `scope` request can supply `modules` and a reviewed `moduleGraph` mapping Gradle project IDs to `{directory, dependencies}`. The architect derives this graph from actual project dependencies; the resolver includes transitive modules and rejects unknown dependencies. Shared build files, AppSpec and instructions remain implicit inputs. Explicit whole-repository patterns require `fallbackReason`. Never guess missing graph edges; use a documented fallback until the graph is inspected.

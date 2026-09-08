@@ -28,9 +28,9 @@ def file_inventory(root):
     return sorted(set(result.stdout.decode('utf-8').split('\0')) - {''})
 
 
-def capture_scope(root, patterns):
+def capture_scope(root, patterns, *, inventory=None):
     patterns = patterns_valid(patterns)
-    names = set(name for name in file_inventory(root) if matches(name, patterns) and not _is_delivery_artifact(name))
+    names = set(name for name in (file_inventory(root) if inventory is None else inventory) if matches(name, patterns) and not _is_delivery_artifact(name))
     # Explicit absent paths must remain inputs (creation/deletion invalidates evidence).
     names.update(p for p in patterns if not any(c in p for c in '*?['))
     files = []
@@ -56,9 +56,9 @@ def read_snapshot(root, reference):
     return read_json(path)
 
 
-def input_fingerprint(root, scope):
+def input_fingerprint(root, scope, *, context=None):
     """Include scoped content plus all build files, normative spec and instructions."""
-    ledger = read_json(root / '.vibe/delivery-ledger.json')
+    ledger = context.ledger if context else read_json(root / '.vibe/delivery-ledger.json')
     app_root = Path(ledger['appSpec']['root'])
     if not app_root.is_absolute(): app_root = root / app_root
     from vibe_protocol import compute_app_spec_fingerprint
@@ -66,9 +66,9 @@ def input_fingerprint(root, scope):
         '**/*.properties', 'gradle/**', 'build-logic/**', 'buildSrc/**', 'gradlew', 'gradlew.bat',
         '**/libs.versions.toml', '.gitignore', '**/.gitignore']
     data = {'scopeDigest': canonical_digest(scope),
-        'inputs': capture_scope(root, [*scope['patterns'], *build_patterns]),
-        'appSpec': compute_app_spec_fingerprint(app_root),
-        'instructions': discover_scoped_instructions(root)}
+        'inputs': capture_scope(root, [*scope['patterns'], *build_patterns], inventory=context.inventory if context else None),
+        'appSpec': context.app_fingerprint if context else compute_app_spec_fingerprint(app_root),
+        'instructions': context.instructions if context else discover_scoped_instructions(root)}
     return {**data, 'digest': canonical_digest(data)}
 
 
@@ -82,7 +82,7 @@ def registered_scope(root, scope_id):
 def receipt_format_errors(receipt):
     errors = []
     kind = receipt.get('kind')
-    if receipt.get('schemaVersion') != '2.0' or kind not in {'targeted', 'integration', 'final'}:
+    if receipt.get('schemaVersion') != '2.0' or kind not in {'targeted', 'integration'}:
         errors.append('unsupported receipt protocol/kind')
     if receipt.get('executionStatus') not in {'completed', 'interrupted', 'workspace-changed'} or not isinstance(receipt.get('startWorkspaceFingerprint'), dict):
         errors.append('receipt requires executionStatus and startWorkspaceFingerprint')
@@ -90,7 +90,7 @@ def receipt_format_errors(receipt):
         if not receipt.get('inputScopeId') or not all(isinstance(receipt.get(k), dict) and receipt[k].get('digest') for k in ('startInputFingerprint', 'inputFingerprint')):
             errors.append('unsupported targeted receipt format: inputScopeId and input fingerprints required')
     elif any(k in receipt for k in ('inputScopeId', 'startInputFingerprint', 'inputFingerprint')):
-        errors.append('integration/final receipts require global inputs')
+        errors.append('integration receipts require global inputs')
     return errors
 
 
@@ -139,9 +139,8 @@ def assignment_errors(root, data, ledger):
 
 def active_boundaries(ledger):
     execution = ledger.get('execution', {})
-    package = ledger.get('workPackages', {}).get(execution.get('activePackageId'), {})
-    ids = package.get('acceptanceScenarioIds', []) + package.get('qualityGateIds', [])
-    if not ids:
-        ids = [execution.get('activeAcceptanceScenarioId'), execution.get('activeQualityGateId')]
+    ids = [i for pid in execution.get('activePackageIds', [])
+           for i in ledger.get('workPackages', {}).get(pid, {}).get('acceptanceScenarioIds', []) + ledger.get('workPackages', {}).get(pid, {}).get('qualityGateIds', [])]
+    ids += [execution.get('activeAcceptanceScenarioId'), execution.get('activeQualityGateId')]
     return [p for item in [*ledger.get('acceptanceScenarios', []), *ledger.get('qualityGates', [])]
         if item.get('id') in ids for p in item.get('fileBoundaries', [])]

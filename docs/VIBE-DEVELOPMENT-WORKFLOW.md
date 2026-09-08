@@ -11,8 +11,8 @@
       -> compile/targeted feedback before final hand-offs
       -> assignment-local immutable hand-offs and scoped receipts
       -> immutable audit request and fresh-context audit
-      -> one covering final receipt
-      -> aggregate validator and two verdicts
+      -> closure manifest (no repeated matrix)
+      -> aggregate validator and local/implementation/release verdicts
 
 Protocol 1.x несовместим. Инструменты отвечают unsupported protocol и не мигрируют, не удаляют и не переинициализируют старые artifacts.
 
@@ -43,12 +43,13 @@ Resume заново обнаруживает AGENTS.md, валидирует App
 
 Receipts существуют только как JSON-файлы под .vibe/receipts. Они содержат kind targeted или final, exact argv/tasks, covered obligation/surface pairs, timestamps, текущий fingerprint, exit code и hash лога. Во время реализации targeted receipt может использовать зарегистрированный scope всех входов и транзитивных зависимостей: нерелевантные изменения его не устаревают. Build/spec/instruction inputs добавляются автоматически; при неопределённых зависимостях применяется глобальная проверка. Финальные проверки и аудит остаются глобальными. Для каждой пары учитывается последний актуальный receipt: PASS→FAIL не закрывает пару, FAIL→PASS закрывает только новым успехом.
 
-После закрытия local obligations orchestrator создаёт immutable .vibe/audits/<request-id>/request.json и запускает vibe-acceptance-auditor в указанном fresh context. Audit обязан ссылаться на exact request hash, иметь implementationContextAvailable false, самостоятельно построить canonical shadow inventory и доказать каждую declared surface audit-time check.
+После закрытия local obligations orchestrator создаёт immutable .vibe/audits/<request-id>/request.json и запускает vibe-acceptance-auditor в указанном fresh context. Audit обязан ссылаться на exact request hash, иметь implementationContextAvailable false, самостоятельно построить canonical shadow inventory и доказать каждую доступную declared surface независимо проверенным integration receipt.
 
-Каждый audit-time check связывается с global `kind: integration` runner receipt через `receiptRef` и `receiptSha256`: валидатор сверяет команду, результат, время, fingerprints, полное покрытие и хеш лога. Audit checks без этой связи и ledger без сохранённого запроса не поддерживаются. Исторические артефакты нельзя преобразовывать или выдавать за актуальные доказательства.
+Каждый проверенный check связывается с global `kind: integration` runner receipt через `receiptRef` и `receiptSha256`: валидатор сверяет команду, результат, время, fingerprints, полное покрытие и хеш лога. Audit checks без этой связи и ledger без сохранённого запроса не поддерживаются. Исторические артефакты нельзя преобразовывать или выдавать за актуальные доказательства.
 
-После audit PASS выполняется один final receipt, покрывающий все verified obligation/surface pairs. Затем генерируются оба Markdown report и запускается один validate-delivery-ledger.py. Он сам проверяет AppSpec, inventory, receipt ordering, audit и report parity и всегда печатает:
+После audit PASS операция close связывает аудит и проверенные integration receipts в closureManifest; повтор полной матрицы не выполняется. Затем генерируются оба Markdown report и запускается один validate-delivery-ledger.py. Он сам проверяет AppSpec, inventory, receipt ordering, audit и report parity и всегда печатает:
 
+- locally-verified;
 - implementation-complete;
 - release-ready.
 
@@ -70,4 +71,6 @@ Lazyweb research выполняется до дизайна. Полный пос
 
 ## Current evidence contract
 
-AppSpec 2.0 requires assetRequirements; no legacy-spec compatibility is supported. Specialist handoffs use only registered assignment-local baselines/results. Targeted receipts require inputScopeId and start/end input fingerprints; uncertain dependencies require a conservatively registered whole-repository scope. Global integration and audit checks use kind integration; post-audit closure uses kind final. Unsupported artifacts are rejected, never converted or relabeled. See [flow delivery contract](../vibe-developer/references/flow-delivery-contract.md).
+AppSpec 2.0 requires assetRequirements; no legacy-spec compatibility is supported. Specialist handoffs use only registered assignment-local baselines/results. Targeted receipts require inputScopeId and start/end input fingerprints; uncertain dependencies require a conservatively registered whole-repository scope. Global integration and audit checks use kind integration; closure binds a manifest without a post-audit run. Unsupported artifacts are rejected, never converted or relabeled. See [flow delivery contract](../vibe-developer/references/flow-delivery-contract.md).
+
+Недоступные на хосте surfaces фиксируются при intake. Независимый аудит доступной части может подтвердить locallyVerified, сохранив implementationComplete=false до проверки всех AC. Конкурентные пакеты, compact assignment packets, evidence IDs, retry-bind и техническая reconciliation описаны в flow delivery contract.

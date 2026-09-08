@@ -36,3 +36,9 @@ Generate the actual baseline/result fingerprints with `delivery-work.py handoff`
 Write the final bytes once. If a correction is needed, create a new hand-off ID and file. The orchestrator checkpoints, inspects the diff and boundary match, then imports the SHA-256 with `ingest-handoff.py --expected-ledger-digest ...`. Validation compares owned files and registered inputs and rejects files escaping assignment or ledger boundaries.
 
 For unfinished work, use the shared [recovery contract](recovery-contract.md) at meaningful progress and before interruption, return or context loss. Gate-only assignments also require an owner, baseline and file boundaries in the ledger. Clear pending checks/blockers only after resolving them; a final hand-off does not erase a durable decision.
+
+## Exact coverage and early contract publication
+
+Production/test evidence rows require symbol/testName or a namespace-aware XML anchor. Multi-obligation handoffs must include each row's explicit coverage pairs; ingestion never broadcasts an entire evidence array to every AC. The ledger stores evidence IDs, not duplicated objects. Use the flow contract for reconcile-evidence and work-item IDs.
+
+Publish accepted contract readiness before finishing the implementation when a consumer can safely proceed. This does not replace the final immutable handoff or verify the AC. New independent agents receive the generated compact assignment packet with fork_turns none; continuation reuses the existing assignment/agent. Do not reread unrelated specialist contracts after each message.

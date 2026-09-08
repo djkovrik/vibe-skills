@@ -1,65 +1,144 @@
 # Vibe KMP Skills
 
-Локальный пакет из 15 Agent Skills для разработки Kotlin Multiplatform приложений под Android и iOS. Protocol 2.0 принимает только утверждённый Vibe AppSpec 2.0, восстанавливает работу из репозитория и `.vibe`, реализует требования вертикальными slices и допускает итоговый статус только после request-bound fresh-context аудита.
+Локальный пакет из 15 навыков для разработки Kotlin Multiplatform приложений под Android и iOS. Главный оркестратор принимает утверждённый Vibe AppSpec 2.0, распределяет работу между специалистами, сохраняет состояние в репозитории и подтверждает результат независимым аудитом в новом изолированном контексте.
 
-Основной пользовательский процесс описан в [VIBE-DEVELOPMENT-WORKFLOW.md](docs/VIBE-DEVELOPMENT-WORKFLOW.md). Установку и режимы Copy/Junction объясняет [INSTALL.md](INSTALL.md).
+- [Процесс разработки](docs/VIBE-DEVELOPMENT-WORKFLOW.md) — подготовка спецификации, запуск и сопровождение реализации.
+- [Установка](INSTALL.md) — окружение, режимы Junction/Copy и проверка установленных навыков.
+- [Оптимизация цикла после BagCue](docs/VIBE-THROUGHPUT-CHANGES.md) — изменения протокола, регрессии и дальнейшие измерения.
+- [Контракт оркестрации](vibe-developer/references/flow-delivery-contract.md) — точные форматы запросов, заданий и передачи результатов.
 
 ## Основной цикл
 
 ```text
-discovery -> approved AppSpec 2.0 -> strict validation
--> ledger checkpoint -> capability packages, early production integration and assignment-local hand-offs
--> targeted receipts -> audit request -> fresh audit -> final receipt -> aggregate validation
+Утверждённый AppSpec и проверка доступности платформ
+→ проверка базовой инфраструктуры и пробный рендер
+→ параллельная реализация независимых возможностей приложения
+→ проверка готовности к приёмке
+→ фиксация проверяемого состояния
+→ полная интеграционная матрица
+→ запрос независимого аудита и аудит
+→ манифест завершения, отчёты и итоговая валидация
 ```
 
-AppSpec и delivery artifacts 1.x являются несовместимыми: инструменты возвращают `unsupported protocol`, не мигрируют, не удаляют и не переинициализируют их автоматически.
+До расширения реализации проверяются рабочий корень приложения, сохранение/чтение данных и восстановление после перезапуска. Пробный рендер должен обнаружить ненулевое число превью, создать ожидаемые PNG с ресурсами приложения и покрыть светлую/тёмную темы, а также русский язык при масштабе шрифта 200%. Detekt и конфигурация Kover подключаются на этом этапе; содержательный baseline покрытия измеряется после появления тестируемой реализации.
 
-## Skills
+Во время разработки запускаются компиляция и необходимые поведенческие регрессии. Эталонные скриншоты записываются и проверяются для стабильных экранов. Исследование Lazyweb предшествует дизайну; полный обзор стабильных экранов идёт последовательно и может перекрываться независимой работой. Требования к состояниям интерфейса, локализации, доступности, приватности и жизненному циклу сохраняются.
 
-Главная точка входа — [vibe-developer](vibe-developer/SKILL.md). Независимую полноту проверяет [vibe-acceptance-auditor](vibe-acceptance-auditor/SKILL.md).
+После стабилизации выполняется полная интеграционная матрица. Аудитор самостоятельно восстанавливает перечень требований из AppSpec, проверяет команды, результаты, утверждения тестов, покрытие и хеши артефактов. Актуальные результаты переиспользуются, недостающие или сомнительные проверки выполняются заново. Обязательного повторного запуска всей матрицы после аудита нет.
 
-- [vibe-project-architect](vibe-project-architect/SKILL.md) — модули, Gradle, DI, CI/release;
-- [vibe-domain-engineer](vibe-domain-engineer/SKILL.md) — domain model, инварианты и расчёты;
-- [vibe-decompose-engineer](vibe-decompose-engineer/SKILL.md) — components, navigation и lifecycle;
-- [vibe-mvikotlin-engineer](vibe-mvikotlin-engineer/SKILL.md) — Stores и state orchestration;
-- [vibe-platform-engineer](vibe-platform-engineer/SKILL.md) — Android/iOS APIs и capabilities;
-- [vibe-network-engineer](vibe-network-engineer/SKILL.md) — Ktor, REST, OAuth и transport;
-- [vibe-persistence-engineer](vibe-persistence-engineer/SKILL.md) — SQLDelight, migrations и Settings;
-- [vibe-sync-engineer](vibe-sync-engineer/SKILL.md) — snapshots, conflicts и offline sync;
-- [vibe-product-designer](vibe-product-designer/SKILL.md) — UI evidence, Material 3 и accessibility;
-- [vibe-assets-creator](vibe-assets-creator/SKILL.md) — создание и генерация иконок, логотипов и иллюстраций через Compose Resources;
-- [vibe-visual-testing](vibe-visual-testing/SKILL.md) — previews, Paparazzi и goldens;
-- [vibe-monetization-engineer](vibe-monetization-engineer/SKILL.md) — Yandex Ads и privacy gate;
-- [vibe-test-engineer](vibe-test-engineer/SKILL.md) — non-visual test pyramid.
+## Навыки
 
-Каждый specialist можно вызывать напрямую для узкой задачи. При orchestration он получает assignment/AC/gate IDs и непересекающиеся boundaries, записывает immutable `.vibe/handoffs/<id>.json` и не меняет ledger. Только `$vibe-developer` инспектирует/импортирует hand-off, атомарно пишет ledger и запускает Gradle.
+Главная точка входа — [vibe-developer](vibe-developer/SKILL.md). Независимую полноту реализации проверяет [vibe-acceptance-auditor](vibe-acceptance-auditor/SKILL.md).
 
-## Проверка AppSpec
+| Навык | Ответственность |
+| --- | --- |
+| [vibe-project-architect](vibe-project-architect/SKILL.md) | Модули, Gradle, внедрение зависимостей, CI и выпуск приложения |
+| [vibe-domain-engineer](vibe-domain-engineer/SKILL.md) | Предметная модель, инварианты и расчёты |
+| [vibe-decompose-engineer](vibe-decompose-engineer/SKILL.md) | Компоненты, навигация и жизненный цикл |
+| [vibe-mvikotlin-engineer](vibe-mvikotlin-engineer/SKILL.md) | MVIKotlin Stores и управление состоянием |
+| [vibe-platform-engineer](vibe-platform-engineer/SKILL.md) | Платформенные API и возможности Android/iOS |
+| [vibe-network-engineer](vibe-network-engineer/SKILL.md) | Ktor, REST, OAuth и сетевой транспорт |
+| [vibe-persistence-engineer](vibe-persistence-engineer/SKILL.md) | SQLDelight, миграции и настройки |
+| [vibe-sync-engineer](vibe-sync-engineer/SKILL.md) | Снимки данных, разрешение конфликтов и офлайн-синхронизация |
+| [vibe-product-designer](vibe-product-designer/SKILL.md) | Исследование интерфейсов, Material 3 и доступность |
+| [vibe-assets-creator](vibe-assets-creator/SKILL.md) | Иконки, логотипы и иллюстрации через Compose Resources |
+| [vibe-visual-testing](vibe-visual-testing/SKILL.md) | Превью, Paparazzi и эталонные скриншоты |
+| [vibe-monetization-engineer](vibe-monetization-engineer/SKILL.md) | Yandex Ads и проверки приватности |
+| [vibe-test-engineer](vibe-test-engineer/SKILL.md) | Модульные, компонентные и интеграционные тесты без скриншотов |
+
+Каждый навык можно вызвать напрямую для узкой задачи. При общей оркестрации специалисты получают компактное задание: цель, идентификаторы критериев приёмки (AC) и контрольных проверок, границы записи, используемые контракты, необходимые входы, команды и критерии возврата результата. Для новых независимых агентов применяется `fork_turns: none`; продолжение задания остаётся у текущего агента.
+
+## Параллельная работа и очередь проверок
+
+Несколько независимых пакетов работ могут быть активны одновременно. У каждого файла остаётся один владелец; корневое подключение компонентов, каталог версий и общие ресурсы передаются явно назначенному специалисту. Отдельный агент на каждый архитектурный слой не требуется.
+
+Операция `contract-ready` публикует готовность контракта для потребителей после его принятия и прохождения необходимых поведенческих проверок. Отложенный эталонный скриншот не блокирует независимую бизнес-логику, но соответствующая визуальная проверка остаётся неподтверждённой.
+
+Область входов проверки (`scope`) строится по фактическим транзитивным зависимостям модулей. Архитектор предоставляет проверенный `moduleGraph`; неизвестные зависимости отклоняются. Охват всего репозитория допускается как явно обоснованный запасной вариант. Область первого пакета не наследуется автоматически последующими заданиями. Операция `check-batch` объединяет совместимые готовые запросы с сохранением исходных команд и точного покрытия.
+
+На одном рабочем каталоге действует один владелец Gradle. Интеграционный запуск по умолчанию использует `--max-workers=1 --no-parallel`; повышение конкурентности требует измерения ресурсов. Специалисты передают результаты через неизменяемые handoff-файлы и не редактируют общий журнал. Оркестратор проверяет изменения, импортирует результаты и атомарно обновляет состояние. На время проверок независимого аудита право запуска передаётся аудитору.
+
+## Состояние разработки и доказательства
+
+| Артефакт в целевом проекте | Назначение |
+| --- | --- |
+| `.vibe/delivery-ledger.json` | Общий журнал состояния, активные пакеты, реестр доказательств по ID и ссылки на проверки |
+| `.vibe/requests/`, `.vibe/snapshots/` | Сохранённые запросы, задания и неизменяемые снимки исходного состояния |
+| `.vibe/handoffs/*.json` | Неизменяемая история результатов специалистов |
+| `.vibe/receipts/` | Квитанции выполнения проверок и логи с хешами |
+| `.vibe/jobs/*.json` | Стадии запуска и регистрации проверок, включая незавершённый bind |
+| `.vibe/recovery/` | Сохранённое состояние незавершённых заданий специалистов |
+| `.vibe/audits/<request-id>/` | Запрос аудита, результат и подтверждение его независимого запуска |
+| `.vibe/timing/` | Явно записанные интервалы валидации, ожидания агентов и исправлений |
+| `docs/requirement-traceability.generated.md`, `docs/closure-audit.generated.md` | Детерминированные отчёты, сверяемые с исходным состоянием |
+
+Доказательство (`evidence`) хранится один раз по стабильному ID и явно перечисляет покрываемые пары «обязательство / вид проверки». Операция `reconcile-evidence` заменяет принятые ссылки на изменившийся код с причиной и записью проверки, сохраняя историю. Утрата необходимого покрытия оставляет обязательство неподтверждённым. `supersedes` применяется только к исправлению ещё не импортированных попыток передачи результата.
+
+Ссылки на Kotlin проверяются по точному `symbol` или `testName`; XML — по элементу и атрибутам с учётом пространств имён. Ожидающие проверки и блокеры имеют собственные IDs и разрешаются адресно.
+
+Квитанции промежуточных проверок (`kind: targeted`) содержат `inputScopeId` и отпечатки входов до/после запуска. Интеграционные проверки используют `kind: integration` и глобальные отпечатки. Завершение связывает аудит и подтверждающие квитанции в поле `closureManifest` журнала. Новый Git HEAD без изменения проверяемого содержимого сам по себе не требует повторной сборки.
+
+## Наблюдаемость и восстановление
+
+Стадии проверки сохраняются отдельно:
+
+```text
+queued → running → receipt-written → binding → bound
+                                      └→ binding-pending
+```
+
+Путь квитанции публикуется сразу после записи, до привязки к журналу. Операция `retry-bind` повторяет только регистрацию; её сбой не меняет реальный код завершения проверки. Bind идемпотентен по пути/хешу, не подтверждает посторонние изменения исходников и имеет отдельный срок ожидания — по умолчанию 30 секунд. Gradle пишет потоковый лог и сообщает об отсутствии прогресса; ожидание завершения процессов и чтения вывода после timeout ограничено.
+
+`resume-delivery.py --compact` проверяет безопасность продолжения без полного приёмочного аудита. `ValidationContext` читает квитанции и индексирует последние результаты за один вызов, вычисляя отпечаток каждого уникального scope однократно. Постоянный кеш и фоновый сервис не используются. Проверка готовности сначала выявляет дешёвые блокеры; подготовка запроса аудита и манифеста завершения вынесена из блокировки журнала.
+
+`delivery-timing.py` разделяет очередь, выполнение команд, регистрацию, валидацию, ожидание агентов и исправления. Перекрывающиеся интервалы не суммируются как экономия общего времени. Целевые бюджеты регистрации ≤5 с, компактного восстановления ≤10 с и проверки готовности ≤30 с требуют измерения на сопоставимом хосте; конкретная длительность полного приложения не гарантируется.
+
+## Итоговые статусы
+
+Все итоговые статусы требуют актуального аудита `PASS`, подтверждающего манифеста и согласованных отчётов.
+
+| Поле результата | Условие |
+| --- | --- |
+| `locallyVerified` | Подтверждена доступная на текущем хосте часть; внешние ограничения явно зафиксированы |
+| `implementationComplete` | Закрыты все AC и применимые контрольные проверки с `readinessScope: implementation` |
+| `releaseReady` | Дополнительно закрыты все применимые контрольные проверки; нет `blocked-external` |
+
+Доступность ОС, SDK, среды выполнения и необходимых доступов проверяется в начале работы. Непроверенная обязательная iOS-часть AC на Windows не считается полностью подтверждённой: возможен `locallyVerified=true` при `implementationComplete=false` и `releaseReady=false`. После получения недостающих результатов нужен новый актуальный аудит; неизменившиеся доказанные проверки можно переиспользовать. Ошибки, проверяемые в репозитории, нельзя переименовывать во внешние ограничения.
+
+## AppSpec и ресурсы приложения
+
+Поддерживается текущий контракт AppSpec 2.0 с обязательным `assetRequirements`. Ресурсы приложения размещаются в модуле `shared/compose`; шаблон спецификации и контракт создания ресурсов используют этот путь.
+
+Техническое исправление ссылок оформляется через `reconcile-spec.py --classification technical-paths`: неизменившиеся доказательства сохраняются через явную запись согласования, затронутые ресурсы проверяются повторно. Изменение нормативного смысла требований или неоднозначность сохраняют консервативную инвалидацию.
+
+Старые варианты AppSpec и артефактов разработки не мигрируются и не переобозначаются как актуальные. Неподдерживаемые форматы отклоняются; инструменты не удаляют и не переинициализируют существующую разработку автоматически.
 
 ```powershell
 python .\vibe-developer\scripts\validate-app-spec.py D:\Projects\MyApp\app-spec --require-current
 ```
 
-## Delivery state
-
-В целевом проекте отслеживаются:
-
-- `.vibe/delivery-ledger.json` — единственный редактируемый источник состояния;
-- `.vibe/handoffs/*.json` и `.vibe/receipts/*.json` — immutable evidence;
-- `.vibe/audits/<request-id>/request.json` и `.vibe/audits/<request-id>/audit.json` — request-bound независимый аудит;
-- оба файла `docs/*.generated.md` — проверяемые детерминированные проекции.
-
-`implementation-complete` требует закрыть все AC и repository gates, последний успешный receipt для каждой surface, единый final receipt, свежий audit `PASS` и parity отчётов. `release-ready` дополнительно требует закрыть platform/external/release gates; `blocked-external` с ним несовместим.
-
 ## Проверка и установка пакета
 
+Команды выполняются из корня пакета в PowerShell. Для полной проверки Python должен иметь PyYAML и Pillow; подготовка локального окружения описана в [INSTALL.md](INSTALL.md).
+
 ```powershell
+# Детерминированные проверки пакета
 .\validate-vibe-skills.ps1
+
+# При необходимости выбрать готовое Python-окружение
+.\validate-vibe-skills.ps1 -PythonPath D:\Tools\venv\Scripts\python.exe
+
+# Рекомендуемый режим: установленный навык ссылается на рабочую копию
 .\install-vibe-skills.ps1 -Mode Junction
+
+# Альтернатива: независимые копии с явной повторной синхронизацией
+.\install-vibe-skills.ps1 -Mode Copy
+.\install-vibe-skills.ps1 -Mode Copy -Force
+
+# Дополнительные проверки с реальными запусками агентов перед выпуском
+.\validate-vibe-skills.ps1 -IncludeAgentEvals
 ```
 
-Manifest является единственным источником точного списка устанавливаемых skills. Installer проверяет каждую его запись и в Junction, и в Copy mode.
+[vibe-skills-manifest.json](vibe-skills-manifest.json) задаёт точный список устанавливаемых навыков. Установщик проверяет каждую запись в обоих режимах. Junction сразу использует изменения рабочей копии; Copy требует повторной синхронизации. Временные тестовые проекты `.test-workspaces` и Python-кеш `__pycache__` исключены из копируемого пакета.
 
-## Current evidence contract
-
-AppSpec 2.0 requires assetRequirements; no legacy-spec compatibility is supported. Specialist handoffs use only registered assignment-local baselines/results. Targeted receipts require inputScopeId and start/end input fingerprints; uncertain dependencies require a conservatively registered whole-repository scope. Global integration and audit checks use kind integration; post-audit closure uses kind final. Unsupported artifacts are rejected, never converted or relabeled. See [flow delivery contract](vibe-developer/references/flow-delivery-contract.md).
+Детерминированные регрессии покрывают восстановление после сбоя bind, масштабирование на 150 обязательств и 500 квитанций, устаревшие результаты, замену доказательств, конфликты владельцев, транзитивные области проверок, ранний пробный рендер, переиспользование результатов аудитором и частичную локальную приёмку. Дополнительные запуски агентов используют настроенную учётную запись и модель; их стоимость не входит в обычную локальную проверку.

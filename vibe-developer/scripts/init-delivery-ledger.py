@@ -43,6 +43,7 @@ def create_ledger(app_spec_root: Path, project_root: Path) -> dict:
         "updatedAt": now,
         "appSpec": {"root": portable(app_spec_root, project_root), "fingerprint": compute_app_spec_fingerprint(app_spec_root)},
         "canonicalInventory": inventory,
+        "appSpecDocument": data,
         "workspaceFingerprint": workspace,
         "execution": {
             "phase": "planning",
@@ -54,7 +55,9 @@ def create_ledger(app_spec_root: Path, project_root: Path) -> dict:
         "acceptanceScenarios": [],
         "qualityGates": [],
         "ingestedHandoffs": [],
-        "finalReceiptRef": None,
+        "closureManifest": None,
+        "evidence": {},
+        "boundReceipts": {},
         "closureAudit": {"requestPath": None, "auditPath": None},
     }
     for scenario in data["acceptanceScenarios"]:
@@ -78,6 +81,9 @@ def create_ledger(app_spec_root: Path, project_root: Path) -> dict:
             "readinessScope": readiness_scope(gate), "applicability": applicability,
             "status": "not-started", "productionEvidence": [], "testEvidence": [], "receiptRefs": [],
         })
+    from delivery_readiness import host_availability
+    ledger["hostAvailability"] = host_availability(data)
+    ledger["execution"]["activePackageIds"] = []
     return with_ledger_digest(ledger)
 
 def main() -> int:

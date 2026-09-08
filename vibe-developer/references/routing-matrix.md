@@ -46,6 +46,6 @@ For a new Android+iOS KMP app with onboarding, home tabs, OAuth REST, SQLDelight
 | post-golden full-UI Lazyweb review and approved-fix loop | Product Designer -> Compose Expert -> Visual Testing |
 | localized local catalogs and bundled text | Domain IDs/keys -> Persistence key storage -> Architect resource wiring -> Product Designer/Compose resources -> Platform native fallback -> Test/Visual verification |
 | independent closure verdict | fresh-context Acceptance Auditor after implementers stop |
-| final quality/platform/release gates | Project Architect, coordinated by Developer only after audit `PASS` |
+| final quality/platform/release gates | Project Architect, configured during foundation and completed before the independent audit |
 
 No responsibility is intentionally shared without an explicit hand-off.

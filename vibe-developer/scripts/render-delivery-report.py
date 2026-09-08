@@ -46,7 +46,7 @@ def render_report(ledger: dict[str, Any]) -> str:
     if ledger.get("ingestedHandoffs"):
         lines.extend(f"- `{item['handoffId']}` — `{item['sha256']}` ({item['path']})" for item in ledger["ingestedHandoffs"])
     else: lines.append("None.")
-    lines += ["", "## Closure bindings", "", f"- Final receipt: `{ledger.get('finalReceiptRef') or 'none'}`", f"- Audit request: `{ledger.get('closureAudit', {}).get('requestPath') or 'none'}`", f"- Closure audit: `{ledger.get('closureAudit', {}).get('auditPath') or 'none'}`"]
+    lines += ["", "## Closure bindings", "", f"- Closure manifest: `{(ledger.get('closureManifest') or {}).get('auditSha256', 'none')}`", f"- Audit request: `{ledger.get('closureAudit', {}).get('requestPath') or 'none'}`", f"- Closure audit: `{ledger.get('closureAudit', {}).get('auditPath') or 'none'}`"]
     return "\n".join(lines).rstrip() + "\n"
 
 def main() -> int:

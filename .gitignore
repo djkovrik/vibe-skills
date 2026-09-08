@@ -2,3 +2,6 @@
 __pycache__/
 *.pyc
 
+
+# Disposable protocol/test repositories (historical tracked fixtures stay tracked).
+.test-workspaces/

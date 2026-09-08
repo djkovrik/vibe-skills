@@ -78,7 +78,7 @@ class FlowPackageTests(unittest.TestCase):
     def test_nonoverlapping_handoffs_survive_other_assignment_edits(self):
         self.package(); self.assign('source', ['src/**']); self.assign('tests', ['tests/**'])
         (self.root/'src/App.kt').write_text('class AppComponent { fun saveValue() = 1 }')
-        result = self.run_request(action='handoff', assignmentId='source', productionEvidence=[{'path':'src/App.kt','surface':'public-contract'}])
+        result = self.run_request(action='handoff', assignmentId='source', productionEvidence=[{'path':'src/App.kt','symbol':'AppComponent','surface':'public-contract'}])
         original = (self.root/result['handoffRef']).read_bytes()
         (self.root/'tests/AppTest.kt').write_text('fun savedValueIsObservable() = 1')
         self.run_request(action='ingest', handoffRef=result['handoffRef'], inspectionNote='Reviewed source delta')
@@ -139,9 +139,12 @@ class FlowPackageTests(unittest.TestCase):
         self.assertEqual([], list((self.root/'.vibe/handoffs').glob('*.json')))
         badpath, bad = CHECK.run_check(self.root, [sys.executable, '-c', 'raise SystemExit(3)'], coverage, input_scope_id='component')
         self.fixture.verified_ac([path.relative_to(self.root).as_posix(), badpath.relative_to(self.root).as_posix()])
+        ledger = self.fixture.ledger()
+        for gate in ledger['qualityGates']: gate.update(status='waived', decisionReference='docs/decisions/DEC-FIXTURE.json')
+        self.fixture.save(ledger)
         errors = D.VALIDATOR.validate_ledger(self.root, self.fixture.ledger_path, closure=False).errors
         self.assertTrue(any('latest current receipt' in e for e in errors), errors)
-        with self.assertRaisesRegex(ProtocolError, 'final'):
+        with self.assertRaisesRegex(ProtocolError, 'unsupported receipt kind'):
             CHECK.run_check(self.root, [sys.executable, '-c', 'pass'], coverage, kind='final', input_scope_id='component')
 
     def test_scoped_check_observes_inputs_changing_during_execution(self):

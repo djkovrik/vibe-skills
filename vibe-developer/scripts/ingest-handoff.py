@@ -56,8 +56,10 @@ def validate_handoff(data: dict, root: Path, current: dict) -> list[str]:
         for index, item in enumerate(data[collection]):
             if not isinstance(item, dict) or not nonempty(item.get('path')) or (not nonempty(item.get('surface'))):
                 errors.append(f'{collection}[{index}] requires path and surface')
-            elif not (root / item['path']).is_file():
-                errors.append(f'{collection}[{index}].path does not exist')
+            else:
+                from evidence_registry import check_anchor
+                try: check_anchor(root, item)
+                except (ProtocolError, ValueError, OSError) as exc: errors.append(str(exc))
     for index, check in enumerate(data.get('nonGradleChecks', [])):
         if not isinstance(check, dict) or not isinstance(check.get('argv'), list) or (not isinstance(check.get('exitCode'), int)):
             errors.append(f'nonGradleChecks[{index}] requires argv and exitCode')
@@ -96,7 +98,7 @@ def main() -> int:
             if issues:
                 raise ProtocolError('; '.join(issues))
             previous = ledger.get('execution', {}).get('checkpoint', {}).get('workspaceFingerprint', {})
-            if previous.get('gitHead') != current.get('gitHead') or not paths_within_boundaries(workspace_drift_paths(previous, current), active_boundaries(ledger)):
+            if not paths_within_boundaries(workspace_drift_paths(previous, current), active_boundaries(ledger)):
                 raise ProtocolError('unexpected workspace drift: inspect and checkpoint reconciliation before ingest')
             supersedes = data.get('supersedes', [])
             if supersedes and (not args.inspection_note.strip()):
@@ -117,6 +119,8 @@ def main() -> int:
                 ledger.setdefault('ingestedHandoffs', []).append({'handoffId': old['handoffId'], 'path': old_ref, 'sha256': old_hash, 'ingestedAt': utc_now(), 'supersededBy': relative, 'inspectionNote': args.inspection_note})
             if any((item.get('sha256') == digest for item in ledger.get('ingestedHandoffs', []))):
                 raise ProtocolError('hand-off is already ingested')
+            from evidence_registry import ingest, work_item
+            ingest(root, ledger, data, relative)
             acs = {item.get('id'): item for item in ledger.get('acceptanceScenarios', [])}
             gates = {item.get('id'): item for item in ledger.get('qualityGates', [])}
             for item_id in data.get('acceptanceScenarioIds', []):
@@ -127,11 +131,11 @@ def main() -> int:
                 if not paths_within_boundaries(data['changedFiles'], boundaries):
                     raise ProtocolError(f'hand-off conflicts with ledger boundaries for {item_id}')
                 entry['handoffRefs'] = sorted(set(entry.get('handoffRefs', []) + [relative]))
-                entry['productionEvidence'] = entry.get('productionEvidence', []) + data['productionEvidence']
-                entry['testEvidence'] = entry.get('testEvidence', []) + data['testEvidence']
+                # Evidence is registered once and linked by its exact coverage.
+                # Evidence is registered once and linked by its exact coverage.
                 entry['changedFiles'] = sorted(set(entry.get('changedFiles', []) + data['changedFiles']))
-                entry['pendingChecks'] = entry.get('pendingChecks', []) + data['requestedCommands']
-                entry['blockers'] = entry.get('blockers', []) + data['blockers']
+                entry['pendingChecks'] = entry.get('pendingChecks', []) + [work_item(v, 'CHECK-') for v in data['requestedCommands']]
+                entry['blockers'] = entry.get('blockers', []) + [work_item(v, 'BLOCK-') for v in data['blockers']]
                 entry['status'] = 'implemented-unverified' if not data['blockers'] else 'in-progress'
                 if entry['blockers'] or any((a.get('status') != 'returned' and a.get('assignmentId') != data['assignmentId'] and (item_id in a.get('acceptanceScenarioIds', [])) for a in ledger.get('assignments', {}).values())):
                     entry['status'] = 'in-progress'
@@ -142,11 +146,11 @@ def main() -> int:
                 gate = gates[item_id]
                 if not gate.get('fileBoundaries') or not paths_within_boundaries(data['changedFiles'], gate['fileBoundaries']):
                     raise ProtocolError(f'hand-off conflicts with gate assignment boundaries for {item_id}')
-                gates[item_id]['productionEvidence'] += data['productionEvidence']
-                gates[item_id]['testEvidence'] += data['testEvidence']
+                # Evidence is registered once and linked by its exact coverage.
+                # Evidence is registered once and linked by its exact coverage.
                 gate['handoffRefs'] = sorted(set(gate.get('handoffRefs', []) + [relative]))
-                gate['pendingChecks'] = gate.get('pendingChecks', []) + data['requestedCommands']
-                gate['blockers'] = gate.get('blockers', []) + data['blockers']
+                gate['pendingChecks'] = gate.get('pendingChecks', []) + [work_item(v, 'CHECK-') for v in data['requestedCommands']]
+                gate['blockers'] = gate.get('blockers', []) + [work_item(v, 'BLOCK-') for v in data['blockers']]
                 gate['status'] = 'implemented-unverified' if not data['blockers'] else 'in-progress'
                 if gate['blockers'] or any((a.get('status') != 'returned' and a.get('assignmentId') != data['assignmentId'] and (item_id in a.get('qualityGateIds', [])) for a in ledger.get('assignments', {}).values())):
                     gate['status'] = 'in-progress'

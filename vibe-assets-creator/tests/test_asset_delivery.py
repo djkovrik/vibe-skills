@@ -29,11 +29,11 @@ class AssetDeliveryTests(unittest.TestCase):
         self.item = self.app["assetRequirements"]["items"][0]
         self.item["resourceName"] = "ic_bookmark"
         self.item["acquisition"] = "create-vector"
-        self.item["variants"] = [{"path":"composeApp/src/commonMain/composeResources/drawable/ic_bookmark.xml"}]
+        self.item["variants"] = [{"path":"shared/compose/src/commonMain/composeResources/drawable/ic_bookmark.xml"}]
         self.app["uiQuality"]["iconography"]["customAssetsStatus"] = "planned"
         self.save_spec()
         self.output = self.write(self.item["variants"][0]["path"], VECTOR)
-        self.usage = self.write("composeApp/src/commonMain/kotlin/Bookmark.kt", 'import demo.generated.resources.Res\nimport demo.generated.resources.ic_bookmark\nimport org.jetbrains.compose.resources.painterResource\n@Composable fun Bookmark() { Icon(painterResource(Res.drawable.ic_bookmark), contentDescription = null) }')
+        self.usage = self.write("shared/compose/src/commonMain/kotlin/Bookmark.kt", 'import demo.generated.resources.Res\nimport demo.generated.resources.ic_bookmark\nimport org.jetbrains.compose.resources.painterResource\n@Composable fun Bookmark() { Icon(painterResource(Res.drawable.ic_bookmark), contentDescription = null) }')
         self.visual = self.write("docs/assets/review.md", "Fixture-only review note. Real delivery requires observed preview/golden review, not this synthetic evidence.")
         self.row = {"id": self.item["id"], "outputs": [self.evidence(self.output)], "provenance":{"method":"create-vector","source":"Original vector geometry", "rights":"Original fixture artwork"}, "usages":[dict(self.evidence(self.usage), symbol="Bookmark", screenIds=["SCREEN-001"])], "visualEvidence":[self.evidence(self.visual)]}
         self.manifest = {"schemaVersion":"1.0", "assets":[self.row]}
@@ -56,7 +56,7 @@ class AssetDeliveryTests(unittest.TestCase):
     def png(self, alpha=True):
         from PIL import Image
         self.output.unlink(missing_ok=True)
-        self.item["variants"] = [{"path":"composeApp/src/commonMain/composeResources/drawable/ic_bookmark.png", "widthPx":128, "heightPx":128}]
+        self.item["variants"] = [{"path":"shared/compose/src/commonMain/composeResources/drawable/ic_bookmark.png", "widthPx":128, "heightPx":128}]
         self.output = self.root / self.item["variants"][0]["path"]
         image = Image.new("RGBA", (128,128), (0,0,0,0 if alpha else 255))
         image.putpixel((64,64), (0,0,0,255)); image.save(self.output)
@@ -100,7 +100,7 @@ class AssetDeliveryTests(unittest.TestCase):
         self.assertEqual([], self.errors())
 
     def test_missing_theme_variant_and_fallback(self):
-        dark = {"path":"composeApp/src/commonMain/composeResources/drawable-dark/ic_bookmark.xml"}
+        dark = {"path":"shared/compose/src/commonMain/composeResources/drawable-dark/ic_bookmark.xml"}
         self.item["variants"].append(dark)
         self.assertTrue(any("output variants mismatch" in e for e in self.errors()))
         self.item["variants"] = [dark]
@@ -130,16 +130,17 @@ class AssetDeliveryTests(unittest.TestCase):
         self.row["provenance"]["generationRecord"] = self.evidence(record)
         self.assertEqual([], self.errors())
 
-    def test_aggregate_rejects_missing_assets_before_audit(self):
+    def test_invalid_ledger_fails_preflight_before_asset_walk(self):
         self.output.unlink()
         subprocess.run(["git","init","-q",str(self.root)], check=True)
         spec = importlib.util.spec_from_file_location("asset_test_ledger", ROOT / "vibe-developer/scripts/validate-delivery-ledger.py")
         module = importlib.util.module_from_spec(spec); sys.modules[spec.name] = module; spec.loader.exec_module(module)
-        # A deliberately incomplete ledger still must expose concrete asset failures.
+        # Readiness rejects corrupt metadata before expensive artifact validation.
         ledger = {"schemaVersion":"2.0", "appSpec":{"root":"app-spec"}, "execution":{}, "acceptanceScenarios":[], "qualityGates":[]}
         path = self.write(".vibe/delivery-ledger.json", json.dumps(ledger))
         result = module.validate_ledger(self.root, path, closure=False)
-        self.assertTrue(any("Assets:" in e and "missing file" in e for e in result.errors), result.errors)
+        self.assertTrue(any("ledgerDigest" in e for e in result.errors), result.errors)
+        self.assertTrue(any("missing file" in e for e in self.errors()))
 
     def test_empty_inventory_and_malformed_extension(self):
         self.assertTrue(validate_delivery([], self.root)[0])

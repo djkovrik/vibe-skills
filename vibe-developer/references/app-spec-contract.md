@@ -30,7 +30,7 @@ Requirements have one of two shapes:
 
 `wont` and scenario-level `required` are removed. Every declared acceptance scenario is an obligation; optionality is expressed only by excluding its requirement. The union of active requirement links equals the scenario inventory exactly, with one owning requirement per AC.
 
-Each scenario declares `id`, `title`, `requirementId`, `flowId`, non-empty `screenIds`, `kind`, `subject`, one `operation`, non-empty `verificationSurfaces`, and `dependsOnAcceptanceScenarioIds` (an empty array is valid). Dependencies reference existing ACs, may not self-reference, and must form a directed acyclic graph. External package dependencies must be `verified` or durably `waived`. Related scenarios inside one registered capability package may be implemented together in dependency order; verification obligations remain independent.
+Each scenario declares `id`, `title`, `requirementId`, `flowId`, non-empty `screenIds`, `kind`, `subject`, one `operation`, non-empty `verificationSurfaces`, and `dependsOnAcceptanceScenarioIds` (an empty array is valid). Dependencies reference existing ACs, may not self-reference, and must form a directed acyclic graph. External package dependencies must be verified/waived or have an accepted current behavioral contract under the flow contract; this does not change final AC verification. Related scenarios inside one registered capability package may be implemented together in dependency order; verification obligations remain independent.
 
 Each AC has its own `## AC-NNN` flow section with ordered Given/When/Then. One AC represents one externally observable action, state, or failure. Flow and screen filenames equal their IDs.
 

@@ -83,6 +83,7 @@ function Assert-NoNestedReparsePoint {
     while ($pending.Count -gt 0) {
         $current = $pending.Pop()
         foreach ($entry in Get-ChildItem -LiteralPath $current -Force) {
+            if ($entry.Name -in @('.test-workspaces', '__pycache__')) { continue }
             if (($entry.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) {
                 throw "Refusing recursive copy through reparse point: $($entry.FullName)"
             }
@@ -90,6 +91,17 @@ function Assert-NoNestedReparsePoint {
                 $pending.Push($entry.FullName)
             }
         }
+    }
+}
+
+function Copy-SkillPackage {
+    param([string]$Source, [string]$Destination)
+    New-Item -ItemType Directory -Path $Destination -Force | Out-Null
+    foreach ($entry in Get-ChildItem -LiteralPath $Source -Force) {
+        if ($entry.Name -in @('.test-workspaces', '__pycache__')) { continue }
+        $targetEntry = Join-Path $Destination $entry.Name
+        if ($entry.PSIsContainer) { Copy-SkillPackage -Source $entry.FullName -Destination $targetEntry }
+        else { Copy-Item -LiteralPath $entry.FullName -Destination $targetEntry }
     }
 }
 
@@ -148,7 +160,7 @@ foreach ($skill in $skills) {
     } else {
         Assert-NoNestedReparsePoint -LiteralPath $source
         if ($PSCmdlet.ShouldProcess($target, "Copy exact manifest skill from $source")) {
-            Copy-Item -LiteralPath $source -Destination $target -Recurse
+            Copy-SkillPackage -Source $source -Destination $target
             $installed.Add("$skill (copy)")
         }
     }

@@ -34,8 +34,8 @@ class AuditFixesTests(unittest.TestCase):
         original = {p:p.read_bytes() for p in (self.root / ".vibe/recovery").glob("*.json")}
         self.assertEqual(0, self.specialist("--pending-check", "Run integration").returncode)
         brief = self.specialist_resume()
-        self.assertEqual(["Rerun regression", "Run integration"], brief["packet"]["pendingChecks"])
-        self.assertEqual(["Need decision"], brief["packet"]["blockers"])
+        self.assertCountEqual(["Rerun regression", "Run integration"], [x["description"] for x in brief["packet"]["pendingChecks"]])
+        self.assertEqual(["Need decision"], [x["description"] for x in brief["packet"]["blockers"]])
         self.assertFalse(brief["safeToContinue"])
         for path, content in original.items(): self.assertEqual(content, path.read_bytes())
 
@@ -43,12 +43,13 @@ class AuditFixesTests(unittest.TestCase):
         self.specialist("--pending-check", "Rerun regression", "--blocker", "Need decision")
         self.assertNotEqual(0, self.specialist("--resolve-blocker", "Need decision").returncode)
         self.assertNotEqual(0, self.specialist("--resolve-blocker", "Unknown", "--resolution-reason", "Approved").returncode)
-        resolved = self.specialist("--resolve-blocker", "Need decision", "--resolution-reason", "Captured DEC-1")
+        packet = self.specialist_resume()["packet"]
+        resolved = self.specialist("--resolve-blocker", packet["blockers"][0]["id"], "--resolution-reason", "Captured DEC-1")
         self.assertEqual(0, resolved.returncode, resolved.stdout)
         brief = self.specialist_resume()
         self.assertTrue(brief["safeToContinue"])
-        self.assertEqual(["Rerun regression"], brief["packet"]["pendingChecks"])
-        self.assertEqual(0, self.specialist("--resolve-pending-check", "Rerun regression", "--resolution-reason", "Successful runner receipt").returncode)
+        self.assertEqual(["Rerun regression"], [x["description"] for x in brief["packet"]["pendingChecks"]])
+        self.assertEqual(0, self.specialist("--resolve-pending-check", packet["pendingChecks"][0]["id"], "--resolution-reason", "Successful runner receipt").returncode)
         self.assertEqual([], self.specialist_resume()["packet"]["pendingChecks"])
 
     def test_specialist_inherits_reads_when_argument_is_omitted(self):
@@ -63,7 +64,7 @@ class AuditFixesTests(unittest.TestCase):
         self.assertEqual(0, self.specialist("--status", "returned").returncode)
         brief = self.specialist_resume()
         self.assertFalse(brief["safeToContinue"]); self.assertTrue(brief["assignmentReturned"])
-        self.assertEqual(["Orchestrator must run Gradle"], brief["packet"]["pendingChecks"])
+        self.assertEqual(["Orchestrator must run Gradle"], [x["description"] for x in brief["packet"]["pendingChecks"]])
         self.assertNotEqual(0, self.specialist().returncode)
 
     def test_missing_request_blocks_start_atomically_and_resume(self):

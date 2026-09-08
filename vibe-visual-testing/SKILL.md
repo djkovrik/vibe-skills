@@ -62,3 +62,9 @@ For multi-step work, including direct specialist requests, follow the shared [re
 ## Asset acceptance
 
 Use the [asset contract](../vibe-assets-creator/references/asset-contract.md). Cover every ASSET ID through production screen/state/theme previews, including meaningful selected states, tint, optical size, alpha fringes and logo colors. Record actual reviewed artifacts in the asset manifest. Request the asset-check and asset-visual gate checks through Developer; a generated file without production usage or a reviewed screen is incomplete.
+
+## Foundation feedback
+
+Before expanding feature or preview matrices, establish a real render smoke with nonzero discovery and new expected PNGs from production resources, including light/dark and RU/200%. Missing resource classes or zero snapshots fail the smoke; do not execute every state against a broken harness. Configure Detekt and filtered Kover early; measure the coverage baseline once meaningful implementation exists. Keep full coverage obligations and defer only execution that depends on stable screens.
+
+Use the current [flow coordination interfaces](../vibe-developer/references/flow-delivery-contract.md#current-coordination-and-evidence-interfaces) for compact assignment inputs, early contract readiness, exact evidence coverage and pending-work IDs.

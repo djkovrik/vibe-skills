@@ -13,7 +13,7 @@ param(
     [string[]]$QualityGateIds = @(),
     [string]$ReceiptPath,
 
-    [ValidateSet('targeted', 'integration', 'final')]
+    [ValidateSet('targeted', 'integration')]
     [string]$ReceiptKind = 'targeted',
 
     [string]$CoverageJson,
@@ -39,7 +39,7 @@ if ($RequestPath) {
     $ReceiptPath = Join-Path $receiptDirectory "RECEIPT-$runId.json"
     $LogPath = Join-Path $receiptDirectory "RECEIPT-$runId.log"
 }
-if ($ReceiptKind -notin @('targeted', 'integration', 'final')) { throw 'Invalid receipt kind' }
+if ($ReceiptKind -notin @('targeted', 'integration')) { throw 'Invalid receipt kind' }
 if ($ReceiptKind -eq 'targeted' -and -not $InputScopeId) { throw 'Targeted checks require InputScopeId' }
 if ($InputScopeId -and $ReceiptKind -ne 'targeted') { throw 'Integration/final receipts require global inputs' }
 if (-not $LogPath) { throw 'LogPath or RequestPath is required' }
@@ -165,6 +165,27 @@ if ($ReceiptPath) {
 $mutexName = "VibeGradle_$((Get-CanonicalPathHash -Path $root).Substring(0, 32))"
 $mutex = [System.Threading.Mutex]::new($false, $mutexName)
 $lockAcquired = $false
+# Stream output on .NET worker tasks; no PowerShell runspace callbacks.
+if (-not ('VibeLogPump' -as [type])) {
+    Add-Type -TypeDefinition @"
+using System;
+using System.IO;
+using System.Threading.Tasks;
+public static class VibeLogPump {
+    public static async Task Pump(StreamReader source, StreamWriter target) {
+        char[] buffer = new char[4096];
+        int count;
+        while ((count = await source.ReadAsync(buffer, 0, buffer.Length)) > 0) {
+            lock (target) { target.Write(buffer, 0, count); target.Flush(); }
+        }
+    }
+}
+"@
+}
+if ($ReceiptKind -in @('integration')) {
+    if (-not ($Tasks | Where-Object { $_ -like '--max-workers*' })) { $Tasks = @('--max-workers=1') + $Tasks }
+    if ($Tasks -notcontains '--parallel' -and $Tasks -notcontains '--no-parallel') { $Tasks = @('--no-parallel') + $Tasks }
+}
 $exitCode = $null
 $completedAt = $null
 $startedAt = $null
@@ -204,9 +225,22 @@ try {
     $stopwatch.Start()
     $startedAt = [DateTime]::UtcNow
     if (-not $process.Start()) { throw 'Failed to start the Gradle wrapper process.' }
-    $stdoutTask = $process.StandardOutput.ReadToEndAsync()
-    $stderrTask = $process.StandardError.ReadToEndAsync()
-    if (-not $process.WaitForExit($TimeoutSeconds * 1000)) {
+    $logStream = [System.IO.FileStream]::new($log, [System.IO.FileMode]::Create, [System.IO.FileAccess]::Write, [System.IO.FileShare]::ReadWrite)
+    $logWriter = [System.IO.StreamWriter]::new($logStream, $utf8)
+    $stdoutTask = [VibeLogPump]::Pump($process.StandardOutput, $logWriter)
+    $stderrTask = [VibeLogPump]::Pump($process.StandardError, $logWriter)
+    Write-Host "Running log: $log"
+    $lastLength = 0L
+    $lastProgress = [DateTime]::UtcNow
+    while (-not $process.WaitForExit(1000) -and $stopwatch.Elapsed.TotalSeconds -lt $TimeoutSeconds) {
+        $length = (Get-Item -LiteralPath $log).Length
+        if ($length -ne $lastLength) { $lastLength = $length; $lastProgress = [DateTime]::UtcNow }
+        elseif (([DateTime]::UtcNow - $lastProgress).TotalSeconds -ge 60) {
+            Write-Host "No log progress for 60s; inspect $log (process existence does not establish progress)."
+            $lastProgress = [DateTime]::UtcNow
+        }
+    }
+    if (-not $process.HasExited) {
         try {
             $killTree = $process.GetType().GetMethod('Kill', [Type[]]@([bool]))
             if ($killTree) {
@@ -218,20 +252,20 @@ try {
             Write-Warning "Failed to terminate timed-out Gradle process tree: $($_.Exception.Message)"
             try { $process.Kill() } catch {}
         }
-        try { $process.WaitForExit() } catch {}
-        $stdout = $stdoutTask.GetAwaiter().GetResult()
-        $stderr = $stderrTask.GetAwaiter().GetResult()
-        [System.IO.File]::WriteAllText($log, ($stdout + $stderr), $utf8)
+        try { $null = $process.WaitForExit(5000) } catch {}
         $executionStatus = 'interrupted'
     }
-    $process.WaitForExit()
     $stopwatch.Stop()
-    $exitCode = $process.ExitCode
+    $exitCode = if ($process.HasExited) { $process.ExitCode } else { -1 }
     $completedAt = [DateTime]::UtcNow
-
-    $stdout = $stdoutTask.GetAwaiter().GetResult()
-    $stderr = $stderrTask.GetAwaiter().GetResult()
-    [System.IO.File]::WriteAllText($log, ($stdout + $stderr), $utf8)
+    try {
+        $drained = [System.Threading.Tasks.Task]::WaitAll([System.Threading.Tasks.Task[]]@($stdoutTask, $stderrTask), 5000)
+        if (-not $drained) { $executionStatus = 'interrupted' }
+    } catch { $executionStatus = 'interrupted' }
+    # Close inherited handles after the bounded drain, even when a child kept them open.
+    $process.StandardOutput.Dispose()
+    $process.StandardError.Dispose()
+    $logWriter.Dispose()
 
     if ($ReceiptPath) {
         $fingerprintText = & python $fingerprintScript $root

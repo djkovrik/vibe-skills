@@ -31,7 +31,7 @@ Each item is required. Removing a needed asset changes scope and follows the exi
     "themeBehavior": "One tintable resource for light and dark themes.",
     "tintBehavior": "Use the surrounding Material content color.",
     "accessibility": "Localized bookmark action label; no duplicated adjacent text semantics.",
-    "variants": [{"path": "composeApp/src/commonMain/composeResources/drawable/ic_bookmark.xml"}]
+    "variants": [{"path": "shared/compose/src/commonMain/composeResources/drawable/ic_bookmark.xml"}]
   }]
 }
 ```

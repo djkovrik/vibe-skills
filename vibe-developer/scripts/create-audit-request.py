@@ -31,12 +31,21 @@ def main() -> int:
         parser.error("invalid request ID")
     request_path = root / ".vibe" / "audits" / request_id / "request.json"
     try:
-        # Artifact creation and binding share the ledger lock. An orphan from a
-        # terminated writer can be rebound with its unchanged ID/digest.
+        # Validate outside the lock, then recheck state identity before binding.
+        original = read_json(ledger_path)
+        if original['ledgerDigest'] != args.expected_ledger_digest: raise ProtocolError('ledger digest conflict')
+        import copy
+        prepared = copy.deepcopy(original)
+        request_hash = prepare_request(root, prepared, request_path, request_id, args)
+        prepared_workspace = compute_workspace_fingerprint(root)
+        prepared_app = compute_app_spec_fingerprint(Path(prepared['appSpec']['root']) if Path(prepared['appSpec']['root']).is_absolute() else root / prepared['appSpec']['root'])
         def mutate(ledger: dict) -> None:
             nonlocal request_hash
-            request_hash = prepare_request(root, ledger, request_path, request_id, args)
-        request_hash = ""
+            if not fingerprint_equal(prepared_workspace, compute_workspace_fingerprint(root)): raise ProtocolError('workspace changed during audit preparation')
+            app_root = Path(prepared['appSpec']['root'])
+            if not app_root.is_absolute(): app_root = root / app_root
+            if not fingerprint_equal(prepared_app, compute_app_spec_fingerprint(app_root)): raise ProtocolError('AppSpec changed during audit preparation')
+            ledger.clear(); ledger.update(prepared)
         updated = update_ledger_atomic(ledger_path, args.expected_ledger_digest, mutate)
     except (ProtocolError, OSError, ValueError, KeyError, TypeError) as exc:
         print(f"ERROR: {exc}", file=sys.stderr)
@@ -57,12 +66,9 @@ def prepare_request(root, ledger, request_path, request_id, args):
     current_app = compute_app_spec_fingerprint(app_root)
     if not fingerprint_equal(ledger.get("appSpec", {}).get("fingerprint"), current_app): raise ProtocolError("AppSpec fingerprint is stale; reconcile-spec first")
     if not fingerprint_equal(ledger.get("execution", {}).get("checkpoint", {}).get("workspaceFingerprint"), current_workspace): raise ProtocolError("checkpoint is stale; checkpoint immediately before requesting audit")
-    if any(item.get("status") not in {"verified", "waived"} for item in ledger.get("acceptanceScenarios", [])): raise ProtocolError("all acceptance scenarios must be verified or waived before audit")
-    for gate in ledger.get("qualityGates", []):
-        if gate.get("category") == "repository" and not (gate.get("applicability") == "not-applicable" or (gate.get("applicability") == "applicable" and gate.get("status") in {"verified", "waived"})):
-            raise ProtocolError(f"repository gate is not closed: {gate.get('id')}")
-    if pending_handoff_paths(root, ledger):
-        raise ProtocolError("pending specialist hand-offs must be inspected and ingested before audit")
+    from delivery_readiness import preflight, unavailable_pairs
+    early_errors = preflight(root, ledger)
+    if early_errors: raise ProtocolError('; '.join(early_errors))
     # Validate all local evidence without depending on the audit we are creating.
     import importlib.util
     spec = importlib.util.spec_from_file_location("preaudit_validator", SCRIPT_DIR / "validate-delivery-ledger.py")
@@ -75,6 +81,7 @@ def prepare_request(root, ledger, request_path, request_id, args):
         "appSpecFingerprint": current_app, "workspaceFingerprint": current_workspace,
         "requiredAuditorContextId": args.auditor_context_id,
         "invocationKind": args.invocation_kind, "implementationContextAvailable": False,
+        "unavailablePairs": unavailable_pairs(ledger),
     }
     if request_path.exists():
         existing = read_json(request_path)
@@ -88,7 +95,7 @@ def prepare_request(root, ledger, request_path, request_id, args):
         ledger.setdefault("auditHistory", []).append(ledger["closureAudit"])
     audit_path, _ = audit_paths(root, request_path)
     ledger["closureAudit"] = {"requestPath": request_path.relative_to(root).as_posix(), "requestSha256": request_hash, "auditPath": audit_path.relative_to(root).as_posix()}
-    ledger["finalReceiptRef"] = None
+    ledger["closureManifest"] = None
     ledger["execution"].update(phase="auditing", activeAcceptanceScenarioId=None, activeQualityGateId=None,
         nextAction=f"Run run-acceptance-audit.py for {request_path.relative_to(root).as_posix()}.")
     ledger["workspaceFingerprint"] = current_workspace

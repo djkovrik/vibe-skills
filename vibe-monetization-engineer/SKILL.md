@@ -57,3 +57,5 @@ Propose durable, policy-approved integration rules for [learned-patterns.md](ref
 ## Recovery of unfinished work
 
 For multi-step work, including direct specialist requests, follow the shared [recovery contract](../vibe-developer/references/recovery-contract.md). Save the durable assignment before edits, checkpoint unfinished work with `specialist-state.py`, and resume from its packet after compaction or interruption, including inside the same turn. Preserve new user decisions immediately. A final hand-off does not replace intermediate checkpoints.
+
+Use the current [flow coordination interfaces](../vibe-developer/references/flow-delivery-contract.md#current-coordination-and-evidence-interfaces) for compact assignment inputs, early contract readiness, exact evidence coverage and pending-work IDs.

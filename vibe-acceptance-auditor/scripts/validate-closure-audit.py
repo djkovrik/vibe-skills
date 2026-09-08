@@ -73,6 +73,10 @@ def validate(data: dict[str, Any], app_root: Path, repository: Path, request_pat
         if item["id"] in by_id: errors.append(f"duplicate obligation: {item['id']}")
         by_id[item["id"]] = item
     if set(by_id) != expected_ids: errors.append(f"obligation inventory mismatch; missing={sorted(expected_ids-set(by_id))}, extra={sorted(set(by_id)-expected_ids)}")
+    from validation_context import ValidationContext
+    metadata_path = repository / '.vibe/delivery-ledger.json'
+    metadata = read_json(metadata_path) if metadata_path.exists() else {'appSpec':{'root':str(app_root)}}
+    validation = ValidationContext(repository, metadata)
     successful_pairs: set[tuple[str, str]] = set()
     checks = data.get("checks") if isinstance(data.get("checks"), list) else []
     for index, check in enumerate(checks):
@@ -83,35 +87,51 @@ def validate(data: dict[str, Any], app_root: Path, repository: Path, request_pat
         if not nonempty(check.get("checkId")) or not isinstance(check.get("argv"), list) or not check.get("argv"): errors.append(f"{prefix} requires checkId and argv")
         if not timestamp(check.get("startedAt")) or not timestamp(check.get("completedAt")): errors.append(f"{prefix} requires timestamps")
         elif timestamp(data.get("startedAt")) and timestamp(data.get("completedAt")):
-            if not parse_time(data["startedAt"]) <= parse_time(check["startedAt"]) <= parse_time(check["completedAt"]) <= parse_time(data["completedAt"]): errors.append(f"{prefix} must complete inside audit window")
-        if not fingerprint_equal(check.get("workspaceFingerprint"), current_workspace): errors.append(f"{prefix} has stale workspace fingerprint")
-        if not fingerprint_equal(check.get("startWorkspaceFingerprint"), current_workspace): errors.append(f"{prefix} missing start fingerprint or workspace changed during check")
+            if not parse_time(check["startedAt"]) <= parse_time(check["completedAt"]) <= parse_time(data["completedAt"]): errors.append(f"{prefix} has invalid execution time")
+        actual_receipt = validation.receipts.get(check.get('receiptRef'))
+        if not actual_receipt or not validation.current(actual_receipt): errors.append(f'{prefix} has stale workspace fingerprint')
+        if not fingerprint_equal(check.get('startWorkspaceFingerprint'), check.get('workspaceFingerprint')): errors.append(f'{prefix} missing start fingerprint or workspace changed during check')
         if check.get("executionStatus") != "completed": errors.append(f"{prefix} was interrupted or did not complete")
         coverage = check.get("coverage") if isinstance(check.get("coverage"), list) else []
         if check.get("exitCode") == 0 and not receipt_errors:
             for pair in coverage:
                 if isinstance(pair, dict) and pair.get("obligationId") in expected_ids and pair.get("surface") in surfaces[pair["obligationId"]]:
-                    successful_pairs.add((pair["obligationId"], pair["surface"]))
+                    if (pair['obligationId'], pair['surface']) not in validation.coverage(actual_receipt): continue
+                    latest = validation.latest.get((pair['obligationId'], pair['surface']))
+                    if latest and latest[0][1]: errors.append(f'{prefix}: later current check failed')
+                    else: successful_pairs.add((pair["obligationId"], pair["surface"]))
         elif not isinstance(check.get("exitCode"), int): errors.append(f"{prefix}.exitCode must be an integer")
+    unavailable = {(r["obligationId"], r["surface"]) for r in request.get("unavailablePairs", [])}
     blocking = []
     gate_categories = {g["id"]: g["category"] for g in app["qualityGates"]}
+    for row in request.get("unavailablePairs", []):
+        oid, surface = row.get("obligationId"), row.get("surface")
+        if surface not in surfaces.get(oid, []) or (surface not in {"ios-link-test", "ios-build"} and gate_categories.get(oid) not in {"platform", "external", "release"}):
+            errors.append("invalid external verification limitation")
     for obligation_id, required_surfaces in surfaces.items():
         item = by_id.get(obligation_id)
         if not item: continue
         result = item.get("result")
-        if result not in {"verified", "waived", "blocked-external", "gap"}: errors.append(f"obligation {obligation_id} has invalid result"); continue
+        if result not in {"verified", "locally-verified", "waived", "blocked-external", "gap"}: errors.append(f"obligation {obligation_id} has invalid result"); continue
         if result == "blocked-external" and gate_categories.get(obligation_id) not in {"platform", "external", "release"}: errors.append(f"obligation {obligation_id} cannot be blocked-external")
         if result == "waived" and not decision_valid(repository, item.get("decisionReference"), obligation_id): errors.append(f"obligation {obligation_id} waiver lacks an accepted scoped durable decision with user approval")
         if item.get("verificationSurfaces") != required_surfaces: errors.append(f"obligation {obligation_id} verificationSurfaces mismatch")
         evidence = item.get("evidence") if isinstance(item.get("evidence"), list) else []
-        if result == "verified":
+        if result == 'locally-verified' and not any((obligation_id, s) in unavailable for s in required_surfaces):
+            errors.append(f'obligation {obligation_id}: local result lacks request-bound host limitation')
+        if result in {'verified', 'locally-verified'}:
             for surface in required_surfaces:
+                if result == 'locally-verified' and (obligation_id, surface) in unavailable: continue
                 matching = [e for e in evidence if isinstance(e, dict) and e.get("surface") == surface and nonempty(e.get("path"))]
                 if not matching: errors.append(f"obligation {obligation_id} surface {surface} has no evidence")
                 for entry in matching:
                     path = Path(entry["path"])
                     target = repository / path
                     if path.is_absolute() or ".." in path.parts or not target.is_file(): errors.append(f"obligation {obligation_id} evidence path is invalid: {entry['path']}")
+                    elif entry.get("anchor"):
+                        from evidence_registry import check_anchor
+                        try: check_anchor(repository, entry)
+                        except (ProtocolError, OSError, ValueError) as exc: errors.append(str(exc))
                     elif entry.get("symbol") or entry.get("testName"):
                         needle = entry.get("symbol") or entry.get("testName")
                         try:
@@ -128,8 +148,10 @@ def validate(data: dict[str, Any], app_root: Path, repository: Path, request_pat
     completion = data.get("completion", {})
     implementation = all(by_id.get(i, {}).get("result") in {"verified", "waived"} for i in expected_ids if gate_categories.get(i, "repository") == "repository")
     release = implementation and all(by_id.get(i, {}).get("result") in {"verified", "waived"} for i in expected_ids)
-    if completion != {"implementationComplete": implementation, "releaseReady": release}: errors.append("completion does not match audited obligations")
-    if verdict == "PASS" and not implementation: errors.append("PASS requires implementationComplete")
+    local = not blocking and all(by_id.get(i, {}).get('result') in {'verified', 'waived', 'locally-verified'} or
+        (by_id.get(i, {}).get('result') == 'blocked-external' and gate_categories.get(i) in {'platform', 'external', 'release'}) for i in expected_ids)
+    if completion != {"locallyVerified": local, "implementationComplete": implementation, "releaseReady": release}: errors.append("completion does not match audited obligations")
+    if verdict == "PASS" and not local: errors.append("PASS requires locallyVerified")
     return errors
 
 def main() -> int:

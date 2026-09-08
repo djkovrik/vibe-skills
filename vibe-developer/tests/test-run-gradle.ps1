@@ -58,6 +58,10 @@ New-Item -ItemType Directory -Path (Join-Path $testRoot '.vibe\receipts') -Force
 try {
     $batch = @'
 @echo off
+:options
+if "%1"=="--no-parallel" (shift & goto options)
+if "%1"=="--max-workers=1" (shift & goto options)
+if "%1"=="--max-workers" (shift & shift & goto options)
 if "%1"=="slow" (
   echo slow-start>>order.txt
   powershell -NoProfile -Command "Start-Sleep -Milliseconds 1200"

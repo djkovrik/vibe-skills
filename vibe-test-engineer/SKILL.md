@@ -63,3 +63,5 @@ For multi-step work, including direct specialist requests, follow the shared [re
 ## Asset checks
 
 Use the [asset contract](../vibe-assets-creator/references/asset-contract.md) for the asset-check gate: inventory, hashes, dimensions/transparency, portable vector references and production resource usage. Run the Assets Creator validator; request actual resource compilation for supported targets. Visual Testing owns image appearance and goldens. Static references are not proof of reachable UI.
+
+Use the current [flow coordination interfaces](../vibe-developer/references/flow-delivery-contract.md#current-coordination-and-evidence-interfaces) for compact assignment inputs, early contract readiness, exact evidence coverage and pending-work IDs.

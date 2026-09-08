@@ -44,7 +44,19 @@ class DeliveryProtocol20Tests(unittest.TestCase):
     @property
     def ledger_path(self): return self.root / ".vibe" / "delivery-ledger.json"
     def ledger(self): return json.loads(self.ledger_path.read_text())
-    def save(self, value): self.ledger_path.write_text(json.dumps(with_ledger_digest(value), indent=2) + "\n")
+    def save(self, value):
+        from vibe_protocol import canonical_digest
+        for item in value['acceptanceScenarios'] + value['qualityGates']:
+            for kind in ('productionEvidence', 'testEvidence'):
+                refs = []
+                for row in item.get(kind, []):
+                    if isinstance(row, str): refs.append(row); continue
+                    record = {**row, 'kind':kind, 'coverage':[{'obligationId':item['id'], 'surface':row['surface']}]}
+                    eid = 'EV-' + canonical_digest(record)
+                    value.setdefault('evidence', {})[eid] = record
+                    refs.append(eid)
+                item[kind] = refs
+        self.ledger_path.write_text(json.dumps(with_ledger_digest(value), indent=2) + "\n")
     def start(self):
         digest = self.ledger()["ledgerDigest"]
         self.exec_script("checkpoint-delivery.py", str(self.root), "--expected-ledger-digest", digest, "--phase", "implementing", "--active-ac", "AC-001", "--owner", "test", "--file-boundary", "src/**", "--file-boundary", "tests/**", "--next-action", "Implement AC-001.")
@@ -109,22 +121,24 @@ class DeliveryProtocol20Tests(unittest.TestCase):
     def test_missing_final_receipt_blocks_completion(self):
         ref = self.receipt("target", 0, "2026-09-04T10:02:00Z", ["component-test"]); self.verified_ac([ref])
         ledger = self.ledger(); gate = ledger["qualityGates"][0]; gate.update({"status":"waived","decisionReference":"docs/decisions/DEC-FIXTURE.json"}); ledger["workspaceFingerprint"] = compute_workspace_fingerprint(self.root); self.save(ledger)
-        result = VALIDATOR.validate_ledger(self.root, self.ledger_path); self.assertTrue(any("final receipt" in e for e in result.errors)); self.assertFalse(result.implementation_complete)
+        result = VALIDATOR.validate_ledger(self.root, self.ledger_path); self.assertTrue(any("closure manifest" in e for e in result.errors)); self.assertFalse(result.implementation_complete)
 
     def test_audit_request_requires_closed_local_work_and_binds_hash(self):
         digest = self.ledger()["ledgerDigest"]
         refused = self.exec_script("create-audit-request.py", str(self.root), "--expected-ledger-digest", digest, "--auditor-context-id", "fresh-1", check=False)
-        self.assertNotEqual(0, refused.returncode); self.assertIn("acceptance scenarios", refused.stderr)
-        ledger = self.ledger(); ledger["acceptanceScenarios"][0].update({"status":"waived","decisionReference":"docs/decisions/DEC-FIXTURE.json"}); ledger["qualityGates"][0].update({"status":"waived","decisionReference":"docs/decisions/DEC-FIXTURE.json"}); self.save(ledger)
+        self.assertNotEqual(0, refused.returncode); self.assertIn("implementation is not ready", refused.stderr)
+        ledger = self.ledger()
+        for item in ledger['acceptanceScenarios'] + ledger['qualityGates']: item.update(status='waived', decisionReference='docs/decisions/DEC-FIXTURE.json')
+        self.save(ledger)
         process = self.exec_script("create-audit-request.py", str(self.root), "--expected-ledger-digest", self.ledger()["ledgerDigest"], "--auditor-context-id", "fresh-1")
         self.assertIn("request-sha256", process.stdout); self.assertTrue((self.root / self.ledger()["closureAudit"]["requestPath"]).is_file()); self.assertRegex(self.ledger()["closureAudit"]["requestSha256"], r"^[a-f0-9]{64}$")
 
     def test_failed_final_receipt_and_generated_report_drift_are_rejected(self):
-        ref = self.receipt("failed-final", 9, "2026-09-04T10:14:00Z", ["component-test"], kind="final"); self.verified_ac([ref])
-        ledger = self.ledger(); gate = ledger["qualityGates"][0]; gate.update({"status":"waived","decisionReference":"docs/decisions/DEC-FIXTURE.json"}); ledger["finalReceiptRef"] = ref; ledger["execution"]["phase"] = "final-verification"; ledger["workspaceFingerprint"] = compute_workspace_fingerprint(self.root); self.save(ledger)
+        ref = self.receipt("failed-final", 9, "2026-09-04T10:14:00Z", ["component-test"], kind="integration"); self.verified_ac([ref])
+        ledger = self.ledger(); gate = ledger["qualityGates"][0]; gate.update({"status":"waived","decisionReference":"docs/decisions/DEC-FIXTURE.json"});  ledger["execution"]["phase"] = "final-verification"; ledger["workspaceFingerprint"] = compute_workspace_fingerprint(self.root); self.save(ledger)
         (self.root / "docs").mkdir(exist_ok=True); (self.root / "docs" / "requirement-traceability.generated.md").write_text("stale\n")
         result = VALIDATOR.validate_ledger(self.root, self.ledger_path)
-        self.assertTrue(any("final receipt failed" in e for e in result.errors)); self.assertTrue(any("generated delivery report" in e for e in result.errors))
+        self.assertTrue(any("latest current receipt" in e for e in result.errors)); self.assertTrue(any("generated delivery report" in e for e in result.errors))
 
     def test_invalid_appspec_cannot_pass_through_ledger_validator(self):
         data = json.loads((self.root / "app-spec" / "app-spec.json").read_text()); data["acceptanceScenarios"][0]["required"] = False; (self.root / "app-spec" / "app-spec.json").write_text(json.dumps(data))
@@ -137,10 +151,10 @@ class DeliveryProtocol20Tests(unittest.TestCase):
             {"obligationId":"QG-002","surfaces":["android-build"]},
             {"obligationId":"QG-003","surfaces":["release-check"]},
         ]
-        final_ref = self.receipt("final", 0, "2026-09-04T10:14:00Z", [], kind="final", coverage=coverage); self.verified_ac([final_ref])
+        final_ref = self.receipt("final", 0, "2026-09-04T10:14:00Z", [], kind="integration", coverage=coverage); self.verified_ac([final_ref])
         ledger = self.ledger()
         for gate in ledger["qualityGates"]: gate.update({"status":"waived","decisionReference":"docs/decisions/DEC-FIXTURE.json"})
-        ledger["finalReceiptRef"] = final_ref; ledger["workspaceFingerprint"] = compute_workspace_fingerprint(self.root); self.save(ledger)
+        ledger["workspaceFingerprint"] = compute_workspace_fingerprint(self.root); self.save(ledger)
         import hashlib
         from vibe_protocol import canonical_inventory, compute_app_spec_fingerprint
         request = {"schemaVersion":"2.0","requestId":"AUDIT-REQUEST-1","createdAt":"2026-09-04T10:11:00Z","ledgerDigest":self.ledger()["ledgerDigest"],"appSpecFingerprint":compute_app_spec_fingerprint(self.root / "app-spec"),"workspaceFingerprint":compute_workspace_fingerprint(self.root),"requiredAuditorContextId":"fresh-1","invocationKind":"fresh-context","implementationContextAvailable":False}
@@ -150,12 +164,14 @@ class DeliveryProtocol20Tests(unittest.TestCase):
             {"id":"AC-001","kind":"acceptance-scenario","scope":"repository","result":"verified","verificationSurfaces":["component-test"],"evidence":[{"path":"tests/AppTest.kt","surface":"component-test"}]},
             {"id":"Value:create","kind":"managed-operation","scope":"repository","result":"verified","verificationSurfaces":["component-test"],"evidence":[{"path":"tests/AppTest.kt","surface":"component-test"}]},
         ] + [{"id":gate["id"],"kind":"quality-gate","scope":gate["category"],"result":"waived","verificationSurfaces":gate["verificationSurfaces"],"evidence":[],"decisionReference":"docs/decisions/DEC-FIXTURE.json"} for gate in app["qualityGates"]]
-        audit = {"schemaVersion":"2.0","auditId":"AUDIT-1","auditRequest":{"path":".vibe/audits/AUDIT-REQUEST-1/request.json","requestId":"AUDIT-REQUEST-1","sha256":request_hash},"auditorContext":{"contextId":"fresh-1","invocationKind":"fresh-context","implementationContextAvailable":False},"startedAt":"2026-09-04T10:11:00Z","completedAt":"2026-09-04T10:12:00Z","verdict":"PASS","appSpecFingerprint":request["appSpecFingerprint"],"workspaceFingerprint":fp,"shadowInventory":canonical_inventory(app),"obligations":obligations,"checks":[{"checkId":"AUDIT-CHECK","argv":["tool","check"],"startedAt":"2026-09-04T10:11:00Z","completedAt":"2026-09-04T10:11:30Z","exitCode":0,"executionStatus":"completed","startWorkspaceFingerprint":fp,"workspaceFingerprint":fp,"coverage":[{"obligationId":"AC-001","surface":"component-test"},{"obligationId":"Value:create","surface":"component-test"}]}],"findings":[],"completion":{"implementationComplete":True,"releaseReady":True}}
+        audit = {"schemaVersion":"2.0","auditId":"AUDIT-1","auditRequest":{"path":".vibe/audits/AUDIT-REQUEST-1/request.json","requestId":"AUDIT-REQUEST-1","sha256":request_hash},"auditorContext":{"contextId":"fresh-1","invocationKind":"fresh-context","implementationContextAvailable":False},"startedAt":"2026-09-04T10:11:00Z","completedAt":"2026-09-04T10:12:00Z","verdict":"PASS","appSpecFingerprint":request["appSpecFingerprint"],"workspaceFingerprint":fp,"shadowInventory":canonical_inventory(app),"obligations":obligations,"checks":[{"checkId":"AUDIT-CHECK","argv":["tool","check"],"startedAt":"2026-09-04T10:11:00Z","completedAt":"2026-09-04T10:11:30Z","exitCode":0,"executionStatus":"completed","startWorkspaceFingerprint":fp,"workspaceFingerprint":fp,"coverage":[{"obligationId":"AC-001","surface":"component-test"},{"obligationId":"Value:create","surface":"component-test"}]}],"findings":[],"completion":{"locallyVerified":True,"implementationComplete":True,"releaseReady":True}}
         audit["sourceCoverage"] = coverage_fixture(self.root / "app-spec", ["AC-001"])
         audit_receipt_fixture(self.root, audit["checks"][0])
         launch_fixture(self.root, request_path, request)
         audit_path = request_path.with_name("audit.json"); audit_path.write_text(json.dumps(audit))
         ledger = self.ledger(); ledger["closureAudit"]={"requestPath":".vibe/audits/AUDIT-REQUEST-1/request.json","requestSha256":request_hash,"auditPath":".vibe/audits/AUDIT-REQUEST-1/audit.json"}; ledger["execution"]["phase"]="final-verification"; ledger["workspaceFingerprint"]=fp; self.save(ledger)
+        from closure_manifest import create
+        ledger = self.ledger(); create(self.root, ledger); self.save(ledger)
         self.run_report("render-delivery-report.py", str(self.root)); (self.root / "docs").mkdir(exist_ok=True); audit_renderer = Path(__file__).resolve().parents[3] / "vibe-acceptance-auditor" / "scripts" / "render-closure-audit.py"; subprocess.run([sys.executable, str(audit_renderer), str(audit_path), str(self.root / "docs" / "closure-audit.generated.md")], check=True, capture_output=True)
         result = VALIDATOR.validate_ledger(self.root, self.ledger_path); self.assertTrue(result.implementation_complete, result.errors); self.assertTrue(result.release_ready, result.errors)
 

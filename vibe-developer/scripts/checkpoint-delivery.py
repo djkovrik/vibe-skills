@@ -28,8 +28,6 @@ def main() -> int:
     parser.add_argument("--owner")
     parser.add_argument("--file-boundary", action="append", default=[])
     parser.add_argument("--pending-check", action="append", default=[])
-    parser.add_argument("--clear-pending-checks", action="append", default=[], metavar="ID")
-    parser.add_argument("--clear-blockers", action="append", default=[], metavar="ID")
     parser.add_argument("--required-read", action="append", default=None)
     parser.add_argument("--request-file", help="Repository-relative saved user request/assignment, required before implementation")
     parser.add_argument("--reconcile-drift", help="Inspected explanation for a commit or changes outside prior boundaries")
@@ -38,7 +36,6 @@ def main() -> int:
     parser.add_argument("--set-gate-applicability", action="append", default=[], metavar="QG-ID=applicable|not-applicable:reason")
     parser.add_argument("--decision-reference", action="append", default=[], metavar="ID=path#anchor")
     parser.add_argument("--blocker", action="append", default=[], metavar="ID=reason")
-    parser.add_argument("--final-receipt-ref")
     parser.add_argument("--audit-path")
     parser.add_argument("--next-action", required=True)
     args = parser.parse_args()
@@ -49,6 +46,8 @@ def main() -> int:
     try:
         workspace = compute_workspace_fingerprint(root)
         now = utc_now()
+        from evidence_registry import work_item
+        args.pending_check = [work_item(v, "CHECK-") for v in args.pending_check]
         def mutate(ledger: dict) -> None:
             if ledger.get("schemaVersion") != "2.0":
                 raise ProtocolError("unsupported protocol: delivery ledger must be 2.0")
@@ -58,7 +57,7 @@ def main() -> int:
             all_items = [*ledger.get("acceptanceScenarios", []), *ledger.get("qualityGates", [])]
             old_active = next((i for i in all_items if i.get("id") == previous_id), {})
             drift = workspace_drift_paths(previous, workspace)
-            if (previous.get("gitHead") != workspace.get("gitHead") or not paths_within_boundaries(drift, active_boundaries(ledger))) and not args.reconcile_drift:
+            if (not paths_within_boundaries(drift, active_boundaries(ledger))) and not args.reconcile_drift:
                 raise ProtocolError("unexpected drift requires --reconcile-drift with inspected explanation")
             if args.reconcile_drift:
                 ledger.setdefault("reconciliations", []).append({"at":now, "reason":args.reconcile_drift, "paths":drift, "previousFingerprint":previous})
@@ -87,18 +86,11 @@ def main() -> int:
                     if args.owner:
                         active["owner"] = args.owner
                     if args.pending_check:
-                        active["pendingChecks"] = args.pending_check
+                        active["pendingChecks"] = list({v["id"]: v for v in active.get("pendingChecks", []) + args.pending_check}.values())
                     active["checkpointFingerprint"] = workspace
                     active["changedFiles"] = workspace_drift_paths(active["baselineFingerprint"], workspace)
                     active["updatedAt"] = now
             items = {item.get("id"): item for item in [*ledger.get("acceptanceScenarios", []), *ledger.get("qualityGates", [])]}
-            for item_id in args.clear_pending_checks:
-                if item_id not in items: raise ProtocolError(f"unknown obligation: {item_id}")
-                items[item_id]["pendingChecks"] = []
-            for item_id in args.clear_blockers:
-                if item_id not in items: raise ProtocolError(f"unknown obligation: {item_id}")
-                items[item_id]["blockers"] = []
-                items[item_id].pop("blocker", None)
             for assignment in args.set_item_status:
                 item_id, separator, status = assignment.partition("=")
                 if not separator or item_id not in items:
@@ -109,6 +101,9 @@ def main() -> int:
                 if status in {"verified", "waived"} and (items[item_id].get("pendingChecks") or items[item_id].get("blockers") or items[item_id].get("blocker")): raise ProtocolError("clear resolved pending checks/blockers before closing an item")
                 items[item_id]["status"] = status
                 items[item_id]["updatedAt"] = now
+            for item in items.values():
+                for check in item.get("pendingChecks", []):
+                    check.setdefault("coveredObligations", [{"obligationId": item["id"], "surfaces": item["requiredVerificationSurfaces"]}])
             for assignment in args.add_receipt:
                 item_id, separator, receipt_ref = assignment.partition("=")
                 if not separator or item_id not in items or not receipt_ref.startswith(".vibe/receipts/"):
@@ -132,10 +127,6 @@ def main() -> int:
                 item_id, separator, reason = assignment.partition("=")
                 if not separator or item_id not in items or not reason.strip(): raise ProtocolError(f"invalid --blocker: {assignment}")
                 items[item_id]["blocker"] = {"reason": reason, "recordedAt": now}
-            if args.final_receipt_ref:
-                if not args.final_receipt_ref.startswith(".vibe/receipts/"):
-                    raise ProtocolError("--final-receipt-ref must be under .vibe/receipts")
-                ledger["finalReceiptRef"] = args.final_receipt_ref
             if args.audit_path:
                 request_path = root / ledger.get("closureAudit", {}).get("requestPath", "")
                 if (root / args.audit_path).resolve() != audit_paths(root, request_path)[0]:

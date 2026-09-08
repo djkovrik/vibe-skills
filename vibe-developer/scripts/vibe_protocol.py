@@ -31,6 +31,8 @@ DELIVERY_ARTIFACT_PATTERNS = (
     ".vibe/history",
     ".vibe/snapshots",
     ".vibe/requests",
+    ".vibe/jobs",
+    ".vibe/timing",
     ".vibe/delivery-ledger.json.lock",
     "docs/requirement-traceability.generated.md",
     "docs/closure-audit.generated.md",
@@ -216,13 +218,19 @@ def execute_process(argv, *, cwd, timeout, input_bytes=None):
     except subprocess.TimeoutExpired:
         status = "interrupted"
         if os.name == "nt":
-            subprocess.run(["taskkill", "/PID", str(process.pid), "/T", "/F"], capture_output=True, check=False)
+            try: subprocess.run(["taskkill", "/PID", str(process.pid), "/T", "/F"], capture_output=True, check=False, timeout=5)
+            except subprocess.TimeoutExpired: process.kill()
         else:
             import signal
             try: os.killpg(process.pid, signal.SIGKILL)
             except ProcessLookupError: pass
-        stdout, stderr = process.communicate()
-    return process.returncode, stdout, stderr, status
+        try: stdout, stderr = process.communicate(timeout=5)
+        except subprocess.TimeoutExpired as exc:
+            stdout, stderr = exc.output or b'', exc.stderr or b''
+            process.stdout.close(); process.stderr.close()
+            try: process.kill()
+            except OSError: pass
+    return process.returncode if process.returncode is not None else -1, stdout, stderr, status
 
 
 def _run_git(root: Path, arguments: list[str], *, allow_failure: bool = False) -> bytes:
@@ -265,25 +273,14 @@ def compute_workspace_fingerprint(project_root: str | Path) -> dict[str, Any]:
         raise ProtocolError(f"not a Git worktree: {root}")
     raw_head = _run_git(root, ["rev-parse", "--verify", "HEAD"], allow_failure=True)
     head = raw_head.decode("ascii", errors="strict").strip() or None
-    pathspecs = ["."] + [f":(exclude){p}/**" if p in {".vibe/receipts", ".vibe/handoffs"} else f":(exclude){p}" for p in DELIVERY_ARTIFACT_PATTERNS]
-    diff_args = ["diff", "--relative", "--binary", "--no-ext-diff"] + (["HEAD"] if head else ["--cached"])
-    binary_diff = _run_git(root, [*diff_args, "--", *pathspecs])
-    tracked_names = _run_git(root, ["diff", "--name-only", "-z"] + (["HEAD"] if head else ["--cached"]) + ["--", *pathspecs])
-    untracked_names = _run_git(root, ["ls-files", "--others", "--exclude-standard", "-z", "--", "."])
-    names = {
-        part.decode("utf-8", errors="surrogateescape").replace("\\", "/")
-        for raw in (tracked_names, untracked_names)
-        for part in raw.split(b"\0") if part
-    }
-    working_files = [_file_state(root, name) for name in sorted(names, key=str.casefold) if not _is_delivery_artifact(name)]
-    payload: dict[str, Any] = {
-        "algorithm": "sha256",
-        "gitHead": head,
-        "binaryDiffSha256": sha256_bytes(binary_diff),
-        "workingFiles": working_files,
-    }
-    payload["digest"] = canonical_digest(payload)
-    return payload
+    # Content identity survives commit/staging changes. HEAD is provenance only.
+    raw_names = _run_git(root, ['ls-files', '--cached', '--others', '--exclude-standard', '-z'])
+    names = {part.decode('utf-8', errors='surrogateescape').replace('\\', '/')
+             for part in raw_names.split(b'\0') if part}
+    working_files = [_file_state(root, name) for name in sorted(names, key=str.casefold)
+                     if not _is_delivery_artifact(name) and (root / name).is_file()]
+    content = {'algorithm': 'sha256', 'workingFiles': working_files}
+    return {**content, 'gitHead': head, 'digest': canonical_digest(content)}
 
 
 def compute_app_spec_fingerprint(app_spec_root: str | Path) -> dict[str, Any]:
@@ -303,7 +300,7 @@ def compute_app_spec_fingerprint(app_spec_root: str | Path) -> dict[str, Any]:
 
 
 def fingerprint_equal(left: Any, right: Any) -> bool:
-    return isinstance(left, dict) and isinstance(right, dict) and left.get("digest") == right.get("digest") and left == right
+    return isinstance(left, dict) and isinstance(right, dict) and left.get("digest") == right.get("digest") and {k:v for k,v in left.items() if k != "gitHead"} == {k:v for k,v in right.items() if k != "gitHead"}
 
 
 def pending_handoff_paths(root: Path, ledger: dict) -> list[str]:

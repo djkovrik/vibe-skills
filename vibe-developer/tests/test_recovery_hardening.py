@@ -114,11 +114,11 @@ class RecoveryHardeningTests(unittest.TestCase):
         self.assertEqual("clean",self.resume()["driftClassification"])
         self.assertFalse(self.resume()["completionEligible"])
 
-    def test_commit_requires_explicit_reconciliation(self):
+    def test_identical_commit_preserves_content_identity(self):
         self.case.start(); self.case.git("commit","--allow-empty","-m","checkpoint commit")
-        self.assertEqual("unexpected-drift",self.resume()["driftClassification"])
+        self.assertEqual("clean",self.resume()["driftClassification"])
         refused=self.checkpoint("--phase","reconciling","--next-action","Inspect commit")
-        self.assertNotEqual(0,refused.returncode)
+        self.assertEqual(0,refused.returncode)
         accepted=self.checkpoint("--phase","reconciling","--next-action","Rerun verification","--reconcile-drift","Reviewed own checkpoint commit")
         self.assertEqual(0,accepted.returncode,accepted.stderr)
 
@@ -145,7 +145,7 @@ class RecoveryHardeningTests(unittest.TestCase):
         self.assertEqual(0,result.returncode)
         (self.root/"src/App.kt").write_text("class AppComponent { fun saveValue() = Unit } // partial work\n")
         result=self.case.exec_script("specialist-state.py","resume",str(self.root),"--assignment-id","ASSIGN-1")
-        brief=json.loads(result.stdout); self.assertEqual(["component regression"],brief["packet"]["pendingChecks"])
+        brief=json.loads(result.stdout); self.assertEqual("component regression",brief["packet"]["pendingChecks"][0]["description"])
         self.assertIn("src/App.kt",brief["driftPaths"]); self.assertTrue(brief["safeToContinue"])
 
     def test_gaps_fix_new_pass_then_final_and_reject_wrong_order(self):
@@ -182,20 +182,21 @@ class RecoveryHardeningTests(unittest.TestCase):
         audit={"schemaVersion":"2.0","auditId":"AUDIT-PASS","auditRequest":{"path":binding["requestPath"],"requestId":request["requestId"],"sha256":sha256_bytes(request_path.read_bytes())},
             "auditorContext":{"contextId":request["requiredAuditorContextId"],"invocationKind":"fresh-context","implementationContextAvailable":False},
             "startedAt":audit_started,"completedAt":utc_now(),"verdict":"PASS","appSpecFingerprint":request["appSpecFingerprint"],"workspaceFingerprint":request["workspaceFingerprint"],
-            "shadowInventory":canonical_inventory(app),"sourceCoverage":coverage_fixture(self.root/"app-spec",["AC-001"]),"obligations":obligations,"checks":[check],"findings":[],"completion":{"implementationComplete":True,"releaseReady":True}}
+            "shadowInventory":canonical_inventory(app),"sourceCoverage":coverage_fixture(self.root/"app-spec",["AC-001"]),"obligations":obligations,"checks":[check],"findings":[],"completion":{"locallyVerified":True,"implementationComplete":True,"releaseReady":True}}
         audit_path=request_path.with_name("audit.json"); audit_path.write_text(json.dumps(audit))
         launch_fixture(self.root,request_path,request,completed=utc_now())
-        final_path,final_receipt=CHECK.run_check(self.root,[sys.executable,"-B","-c","from pathlib import Path;assert 'value = v' in Path('src/App.kt').read_text()"],coverage,kind="final")
-        ledger=self.case.ledger(); ledger["finalReceiptRef"]=final_path.relative_to(self.root).as_posix(); ledger["execution"]["phase"]="final-verification"; self.case.save(ledger)
+        from closure_manifest import create
+        ledger = self.case.ledger(); create(self.root, ledger); self.case.save(ledger)
         self.case.run_report("render-delivery-report.py",str(self.root))
         audit_renderer=load("hardening_audit_renderer",SCRIPTS.parents[1]/"vibe-acceptance-auditor/scripts/render-closure-audit.py")
         (self.root/"docs/closure-audit.generated.md").write_text(audit_renderer.render(audit),encoding="utf-8")
         result=D.VALIDATOR.validate_ledger(self.root,self.case.ledger_path)
-        self.assertTrue(result.implementation_complete,result.errors); self.assertTrue(self.resume()["completionEligible"])
+        self.assertTrue(result.implementation_complete,result.errors); self.assertFalse(self.resume()["completionEligible"])
         self.assertEqual(first_bytes,first_audit.read_bytes())
-        final_receipt["startedAt"]=request["createdAt"]; final_path.write_text(json.dumps(final_receipt))
+        audit_receipt['exitCode'] = 1; audit_receipt_path.write_text(json.dumps(audit_receipt))
         result=D.VALIDATOR.validate_ledger(self.root,self.case.ledger_path)
-        self.assertFalse(result.implementation_complete); self.assertTrue(any("after audit completion" in e for e in result.errors))
+        self.assertFalse(result.implementation_complete); self.assertTrue(any('hash mismatch' in e for e in result.errors))
+
 
 
 if __name__ == "__main__": unittest.main()

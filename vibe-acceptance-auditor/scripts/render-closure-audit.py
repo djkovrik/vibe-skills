@@ -13,13 +13,13 @@ def esc(value: Any) -> str: return str(value if value is not None else "—").re
 
 def render(data: dict[str, Any]) -> str:
     context, completion = data["auditorContext"], data["completion"]
-    lines = ["# Closure audit", "", f"- Protocol: `{data['schemaVersion']}`", f"- Audit: `{data['auditId']}`", f"- Request: `{data['auditRequest']['requestId']}` / `{data['auditRequest']['sha256']}`", f"- Verdict: `{data['verdict']}`", f"- Started at: `{data['startedAt']}`", f"- Completed at: `{data['completedAt']}`", f"- Context: `{context['contextId']}` (`{context['invocationKind']}`)", f"- Implementation context available: `{'true' if context['implementationContextAvailable'] else 'false'}`", f"- Implementation complete: `{'true' if completion['implementationComplete'] else 'false'}`", f"- Release ready: `{'true' if completion['releaseReady'] else 'false'}`", "", "## Shadow inventory", "", "| Kind | IDs |", "| --- | --- |"]
+    lines = ["# Closure audit", "", f"- Protocol: `{data['schemaVersion']}`", f"- Audit: `{data['auditId']}`", f"- Request: `{data['auditRequest']['requestId']}` / `{data['auditRequest']['sha256']}`", f"- Verdict: `{data['verdict']}`", f"- Started at: `{data['startedAt']}`", f"- Completed at: `{data['completedAt']}`", f"- Context: `{context['contextId']}` (`{context['invocationKind']}`)", f"- Implementation context available: `{'true' if context['implementationContextAvailable'] else 'false'}`", f"- Locally verified: `{'true' if completion['locallyVerified'] else 'false'}`", f"- Implementation complete: `{'true' if completion['implementationComplete'] else 'false'}`", f"- Release ready: `{'true' if completion['releaseReady'] else 'false'}`", "", "## Shadow inventory", "", "| Kind | IDs |", "| --- | --- |"]
     for key in ("requirementIds", "excludedRequirementIds", "acceptanceScenarioIds", "managedOperationIds", "qualityGateIds"):
         lines.append(f"| {esc(key)} | {esc(', '.join(data['shadowInventory'][key]) or '—')} |")
     lines += ["", "## Obligations", "", "| ID | Kind | Scope | Result | Surfaces |", "| --- | --- | --- | --- | --- |"]
     for item in data["obligations"]:
         lines.append(f"| {esc(item['id'])} | {esc(item['kind'])} | {esc(item['scope'])} | {esc(item['result'])} | {esc(', '.join(item['verificationSurfaces']))} |")
-    lines += ["", "## Audit-time checks", "", "| ID | Exit | Coverage | argv |", "| --- | ---: | --- | --- |"]
+    lines += ["", "## Independently reviewed checks", "", "| ID | Exit | Coverage | argv |", "| --- | ---: | --- | --- |"]
     for check in data["checks"]:
         coverage = ", ".join(f"{c['obligationId']}:{c['surface']}" for c in check["coverage"])
         lines.append(f"| {esc(check['checkId'])} | {esc(check['exitCode'])} | {esc(coverage)} | `{esc(' '.join(check['argv']))}` |")

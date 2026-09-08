@@ -141,13 +141,17 @@
       "type": "object",
       "required": [
         "implementationComplete",
-        "releaseReady"
+        "releaseReady",
+        "locallyVerified"
       ],
       "properties": {
         "implementationComplete": {
           "type": "boolean"
         },
         "releaseReady": {
+          "type": "boolean"
+        },
+        "locallyVerified": {
           "type": "boolean"
         }
       }

@@ -45,7 +45,7 @@ class AuditProtocol20Tests(unittest.TestCase):
             scope = gates[item_id]["category"] if item_id in gates else "repository"
             obligations.append({"id":item_id,"kind":kind,"scope":scope,"result":"verified","verificationSurfaces":surfaces,"evidence":[{"path":"project/src/preference_component.py","surface":surface} for surface in surfaces]})
             coverage += [{"obligationId":item_id,"surface":surface} for surface in surfaces]
-        audit = {"schemaVersion":"2.0","auditId":"AUDIT-1","auditRequest":{"path":".vibe/audits/AUDIT-REQUEST-1/request.json","requestId":"AUDIT-REQUEST-1","sha256":hashlib.sha256(self.request_path.read_bytes()).hexdigest()},"auditorContext":{"contextId":"fresh-1","invocationKind":"fresh-context","implementationContextAvailable":False},"startedAt":"2026-09-04T10:00:00Z","completedAt":"2026-09-04T10:01:00Z","verdict":"PASS","appSpecFingerprint":self.app_fp,"workspaceFingerprint":self.workspace_fp,"sourceCoverage":coverage_fixture(self.root / "app-spec", list(surface_map)),"shadowInventory":canonical_inventory(self.app),"obligations":obligations,"checks":[{"checkId":"CHECK-1","argv":["python","verify_fixture.py"],"startedAt":"2026-09-04T10:00:00Z","completedAt":"2026-09-04T10:00:30Z","exitCode":0,"executionStatus":"completed","startWorkspaceFingerprint":self.workspace_fp,"workspaceFingerprint":self.workspace_fp,"coverage":coverage}],"findings":[],"completion":{"implementationComplete":True,"releaseReady":True}}
+        audit = {"schemaVersion":"2.0","auditId":"AUDIT-1","auditRequest":{"path":".vibe/audits/AUDIT-REQUEST-1/request.json","requestId":"AUDIT-REQUEST-1","sha256":hashlib.sha256(self.request_path.read_bytes()).hexdigest()},"auditorContext":{"contextId":"fresh-1","invocationKind":"fresh-context","implementationContextAvailable":False},"startedAt":"2026-09-04T10:00:00Z","completedAt":"2026-09-04T10:01:00Z","verdict":"PASS","appSpecFingerprint":self.app_fp,"workspaceFingerprint":self.workspace_fp,"sourceCoverage":coverage_fixture(self.root / "app-spec", list(surface_map)),"shadowInventory":canonical_inventory(self.app),"obligations":obligations,"checks":[{"checkId":"CHECK-1","argv":["python","verify_fixture.py"],"startedAt":"2026-09-04T10:00:00Z","completedAt":"2026-09-04T10:00:30Z","exitCode":0,"executionStatus":"completed","startWorkspaceFingerprint":self.workspace_fp,"workspaceFingerprint":self.workspace_fp,"coverage":coverage}],"findings":[],"completion":{"locallyVerified":True,"implementationComplete":True,"releaseReady":True}}
         audit_receipt_fixture(self.root, audit["checks"][0])
         return audit
     def validate(self, audit): return VALIDATOR.validate(audit, self.root / "app-spec", self.root, self.request_path)
@@ -63,9 +63,34 @@ class AuditProtocol20Tests(unittest.TestCase):
     def test_implementation_context_must_be_unavailable(self):
         audit=self.audit(); audit["auditorContext"]["implementationContextAvailable"]=True; self.assertTrue(any("must be false" in e for e in self.validate(audit)))
 
-    def test_check_must_be_inside_audit_window(self):
-        audit=self.audit(); audit["checks"][0].update(startedAt="2025-01-01T00:00:00Z",completedAt="2025-01-01T00:01:00Z")
-        self.assertTrue(any("inside audit window" in e for e in self.validate(audit)))
+    def test_check_before_audit_can_be_reused_but_timestamps_cannot_be_invented(self):
+        audit=self.audit(); audit['checks'][0].update(startedAt='2025-01-01T00:00:00Z',completedAt='2025-01-01T00:01:00Z')
+        self.assertTrue(any('receipt' in e and 'mismatch' in e for e in self.validate(audit)))
+        audit_receipt_fixture(self.root, audit['checks'][0])
+        self.assertEqual([], self.validate(audit))
+
+    def test_local_ios_limitation_does_not_claim_full_completion(self):
+        # The limitation is bound to the request, never invented by the auditor.
+        self.app['acceptanceScenarios'][0]['verificationSurfaces'].append('ios-link-test')
+        (self.root/'app-spec/app-spec.json').write_text(json.dumps(self.app))
+        self.app_fp = compute_app_spec_fingerprint(self.root/'app-spec')
+        self.workspace_fp = compute_workspace_fingerprint(self.root)
+        affected = [(i, s) for i, surfaces in VALIDATOR.expected_surface_map(self.app).items()
+                    for s in surfaces if s == 'ios-link-test']
+        self.request.update(appSpecFingerprint=self.app_fp, workspaceFingerprint=self.workspace_fp,
+            unavailablePairs=[{'obligationId':i,'surface':s,'available':False,'reason':'Requires macOS/Xcode','prerequisites':['macOS','Xcode']} for i,s in affected])
+        self.request_path.write_text(json.dumps(self.request)); launch_fixture(self.root, self.request_path, self.request)
+        audit = self.audit()
+        for item in audit['obligations']:
+            if 'ios-link-test' in item['verificationSurfaces']:
+                item['result'] = 'locally-verified'
+                item['evidence'] = [e for e in item['evidence'] if e['surface'] != 'ios-link-test']
+        audit['checks'][0]['coverage'] = [r for r in audit['checks'][0]['coverage'] if r['surface'] != 'ios-link-test']
+        audit_receipt_fixture(self.root, audit['checks'][0])
+        audit['completion'] = {'locallyVerified':True,'implementationComplete':False,'releaseReady':False}
+        self.assertEqual([], self.validate(audit))
+        audit['completion']['implementationComplete'] = True
+        self.assertTrue(any('completion' in e for e in self.validate(audit)))
 
     def test_equivalent_utc_offsets_are_ordered_by_time(self):
         audit=self.audit(); audit["checks"][0].update(startedAt="2026-09-04T13:00:00+03:00",completedAt="2026-09-04T13:00:30+03:00")

@@ -29,6 +29,8 @@ def resolve(root: Path, value: str) -> Path:
 def build_resume(project_root: Path, ledger_path: Path) -> dict:
     root = project_root.resolve()
     ledger = read_json(ledger_path)
+    from validation_context import ValidationContext
+    context = ValidationContext(root, ledger)
     errors: list[str] = []
     if ledger.get("schemaVersion") != "2.0":
         errors.append(f"unsupported protocol: delivery ledger {ledger.get('schemaVersion')!r}")
@@ -37,8 +39,8 @@ def build_resume(project_root: Path, ledger_path: Path) -> dict:
     app_root = resolve(root, ledger.get("appSpec", {}).get("root", ""))
     app, app_errors, _ = validate_app_spec(app_root)
     errors.extend(app_errors)
-    current_app = compute_app_spec_fingerprint(app_root)
-    current_workspace = compute_workspace_fingerprint(root)
+    current_app = context.app_fingerprint
+    current_workspace = context.workspace
     if app is not None and ledger.get("canonicalInventory") != canonical_inventory(app):
         errors.append("canonical inventory mismatch")
     execution = ledger.get("execution", {})
@@ -50,25 +52,21 @@ def build_resume(project_root: Path, ledger_path: Path) -> dict:
     drift_paths = workspace_drift_paths(checkpoint or {}, current_workspace)
     if fingerprint_equal(checkpoint, current_workspace):
         classification = "clean"
-    elif isinstance(checkpoint, dict) and checkpoint.get("gitHead") != current_workspace.get("gitHead"):
-        classification = "unexpected-drift"
     elif active_boundaries(ledger) and paths_within_boundaries(drift_paths, active_boundaries(ledger)):
         classification = "expected-drift"
     else:
         classification = "unexpected-drift"
     stale = not fingerprint_equal(ledger.get("appSpec", {}).get("fingerprint"), current_app)
     evidence_issues = []
-    receipts = []
-    for path in (root / ".vibe" / "receipts").glob("*.json"):
-        try: receipts.append(read_json(path))
-        except ProtocolError as exc: evidence_issues.append(str(exc))
+    try:
+        latest_index = context.latest
+    except (ProtocolError, OSError, ValueError, KeyError) as exc:
+        evidence_issues.append(str(exc)); latest_index = {}
     for item in items:
-        if item.get("status") != "verified": continue
-        for surface in item.get("requiredVerificationSurfaces", []):
-            matching = [r for r in receipts if receipt_current(root, r, current_workspace)
-                and valid_time(r.get("completedAt")) and any(c.get("obligationId") == item["id"] and surface in c.get("surfaces", []) for c in r.get("coveredObligations", []))]
-            latest = max(matching, key=lambda r: (parse_time(r["completedAt"]), r.get("exitCode") != 0)) if matching else None
-            if latest is None or latest.get("exitCode") != 0 or latest.get("executionStatus") != "completed" or not receipt_stable(latest):
+        if item.get('status') != 'verified': continue
+        for surface in item.get('requiredVerificationSurfaces', []):
+            match = latest_index.get((item['id'], surface))
+            if match is None or match[0][1]:
                 evidence_issues.append(f"{item['id']}/{surface}: current successful completed receipt missing")
     binding = ledger.get("closureAudit", {})
     if binding.get("requestPath"):
@@ -80,8 +78,10 @@ def build_resume(project_root: Path, ledger_path: Path) -> dict:
             if not fingerprint_equal(request.get("workspaceFingerprint"), current_workspace) or not fingerprint_equal(request.get("appSpecFingerprint"), current_app): evidence_issues.append("audit request is stale")
             audit_path, launch_path = audit_paths(root, request_path)
             if audit_path.exists() and launch_path.exists():
-                audit_module = load_module("resume_audit_validator", SCRIPT_DIR.parent.parent / "vibe-acceptance-auditor" / "scripts" / "validate-closure-audit.py")
-                evidence_issues.extend(audit_module.validate(read_json(audit_path), app_root, root, request_path))
+                manifest = ledger.get("closureManifest")
+                if manifest:
+                    if hashlib.sha256((root / manifest["auditPath"]).read_bytes()).hexdigest() != manifest["auditSha256"]:
+                        evidence_issues.append("closure audit artifact changed")
             elif execution.get("phase") != "auditing": evidence_issues.append("bound audit or launch receipt is missing")
         except (ProtocolError, OSError, ValueError) as exc: evidence_issues.append(str(exc))
     stale = stale or bool(evidence_issues)
@@ -111,7 +111,7 @@ def build_resume(project_root: Path, ledger_path: Path) -> dict:
             unmet = [dep for dep in item.get("dependsOnAcceptanceScenarioIds", []) if statuses.get(dep) not in {"verified", "waived"}]
             if unmet:
                 dependency_blockers.append({"id": item.get("id"), "unmet": unmet})
-    instructions = discover_scoped_instructions(root)
+    instructions = context.instructions
     if instructions != ledger.get("execution", {}).get("scopedInstructions"):
         errors.append("scoped AGENTS.md inventory changed")
         if classification == "clean":
@@ -155,12 +155,8 @@ def build_resume(project_root: Path, ledger_path: Path) -> dict:
         next_action = f"Resolve saved blockers for {active_id}; do not continue dependent implementation."
     completion_errors = []
     eligible = False
-    if not errors and not stale and classification == "clean" and not pending and not item_blockers:
-        try:
-            aggregate = load_module("resume_delivery_validator", SCRIPT_DIR / "validate-delivery-ledger.py").validate_ledger(root, ledger_path)
-            eligible = aggregate.implementation_complete
-            completion_errors = aggregate.errors
-        except Exception as exc: completion_errors = [str(exc)]
+    # Recovery establishes safety, never performs or implies closure validation.
+    completion_errors = ['Run explicit closure validation to establish completion.']
     required_reads = [*recovery_required_reads(root, ledger), str(ledger_path), *[i["path"] for i in instructions]]
     if active:
         required_reads += [str(app_root / "flows" / f"{active['flowId']}.md")] if active.get("flowId") else []
@@ -172,8 +168,9 @@ def build_resume(project_root: Path, ledger_path: Path) -> dict:
         "driftClassification": classification, "driftPaths": drift_paths,
         "safeToContinue": not errors and classification != "unexpected-drift" and not (active and (active.get("blockers") or active.get("blocker"))),
         "completionEligible": eligible, "completionBlockers": completion_errors,
-        "activePackage": ledger.get("workPackages", {}).get(execution.get("activePackageId")),
+        "activePackages": [ledger.get("workPackages", {}).get(pid) for pid in execution.get("activePackageIds", [])],
         "activeSlice": active, "unresolvedObligations": [i for i in items if i.get("status") not in {"verified", "waived"}],
+        "pendingJobs": [read_json(p) for p in (root / ".vibe/jobs").glob("*.json") if read_json(p).get("stage") not in {"bound", "runner-failed"}],
         "pendingChecks": [{"id":i["id"], "checks":i["pendingChecks"]} for i in items if i.get("pendingChecks")],
         "itemBlockers": item_blockers, "evidenceIssues": evidence_issues,
         "recoveryPackets": [p for p in recovery_by_assignment.values() if p.get("status") != "returned"], "decisions": decisions, "requiredReads": sorted(set(required_reads)),

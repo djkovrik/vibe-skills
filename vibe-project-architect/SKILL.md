@@ -65,3 +65,9 @@ For multi-step work, including direct specialist requests, follow the shared [re
 ## Asset resource wiring
 
 For icons/logos/illustrations apply the [asset contract](../vibe-assets-creator/references/asset-contract.md). Own resource-module placement, Compose resource dependency/plugin and generated accessor visibility for Android/iOS and screenshot hosts. Assets Creator owns XML/PNG files; Compose Expert owns typed usage. Keep runtime artwork in commonMain Compose Resources. Platform-specific launcher/store derivatives are additional exports with their native constraints.
+
+## Foundation feedback
+
+Before expanding feature or preview matrices, establish a real render smoke with nonzero discovery and new expected PNGs from production resources, including light/dark and RU/200%. Missing resource classes or zero snapshots fail the smoke; do not execute every state against a broken harness. Configure Detekt and filtered Kover early; measure the coverage baseline once meaningful implementation exists. Keep full coverage obligations and defer only execution that depends on stable screens.
+
+Use the current [flow coordination interfaces](../vibe-developer/references/flow-delivery-contract.md#current-coordination-and-evidence-interfaces) for compact assignment inputs, early contract readiness, exact evidence coverage and pending-work IDs.

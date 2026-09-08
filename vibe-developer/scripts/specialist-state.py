@@ -23,10 +23,13 @@ def checkpoint(root, directory, args):
         remaining = {}
         for field, added, resolved in (("pendingChecks", args.pending_check, args.resolve_pending_check),
                                        ("blockers", args.blocker, args.resolve_blocker)):
-            old = previous.get(field, [])
-            if any(value not in old for value in resolved): raise ProtocolError(f"cannot resolve unknown {field}")
-            if set(added) & set(resolved): raise ProtocolError(f"cannot add and resolve the same {field}")
-            remaining[field] = sorted((set(old) | set(added)) - set(resolved))
+            from evidence_registry import work_item
+            old = {v['id']: v for v in previous.get(field, [])}
+            additions = [work_item(v, 'CHECK-' if field == 'pendingChecks' else 'BLOCK-') for v in added]
+            if any(value not in old for value in resolved): raise ProtocolError(f'cannot resolve unknown {field} ID')
+            if {v['id'] for v in additions} & set(resolved): raise ProtocolError(f'cannot add and resolve the same {field}')
+            old.update({v['id']: v for v in additions})
+            remaining[field] = [v for k,v in sorted(old.items()) if k not in resolved]
         packet = {"schemaVersion":"2.0", "assignmentId":args.assignment_id, "owner":args.owner,
             "obligationIds":args.obligation_id, "fileBoundaries":args.file_boundary, **remaining,
             "requiredReads": required_reads,
@@ -50,8 +53,8 @@ def main():
     parser.add_argument("--file-boundary", action="append", default=[])
     parser.add_argument("--pending-check", action="append", default=[])
     parser.add_argument("--blocker", action="append", default=[])
-    parser.add_argument("--resolve-pending-check", action="append", default=[], help="Exact saved check to resolve")
-    parser.add_argument("--resolve-blocker", action="append", default=[], help="Exact saved blocker to resolve")
+    parser.add_argument("--resolve-pending-check", action="append", default=[], help="Saved check ID to resolve")
+    parser.add_argument("--resolve-blocker", action="append", default=[], help="Saved blocker ID to resolve")
     parser.add_argument("--resolution-reason", help="Completed verification or decision that resolves the named items")
     parser.add_argument("--required-read", action="append", default=[])
     parser.add_argument("--next-action")
@@ -72,7 +75,7 @@ def main():
             print(json.dumps({"packet":packet, "safeToContinue":False, "assignmentReturned":True,
                 "driftPaths":drift, "nextAction":"Assignment already returned; use a new assignment ID for new work."}, indent=2))
             return 0
-        safe = packet["workspaceFingerprint"].get("gitHead") == workspace.get("gitHead") and paths_within_boundaries(drift, packet["fileBoundaries"])
+        safe = paths_within_boundaries(drift, packet["fileBoundaries"])
         safe = safe and packet["scopedInstructions"] == discover_scoped_instructions(root) and not packet["blockers"]
         safe = safe and bool(packet.get("requiredReadHashes")) and all(sha256_bytes((root/source["path"]).read_bytes())==source["sha256"] for source in packet.get("requiredReadHashes", []))
         print(json.dumps({"packet":packet, "safeToContinue":safe, "driftPaths":drift,

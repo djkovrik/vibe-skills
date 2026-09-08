@@ -12,9 +12,9 @@ from scoped_evidence import registered_scope, input_fingerprint
 
 def run_check(root, argv, coverage, kind="targeted", timeout=1800, input_scope_id=None):
     if any("gradle" in Path(arg).name.lower() for arg in argv[:1]): raise ProtocolError("use the orchestrator Gradle runner")
-    if kind not in {"targeted", "integration", "final"}: raise ProtocolError("unsupported receipt kind")
+    if kind not in {"targeted", "integration"}: raise ProtocolError("unsupported receipt kind")
     if kind == "targeted" and not input_scope_id: raise ProtocolError("targeted checks require inputScopeId")
-    if input_scope_id and kind != "targeted": raise ProtocolError("integration/final checks require global inputs")
+    if input_scope_id and kind != "targeted": raise ProtocolError("integration checks require global inputs")
     scope = registered_scope(root, input_scope_id) if input_scope_id else None
     input_before = input_fingerprint(root, scope) if scope else None
     directory = root / ".vibe" / "receipts"; directory.mkdir(parents=True, exist_ok=True)
@@ -38,7 +38,7 @@ def run_check(root, argv, coverage, kind="targeted", timeout=1800, input_scope_i
 def main():
     parser = argparse.ArgumentParser(description=__doc__); parser.add_argument("project_root", type=Path)
     parser.add_argument("--coverage", type=Path, required=True, help="JSON object with coveredObligations")
-    parser.add_argument("--kind", choices=("targeted", "integration", "final"), default="targeted")
+    parser.add_argument("--kind", choices=("targeted", "integration"), default="targeted")
     parser.add_argument("--input-scope", help="Registered inputScopeId; required for targeted checks")
     parser.add_argument("--timeout", type=float, default=1800)
     if "--" not in sys.argv: parser.error("separate the check command with --")
