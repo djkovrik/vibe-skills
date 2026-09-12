@@ -8,7 +8,7 @@ Cover:
 - no core-flow blockage when ads fail;
 - rewarded callback exactly once;
 - no real requests in previews/tests;
-- fresh privacy-region endpoint resolution before initialization, including controlled protected, non-protected, and unknown/failing routes;
+- fresh privacy-region response handling before initialization, using fakes or controlled protected, non-protected, and unknown/failing responses;
 - app-owned required-form-only behavior rather than a global consent popup;
 - minimal cached response plus policy-version-bound accepted, declined, withdrawn, expired, unknown, network-error, and retry states;
 - no Yandex initialization or ad request before the endpoint and consent state permit it;
@@ -18,5 +18,7 @@ Cover:
 - iOS Pod/workspace/device and SKAdNetwork checks;
 - Release Archive, privacy report/manifest, and no test IDs;
 - non-PII technical diagnostics.
+
+Treat the canonical shared privacy-region endpoint and its endpoint-specific release readiness as already accepted. Do not add backend checks, live endpoint qualification/public smokes, operational evidence, or an endpoint release gate to an application delivery; validate only the consuming application's integration and fail-closed behavior.
 
 Use current official integration tools and target-specific task names. Report exit codes and manual device checks separately.

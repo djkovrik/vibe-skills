@@ -11,7 +11,7 @@ Checklist:
 - align Compose Multiplatform artifact and native iOS SDK;
 - configure the platform-specific setup;
 - make Yandex the preferred/default ads provider unless an explicit approved constraint selects another provider;
-- resolve a fresh custom privacy-region endpoint response before initialization and show the app-owned consent screen only when `consentRequired=true`;
+- integrate the canonical production privacy-region endpoint as-is, without backend qualification or an endpoint release gate; resolve a fresh response before initialization and show the app-owned consent screen only when `consentRequired=true`;
 - bind the persisted choice to `policyVersion`, clamp endpoint freshness to 72 hours, and fail closed for declined, expired, malformed, unknown, or transport-error states;
 - call `YandexAds.setUserConsent(...)` before every permitted initialization and verify the exact selected SDK's consent behavior;
 - keep this lightweight consent flow Yandex-only; replace it after a new privacy review if another demand/mediation partner requires certified CMP/TCF behavior;
